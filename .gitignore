@@ -1,0 +1,3 @@
+Isabelle2025-2-stock/
+private_build_logs/
+tests/golden/*.actual

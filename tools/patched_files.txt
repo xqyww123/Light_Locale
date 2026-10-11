@@ -1,0 +1,24 @@
+# Files light locale edits in the Isabelle2025-2 tree (plan §3 and §4 items 9, 11-13),
+# relative to the tree root.  Milestone-3 repair-phase files (§4 items 14-15) are appended
+# when that milestone starts.  A path that does not exist yet is a new file.
+src/Pure/Isar/locale.ML
+src/Pure/Isar/expression.ML
+src/Pure/Isar/named_target.ML
+src/Pure/Isar/generic_target.ML
+src/Pure/Isar/parse_spec.ML
+src/Pure/Pure.thy
+src/Pure/Syntax/syntax_trans.ML
+src/Pure/Syntax/syntax_phases.ML
+src/Pure/Isar/proof_context.ML
+src/Pure/Isar/exported_premises.ML
+src/Pure/Isar/light_locale_axiom_facts.ML
+src/Pure/Isar/calculation.ML
+src/Pure/drule.ML
+src/Pure/ROOT.ML
+src/Pure/bires.ML
+src/Pure/Isar/rule_cases.ML
+src/Pure/Isar/attrib.ML
+src/Tools/induct.ML
+src/Tools/induct_tacs.ML
+src/HOL/Tools/coinduction.ML
+src/HOL/Tools/inductive.ML

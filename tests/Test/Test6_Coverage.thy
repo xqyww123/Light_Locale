@@ -1,0 +1,114 @@
+(* Plan section 7 test 6, coverage of the Induct tables and their deletions (plan lines 4700-4706,
+   4721-4729): LF.Abs_T_cases noted with [cases type: T] in a proof context and declared at theory
+   level is keyed on T; fooT2 (no attribute, stored LF ?S ==> Pc ?x ?S ==> Sc ?x, consumes 1, K 1)
+   noted with [cases pred: Pc] is registered as the stored theorem and found by find_casesP on
+   Pc c S; the deletion sequence declare LF.fooT2[cases pred: Pc] -- positive control in the block
+   and the theory -- [cases del] -- gone from the block, and from the theory after end -- and the
+   same for [induct pred: Pc] / [induct del]; two [cases pred: Pc] declarations with a different
+   consumes in between leave exactly one entry; [cases del] removes LF.Abs_T_cases; the heavy
+   twin's block rows as controls; the hand-written specialised equation from LF.ip.simps[OF
+   LF_axioms] is phi-equal to the twin's inductive_simps; proof-local note foo' [case_names a b,
+   consumes 1] = LF.foo[OF LF_axioms] equals the twin's block foo up to K (K 0), note r =
+   LF.foo[OF LF_axioms] has numbered cases and consumes 0. *)
+theory Test6_Coverage
+  imports Test_Support "Light_Locale_Base.Light_Locale_Base"
+begin
+
+ML \<open>open Test_Support\<close>
+consts Pc :: 'a  Sc :: 'a  c :: 'a
+axiomatization where Sc_ax: "Sc x" and Pc_ax: "Pc x y"
+
+ML \<open>
+val thy_ctxt = Proof_Context.init_global o Proof_Context.theory_of;
+fun note_in ctxt name atts th =
+  let
+    val thy = Proof_Context.theory_of ctxt;
+    val ([(_, [th'])], ctxt') =
+      Proof_Context.note_thmss "" [((Binding.name name, map (Attrib.attribute_cmd ctxt) (attribs_of thy atts)), [([th], [])])] ctxt;
+  in (th', ctxt') end;
+fun has find ctxt key th = is_some (induct_entry find ctxt key th);
+\<close>
+
+context D begin
+typedef T = "{x::nat. x < 5}" by (rule exI[of _ 0]) simp
+lemma fooT2: "Pc x S \<Longrightarrow> Sc x" by (rule Sc_ax)
+lemma foo [case_names a b, consumes 1]: "A \<Longrightarrow> B \<Longrightarrow> A \<and> B" by (rule conjI)
+inductive ip :: "nat \<Rightarrow> bool" where z: "ip 0" | s: "Pc S n \<Longrightarrow> ip n \<Longrightarrow> ip (Suc n)"
+inductive_simps ipS: "ip (Suc n)"
+ML \<open>val heavy_foo = @{thm foo};\<close>
+end
+context D begin
+declare fooT2[cases pred: Pc]
+ML_val \<open>\<^assert> (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2})\<close>
+declare fooT2[cases del]
+ML_val \<open>\<^assert> (not (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2}))\<close>
+end
+
+context LF begin
+typedef T = "{x::nat. x < 5}" by (rule exI[of _ 0]) simp
+lemma fooT2: "Pc x S \<Longrightarrow> Sc x" by (rule Sc_ax)
+lemma foo [case_names a b, consumes 1]: "A \<Longrightarrow> B \<Longrightarrow> A \<and> B" by (rule conjI)
+inductive ip :: "nat \<Rightarrow> bool" where z: "ip 0" | s: "Pc S n \<Longrightarrow> ip n \<Longrightarrow> ip (Suc n)"
+end
+
+ML \<open>
+val _ = \<^assert> (Thm.prop_of @{thm LF.fooT2} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Pc x S \<Longrightarrow> Sc x\<close>);
+val _ = \<^assert> (Rule_Cases.get_consumes @{thm LF.fooT2} = 1 andalso Exported_Premises.count_of @{thm LF.fooT2} = 1);
+\<close>
+
+(* theory level: LF.Abs_T_cases carries its tag, the key is T *)
+declare LF.Abs_T_cases [cases type: LF.T]
+ML \<open>val _ = \<^assert> (has Induct.find_casesT \<^context> \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases});\<close>
+
+context LF begin
+ML_val \<open>
+(* proof-context notes *)
+val (r, ctxt) = note_in \<^context> "r" "[cases type: T]" @{thm LF.Abs_T_cases};
+val _ = \<^assert> (has Induct.find_casesT ctxt \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases});
+val (r2, ctxt2) = note_in \<^context> "r2" "[cases pred: Pc]" @{thm LF.fooT2};
+val SOME e = induct_entry Induct.find_casesP ctxt2 \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2};
+val _ = \<^assert> (Thm.eq_thm_prop (e, @{thm LF.fooT2}) andalso Light_Locale_Axiom_Facts.is_light_prop ctxt2 (hd (Thm.prems_of e)));
+(* proof-local notes of LF.foo[OF LF_axioms] *)
+val (foo', _) = note_in \<^context> "foo'" "[case_names a b, consumes 1]" @{thm LF.foo [OF LF_axioms]};
+val _ = \<^assert> (diff_K (foo', heavy_foo) andalso Exported_Premises.count_of foo' = 0 andalso Rule_Cases.get foo' = Rule_Cases.get heavy_foo);
+val _ = \<^assert> (Rule_Cases.get @{thm LF.foo [OF LF_axioms]} = ([(("1", []), []), (("2", []), [])], 0));
+\<close>
+(* the deletion sequence on the Induct tables *)
+declare LF.fooT2[cases pred: Pc]
+ML_val \<open>
+val _ = \<^assert> (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2});
+val _ = \<^assert> (has Induct.find_casesP (thy_ctxt \<^context>) \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2});
+\<close>
+declare LF.fooT2[cases del]
+ML_val \<open>\<^assert> (not (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2}))\<close>
+declare LF.fooT2[induct pred: Pc]
+ML_val \<open>
+val _ = \<^assert> (has Induct.find_inductP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2});
+val _ = \<^assert> (has Induct.find_inductP (thy_ctxt \<^context>) \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2});
+\<close>
+declare LF.fooT2[induct del]
+ML_val \<open>\<^assert> (not (has Induct.find_inductP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2}))\<close>
+(* two declarations, a different consumes in between: exactly one entry *)
+declare LF.fooT2[cases pred: Pc]
+declare LF.fooT2[consumes 0, cases pred: Pc]
+ML_val \<open>
+val _ = \<^assert> (length (filter (fn r => Thm.eq_thm_prop (r, @{thm LF.fooT2})) (Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close>)) = 1);
+\<close>
+declare LF.fooT2[cases del]
+(* [cases del] on the package's own rule *)
+ML_val \<open>\<^assert> (has Induct.find_casesT \<^context> \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases})\<close>
+declare LF.Abs_T_cases [cases del]
+ML_val \<open>\<^assert> (not (has Induct.find_casesT \<^context> \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases}))\<close>
+(* the hand-written specialised equation *)
+lemma ipS': "LF.ip S (Suc n) = (Pc S n \<and> LF.ip S n)" by (simp add: LF.ip.simps[OF LF_axioms, of "Suc n"])
+end
+
+ML \<open>
+val tctxt = \<^context>;
+val _ = \<^assert> (not (has Induct.find_casesP tctxt \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2}));
+val _ = \<^assert> (not (has Induct.find_inductP tctxt \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2}));
+val _ = \<^assert> (not (has Induct.find_casesT tctxt \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases}));
+val _ = \<^assert> (phi_equal (\<^const_name>\<open>LF\<close>, \<^const_name>\<open>D\<close>) (@{thm LF.ipS'}, @{thm D.ipS}));
+\<close>
+
+end

@@ -1,0 +1,191 @@
+(* The test sessions of the light locale component (plan section 7), kept out of the component's
+   own ROOT: build them with an extra "-d contrib/light_locale/tests".  Light_Locale_Base's parent
+   is Light_Locale_Golden, so building the tests runs the golden comparison first.  Each session
+   has its own directory (sessions.scala:908-924 rejects a shared one). *)
+
+session Light_Locale_Golden in "Golden" = "HOL-Algebra" +
+  description "
+    Plan section 7 test 1 (invariance): reference output of stock Isabelle.  Run on the stock copy
+    (ISABELLE_IDENTIFIER = Isabelle2025-2-stock) it records tests/golden/*.golden; run anywhere
+    else it compares byte for byte.
+  "
+  theories
+    Golden_Facts
+    Golden_Transfer
+
+session Light_Locale_Base in "Base" = Light_Locale_Golden +
+  description "
+    Plan section 7: the test fixtures -- the gate fixture LF with its heavy twin D, the auxiliary
+    pair LM/DM.  No global declarations.
+  "
+  sessions Light_Locale
+  theories
+    Light_Locale_Base
+    Base_Split
+    Base_Downstream_Simp
+    Base_Elim_Bang
+    Base_Dest_Bang
+    Base_Intro_Bang
+
+session Light_Locale_Test in "Test" = Light_Locale_Base +
+  description "
+    Plan section 7: the gate tests (one leaf theory per scenario that changes persistent theory
+    state) and the test support theory.
+  "
+  theories
+    Test_Support
+    Test2_Declaration
+    Test3_Open
+    Test3_Foo
+    Test3_Dupname
+    Test3_Interp
+    Test_Eliminated_Defines
+    Test4_Fixture
+    Test4_Control
+    Test4_Block_Mandatory
+    Test4_Block_Same
+    Test4_Block_Defines
+    Test4_A
+    Test4_B
+    Test4_C
+    Test4_D
+    Test5_Diamond
+    Test5_Cross_Prefix
+    Test5_Inclusion_Pair
+    Test5_Inclusion_Pair_F
+    Test5_Inclusion_Pair_Heavy
+    Test5_Restock_H8
+    Test5_Restock_H8_Heavy
+    Test5_Restock_H5
+    Test5_Restock_H5_Heavy
+    Test5_Mixin
+    Test5_Mixin_Heavy
+    Test5_Filtered
+    Test5_Filtered_Heavy
+    Test5_Sib_M
+    Test5_SibH_M
+    Test5_Mirror_A
+    Test5_Mirror_AC
+    Test5_Mirror_ACB
+    Test5_Mirror_AC_Heavy
+    Test5_Mirror_B
+    Test5_Mirror_BC
+    Test5_Mirror_B_Heavy
+    Test5_H7
+    Test5_H7_Heavy
+    Test5_Cross_Cmd
+    Test5_Cross_Cmd_Heavy
+    Test5_Cross_NoPlain
+    Test5_Cross_NoPlain_Heavy
+    Test5_Cross_Order
+    Test5_Cross_J
+    Test5_Rewrites_Diff
+    Test5_Rewrites_Nonrestated
+    Test5_Rewrites_Nonrestated_Heavy
+    Test5_Rewrites_Redescent
+    Test5_Coexist
+    Test5_Merge_M12
+    Test5_Merge_M21
+    Test5_Merge_L1
+    Test5_Merge_L2
+    Test5_Merge_L3
+    Test5_Backtrack
+    Test5_Backtrack_Rewrites
+    Test5_Backtrack_Rewrites_Restated
+    Test5_Propagation_Sublocale
+    Test5_Propagation_Edge_After
+    Test5_Propagation_Edge_Before
+    Test5_Propagation_B2_Before
+    Test5_Propagation_B2_After
+    Test5_Propagation_X
+    Test5_Safe
+    Test6_Fork
+    Test6_Block
+    Test6_Nested
+    Test6_Cases
+    Test6_Cases_HOL
+    Test6_Cases_Set
+    Test6_Cases_Residual
+    Test6_Cases_Priority
+    Test6_Cases_Tags
+    Test6_Cases_Nul
+    Test6_Cases_Setting
+    Test6_Cases_Setting_Type
+    Test6_Cases_Setting_Type0
+    Test6_Exported
+    Test6_Exported_CasesPred
+    Test6_Exported_CasesType
+    Test6_Exported_Dest
+    Test6_Exported_Dest0
+    Test6_Tag_A
+    Test6_Tag_A3
+    Test6_Tag_B
+    Test6_Tag_For
+    Test6_Tag_Aux
+    Test6_Tag_SetF
+    Test6_Inductive_Cases
+    Test6_Inductive_Cases_Interp
+    Test6_Coverage
+    Test6_Del_Decl
+    Test6_Del_Reopened
+    Test6_Del_Theory
+    Test6_Del_Method
+    Test6_Del_FooE
+    Test6_Del_BlastDel
+    Test6_Del_PureRule
+    Test6_Del_IntroElim
+    Test6_Del_PureIntroElim
+    Test6_Nested_Del_E1
+    Test6_Nested_Del_E2
+    Test6_Nested_Del_E3
+    Test6_Elim_Bang
+    Test6_Dest_Bang
+    Test6_Intro_Bang
+    Test6_Coinduct
+    Test6_Heavy_Imports
+    Test6_Interpret_Block
+    Test7_Degeneracy
+    Test7_Declare_Block
+    Test7_Theory_Simp_Del
+    Test7_Setting_Simp_Del
+    Test7_Exported_Simp_Del
+    Test7_Defines_K
+    Test7_Declaration_Branches
+    Test7_Datatype_Block
+    Test7_Split
+    Test7_Downstream_Simp
+    Test7_Intro_Bang
+    Test7_Global_Interpretation
+    Test7_Code
+    Test7_Export_Morphism
+    Test7_Alignment
+    Test7_Notes_Normal
+    Test8_Shapes
+    Test8_Eliminated
+    Test8_Gate
+    Test8_Siblings
+    Test10_Rewrites
+    Test10_Differential
+    Test10_Diamond
+    Test1_Identity
+    Test1_Old_Interface
+
+session Light_Locale_Test_Serial in "Serial" = Light_Locale_Base +
+  description "
+    Plan section 7: the no-fork execution mode -- the wrapper re-processes test 6's fork-shape leaf
+    of Light_Locale_Test with parallel_proofs = 0.
+  "
+  options [parallel_proofs = 0]
+  sessions Light_Locale_Test
+  theories
+    Serial_Wrapper
+
+session Light_Locale_Corec_Check in "Corec" = "HOL-Library" +
+  description "
+    Plan section 7 test 1: every named fact of HOL-Corec_Examples, recorded on the stock copy and
+    compared elsewhere (the wrapper reloads those theories, so they are proved by this tree's Pure).
+  "
+  options [quick_and_dirty]
+  sessions "HOL-Corec_Examples"
+  theories
+    Corec_Check

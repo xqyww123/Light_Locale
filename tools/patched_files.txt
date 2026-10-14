@@ -10,7 +10,7 @@ src/Pure/Pure.thy
 src/Pure/Syntax/syntax_trans.ML
 src/Pure/Syntax/syntax_phases.ML
 src/Pure/Isar/proof_context.ML
-src/Pure/Isar/exported_premises.ML
+src/Pure/exported_premises.ML
 src/Pure/Isar/light_locale_axiom_facts.ML
 src/Pure/Isar/calculation.ML
 src/Pure/drule.ML

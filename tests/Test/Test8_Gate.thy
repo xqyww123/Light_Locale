@@ -124,10 +124,16 @@ ML \<open>
 val thy = \<^theory>;
 val guard = not_bound "Zp" "pint p" "Pdef";
 val _ = fails_with guard (light thy "LX = Pdef + assumes ax: \"Q Zp\"");
-val _ = fails_with guard (light thy "LX = LFP' + assumes ax: \"Q Zp\"");
-val _ = fails_with guard (heavy thy "HX = LFP' + assumes ax: \"Q Zp\"");
 val _ = fails_with guard (light thy "LX = Pdef + M2 Zp");
-val _ = fails_with guard (heavy thy "HX = LFP' + M2 Zp");
+(*the rows whose eliminated name comes from a light ancestor (LFP'): the D20 use warning, verbatim,
+  at least once before the header error; the count is recorded in plan section 11 (30), not asserted*)
+val use_warning_zp = "The parameter `Zp` from locale `Pdef` is not bound any more and treated as a fresh variable here.";
+fun light_ancestor_row f =
+  let val ((), ws) = with_warnings (fn () => fails_with guard f)
+  in \<^assert> (member (op =) ws use_warning_zp) end;
+val _ = light_ancestor_row (light thy "LX = LFP' + assumes ax: \"Q Zp\"");
+val _ = light_ancestor_row (heavy thy "HX = LFP' + assumes ax: \"Q Zp\"");
+val _ = light_ancestor_row (heavy thy "HX = LFP' + M2 Zp");
 (*the own-header rows emit no warning before the error*)
 val _ = \<^assert> (null (#2 (with_warnings (fn () => (light thy "LX = Pdef + assumes ax: \"Q Zp\"" (); ()) handle ERROR _ => ()))));
 (*positive and negative controls*)
@@ -136,7 +142,7 @@ val _ = \<^assert> (can (light thy "LY2 = Pdef + assumes ax: \"\<And>Zp. Q Zp\""
 \<close>
 context LFP' begin
 ML_val \<open>
-val _ = fails_with (not_bound "Zp" "pint p" "Pdef") (fn () =>
+val _ = light_ancestor_row (fn () =>
   Target_Context.context_begin_nested_cmd [] [Element.Assumes [((Binding.name "hy", []), [("Q Zp", [])])]] (Context.Proof \<^context>));
 val _ = \<^assert> (can (Target_Context.context_begin_nested_cmd [] [Element.Fixes [(Binding.name "Zp", NONE, NoSyn)], Element.Assumes [((Binding.name "hy", []), [("Q Zp", [])])]]) (Context.Proof \<^context>));
 \<close>

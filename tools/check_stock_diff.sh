@@ -12,9 +12,14 @@ baseline=$root/tools/patch_status_baseline.txt
 
 status() { (cd "$shared" && my-better-isabelle status 2>&1 || true); }
 
+# diff may only report differences (status 1); trouble (a missing directory, an unreadable file)
+# aborts the run
+raw=$(for d in src etc; do
+  LC_ALL=C diff -rq "$stock/$d" "$shared/$d" || (( $? == 1 )) || { echo "ERROR: diff failed on $d/" >&2; exit 2; }
+done)
+
 changed() {  # paths (relative to the tree root) of files that differ between the two trees
-  for d in src etc; do LC_ALL=C diff -rq "$stock/$d" "$shared/$d" || true; done \
-    | sed -E "s#^Files $stock/(.*) and .* differ\$#\\1#; s#^Only in $shared/([^:]*): (.*)\$#\\1/\\2#; s#^Only in $stock/([^:]*): (.*)\$#\\1/\\2 (missing in shared tree)#" \
+  sed -E "s#^Files $stock/(.*) and .* differ\$#\\1#; s#^Only in $shared/([^:]*): (.*)\$#\\1/\\2#; s#^Only in $stock/([^:]*): (.*)\$#\\1/\\2 (missing in shared tree)#" <<<"$raw" \
     | /usr/bin/grep -vx 'etc/ISABELLE_IDENTIFIER' || true
 }
 
@@ -30,7 +35,7 @@ else
   while read -r f; do
     [[ -z $f ]] && continue
     if /usr/bin/grep -qxF "$f" <<<"$allowed"; then echo "changed  $f"
-    else echo "ERROR: differs but is not in patched_files.txt: $f" >&2; bad=1; fi
+    else echo "ERROR: not an allowed difference (tools/patched_files.txt): $f" >&2; bad=1; fi
   done <<<"$(changed)"
   if ! diff <(status) "$baseline" >/dev/null; then
     echo "ERROR: patch tool status differs from the baseline:" >&2; diff <(status) "$baseline" >&2 || true; bad=1

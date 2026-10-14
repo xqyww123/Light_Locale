@@ -1,0 +1,62 @@
+# Signature entries light locale adds to the Isabelle2025-2 tree (plan §8 step 5): one
+# `<path> <SIGNATURE> <keyword> <name>` per line, grouped by the plan section that names them.
+# tools/make_patches.sh requires the heads (path, signature, keyword, name; not the type) of the
+# entries added to the signature sections of the patched ML files to be exactly these (and every
+# stock entry to be unchanged).
+
+# plan §3.1 (eliminated_name_warning by §11 implementation-period change (10) (e))
+src/Pure/Isar/locale.ML LOCALE datatype level
+src/Pure/Isar/locale.ML LOCALE datatype position_kind
+src/Pure/Isar/locale.ML LOCALE val register_locale'
+src/Pure/Isar/locale.ML LOCALE val is_light
+src/Pure/Isar/locale.ML LOCALE val is_light_predicate
+src/Pure/Isar/locale.ML LOCALE val set_implicit_structure
+src/Pure/Isar/locale.ML LOCALE val activate_facts_level
+src/Pure/Isar/locale.ML LOCALE val matching_marks_of
+src/Pure/Isar/locale.ML LOCALE val set_light_axioms_attributes
+src/Pure/Isar/locale.ML LOCALE val light_axioms_attributes_of
+src/Pure/Isar/locale.ML LOCALE val set_light_degeneracy_check
+src/Pure/Isar/locale.ML LOCALE val light_degeneracy_check_of
+src/Pure/Isar/locale.ML LOCALE val eliminated_names_of
+src/Pure/Isar/locale.ML LOCALE val eliminated_names_declaration
+src/Pure/Isar/locale.ML LOCALE val eliminated_name_warning
+src/Pure/Isar/locale.ML LOCALE val add_registration_level
+
+# plan §3.2
+src/Pure/Isar/expression.ML EXPRESSION val add_light_locale
+src/Pure/Isar/expression.ML EXPRESSION val add_light_locale_cmd
+
+# plan §3.4 (replace_fact by §11 implementation-period change (10) (b), exported_premises_tagN
+# by (10) (g))
+src/Pure/Isar/generic_target.ML GENERIC_TARGET val light_standard_declaration
+src/Pure/Isar/generic_target.ML GENERIC_TARGET val light_notes
+src/Pure/Isar/generic_target.ML GENERIC_TARGET val light_theory_declaration
+src/Pure/Isar/generic_target.ML GENERIC_TARGET val gen_locale_dependency
+src/Pure/exported_premises.ML EXPORTED_PREMISES val lookup_consumes
+src/Pure/exported_premises.ML EXPORTED_PREMISES val get_consumes
+src/Pure/exported_premises.ML EXPORTED_PREMISES val put_consumes
+src/Pure/exported_premises.ML EXPORTED_PREMISES val exported_premises_tagN
+src/Pure/exported_premises.ML EXPORTED_PREMISES val count_of
+src/Pure/exported_premises.ML EXPORTED_PREMISES val put
+src/Pure/exported_premises.ML EXPORTED_PREMISES val own_prems
+src/Pure/exported_premises.ML EXPORTED_PREMISES val own_major_prem
+src/Pure/exported_premises.ML EXPORTED_PREMISES val strong_consumes
+src/Pure/exported_premises.ML EXPORTED_PREMISES val discharge
+src/Pure/exported_premises.ML EXPORTED_PREMISES val put_major_prem_first
+src/Pure/exported_premises.ML EXPORTED_PREMISES val exported_premises
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val is_light_prop
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val add
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val add_attribute
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val retrieve
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val is_exported_form_strict
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val unchanged_by
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val is_exported_form
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val replace_fact
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val keep_unchanged
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val premise_count
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val norm_result
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val light_export
+src/Pure/Isar/parse_spec.ML PARSE_SPEC val locale_val
+
+# plan §4 item 9
+src/Tools/induct.ML INDUCT val own_vars_of

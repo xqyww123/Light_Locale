@@ -1,4 +1,4 @@
-(* Plan section 7 test 6, leaf E3 (plan lines 4417-4418): in the declaration block, declare
+(* Plan section 7 test 6, leaf E3 (plan lines 4420-4421): in the declaration block, declare
    LF.fooE9c [rule del] deletes the theory copy's registration, the block's local registration
    stays, and with_warnings catches "Undeclared classical rule" (the block's pass finds no
    LF.fooE9c in the block's claset). *)
@@ -9,7 +9,6 @@ begin
 ML \<open>open Test_Support\<close>
 consts Pc :: 'a  Sc :: 'a
 axiomatization where Sc_ax: "Sc x"
-ML \<open>val thy_ctxt = Proof_Context.init_global o Proof_Context.theory_of;\<close>
 
 context LF begin
 lemma fooE9c [elim]: "Pc x \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)

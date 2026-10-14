@@ -9,11 +9,6 @@ ML \<open>open Test_Support\<close>
 consts Rc :: 'a  Sc :: 'a
 axiomatization where Sc_ax: "Sc x"
 
-ML \<open>
-fun proves tac ctxt prop = can (fn () => Goal.prove ctxt [] [] prop (fn {context, ...} => tac context)) ();
-val by_blast = proves (fn c => blast_tac c 1);
-\<close>
-
 context LF begin
 lemma bad: "Rc x S \<Longrightarrow> Sc x" by (rule Sc_ax)
 end

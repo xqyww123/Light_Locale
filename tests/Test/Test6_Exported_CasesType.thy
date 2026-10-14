@@ -17,10 +17,10 @@ context D begin
 lemma z0: "Sc x" by (rule Sc_ax)
 end
 
-ML \<open>val _ = \<^assert> (can (fn () => declare_in (Named_Target.theory_init \<^theory>) "D.z0" "[cases type: nat]") ());\<close>
+declare D.z0 [cases type: nat]
 
 context LF begin
-local_setup \<open>fn lthy => declare_in lthy "LF.z0" "[cases type: nat]"\<close>
+declare LF.z0 [cases type: nat]
 end
 
 end

@@ -34,10 +34,18 @@ sig
   val twin_rename: string * string -> term -> term
   val assert_twin: theory -> string * string -> unit
   val lemmas_in: local_theory -> string -> string -> string -> thm list * local_theory
+  val thy_ctxt: Proof.context -> Proof.context
+  val proves: (Proof.context -> tactic) -> Proof.context -> term -> bool
+  val by_simp: Proof.context -> term -> bool
+  val by_auto: Proof.context -> term -> bool
+  val by_blast: Proof.context -> term -> bool
   val has_K_tag: thm -> bool
+  val tags_without_K: thm -> Properties.T
+  val light_prems: Proof.context -> thm -> term list
+  val simp_props: Proof.context -> term list
   val plain_equal: thm * thm -> bool
   val three_items: thm * thm -> bool
-  val diff_K: thm * thm -> bool
+  val diff_K: int -> thm * thm -> bool
   val twin_names: string * string -> term -> term
   val varify_block: term -> term
   val block_lemma: string * string -> int -> thm * thm -> bool
@@ -46,14 +54,27 @@ sig
   val canonical_tvars: term -> term
   val same_shape: term * term -> bool
   val phi_equal: string * string -> thm * thm -> bool
+  val major_is: string -> thm -> bool
+  val major_prem_is: Proof.context -> string -> thm -> bool
+  val proof_after_goals: {apply: bool} -> Proof.context -> thm list -> string -> term list -> Proof.state
   val proof_after: {apply: bool} -> Proof.context -> thm list -> string -> term -> Proof.state
+  val run_goals: Proof.context -> thm list -> string -> string list -> Proof.state
+  val run: Proof.context -> thm list -> string -> string -> Proof.state
+  val run_apply: Proof.context -> thm list -> string -> string -> Proof.state
   val canonical_text: string -> string
   val cases_text: Proof.state -> string list
   val case_names: Proof.state -> string list
+  val counts: Proof.state -> int list
+  val cases_terms: (term -> term) -> Proof.state ->
+    (string * (string * typ) list * (string * term list) list * (indexname * term option) list) list
+  val goal_prems: Proof.state -> term list
   val subgoals: Proof.state -> int
+  val fix_in: Proof.context -> (string * typ) list -> Proof.context
   val assume_in: Proof.context -> (string * typ) list -> string -> string -> thm * Proof.context
+  val note_in: Proof.context -> string -> string -> thm -> thm * Proof.context
   val induct_entry: (Proof.context -> 'a -> thm list) -> Proof.context -> 'a -> thm -> thm option
   val claset_entries: Proof.context -> thm -> (thm * thm * Bires.kind) list
+  val claset_rule: Proof.context -> Bires.kind -> thm -> thm * thm
 end;
 
 structure Test_Support: TEST_SUPPORT =
@@ -66,7 +87,7 @@ val _ =
     Private_Output.warning_fn :=
       (fn ss =>
         ((case Thread_Data.get buffer of
-            SOME buf => Unsynchronized.change buf (cons (XML.content_of (YXML.parse_body (implode ss))))
+            SOME buf => Unsynchronized.change buf (cons (Protocol_Message.clean_output (implode ss)))
           | NONE => ());
          original ss))
   end;
@@ -159,21 +180,27 @@ fun lemma_in loc binding atts stmt tac thy =
   |> (fn lthy => theorem_in lthy binding atts stmt tac)
   |> Local_Theory.exit_global;
 
-(*declare <thms> <attribs>*)
-fun declare_in lthy thms atts =
+(*<binding> = <thms> <attribs>, as the command of the kind (declare: "", lemmas: Thm.theoremK)*)
+fun theorems_in kind lthy binding thms atts =
   let val thy = Proof_Context.theory_of lthy in
-    Specification.theorems_cmd "" [(Binding.empty_atts,
-      [parse_text Parse.thms1 thy thms |> hd |> apsnd (K (attribs_of thy atts))])] [] false lthy
-    |> #2
+    Specification.theorems_cmd kind
+      [(binding, [parse_text Parse.thms1 thy thms |> hd |> apsnd (K (attribs_of thy atts))])] [] false lthy
   end;
+
+(*declare <thms> <attribs>*)
+fun declare_in lthy thms atts = #2 (theorems_in "" lthy Binding.empty_atts thms atts);
 
 (*lemmas <name> = <thms> <attribs>, returning the facts the command gives back*)
 fun lemmas_in lthy name thms atts =
-  let val thy = Proof_Context.theory_of lthy in
-    Specification.theorems_cmd "" [((Binding.name name, []),
-      [parse_text Parse.thms1 thy thms |> hd |> apsnd (K (attribs_of thy atts))])] [] false lthy
-    |>> maps #2
-  end;
+  theorems_in Thm.theoremK lthy (Binding.name name, []) thms atts |>> maps #2;
+
+val thy_ctxt = Proof_Context.init_global o Proof_Context.theory_of;
+
+(*the forcing thunk of the preface: the tactic run to completion by Goal.prove*)
+fun proves tac ctxt prop = can (fn () => Goal.prove ctxt [] [] prop (fn {context, ...} => tac context)) ();
+val by_simp = proves (fn ctxt => asm_full_simp_tac ctxt 1);  (*the simp method's default tactic*)
+val by_auto = proves auto_tac;
+val by_blast = proves (fn ctxt => blast_tac ctxt 1);
 
 (*the hyps of a fact that are not assumptions of the context*)
 fun extra_hyps ctxt name =
@@ -240,18 +267,26 @@ fun assert_twin thy (l, h) =
 
 fun has_K_tag th = AList.defined (op =) (Thm.get_tags th) Exported_Premises.exported_premises_tagN;
 
+(*the tags other than K; Thm.untag_rule, not Exported_Premises.put, which is under test*)
+fun tags_without_K th = Thm.get_tags (Thm.untag_rule Exported_Premises.exported_premises_tagN th);
+
+fun light_prems ctxt th = filter (Light_Locale_Axiom_Facts.is_light_prop ctxt) (Thm.prems_of th);
+
+(*the statements of the context's simp rules*)
+fun simp_props ctxt = map (Thm.prop_of o #2) (Raw_Simplifier.dest_simps (simpset_of ctxt));
+
+(*"Rule_Cases.get equal up to K", K being the count the row states: the light theorem carries
+  exactly that count, the case names agree, consumes differ by it*)
+fun diff_K k (thl, thh) =
+  let val (il, nl) = Rule_Cases.get thl and (ih, nh) = Rule_Cases.get thh
+  in Exported_Premises.count_of thl = k andalso il = ih andalso nl = nh + k end;
+
 (*a local copy whose statement names neither the predicate nor a block constant*)
 fun plain_equal (thl, thh) =
-  Thm.eq_thm_prop (thl, thh) andalso Rule_Cases.get thl = Rule_Cases.get thh andalso not (has_K_tag thl);
+  Thm.eq_thm_prop (thl, thh) andalso diff_K 0 (thl, thh) andalso not (has_K_tag thl);
 
 (*any other local copy*)
-fun three_items (thl, thh) =
-  Exported_Premises.count_of thl = 0 andalso Thm.nprems_of thl = Thm.nprems_of thh andalso
-  Rule_Cases.get thl = Rule_Cases.get thh;
-
-fun diff_K (thl, thh) =
-  let val (il, nl) = Rule_Cases.get thl and (ih, nh) = Rule_Cases.get thh
-  in il = ih andalso nl = nh + Exported_Premises.count_of thl end;
+fun three_items (thl, thh) = Thm.nprems_of thl = Thm.nprems_of thh andalso diff_K 0 (thl, thh);
 
 (*rename the name segment l to h in every constant and type name: the predicate, its _axioms, and
   the constants and types declared in the block (Thy.LF.f, Thy.LF.tr)*)
@@ -274,15 +309,14 @@ val varify_block =
 
 (*the theory copy of a lemma proved in the block against the heavy block fact: (i) the statement
   without the K exported premises, (ii) the premise count, (iii) Rule_Cases up to K*)
-fun block_lemma (l, h) premise_count (thl, thh) =
+fun block_lemma (l, h) k (thl, thh) =
   let
-    val k = Exported_Premises.count_of thl;
     val prop = Thm.prop_of thl;
     val stmt = Logic.list_implies (drop k (Logic.strip_imp_prems prop), Logic.strip_imp_concl prop);
   in
     twin_names (l, h) stmt aconv varify_block (Thm.prop_of thh) andalso
-    Thm.nprems_of thl = Thm.nprems_of thh + premise_count andalso
-    diff_K (thl, thh)
+    Thm.nprems_of thl = Thm.nprems_of thh + k andalso
+    diff_K k (thl, thh)
   end;
 
 (*phi: the one premise led by the locale's predicate constant is removed and its variable
@@ -326,21 +360,40 @@ fun phi_equal (lpred, hpred) (thl, thh) =
   canonical_vars (twin_names (Long_Name.base_name lpred, Long_Name.base_name hpred) (phi lpred thl))
     aconv canonical_vars (phi hpred thh);
 
-(* driving Isar proofs programmatically (test 6, the Rule_Cases rows): the state after
-   "lemma goal using facts proof (method)" -- or "apply (method)" -- whose context is read for
-   its cases; the facts are given as theorems, the method as text *)
+(*the major premise is the constant applied to variables only*)
+fun major_is c th =
+  (case Term.strip_comb (HOLogic.dest_Trueprop (Thm.major_prem_of th)) of
+    (Const (c', _), args) => c' = c andalso forall is_Var args
+  | _ => false) handle TERM _ => false;
 
-fun proof_after {apply} ctxt facts method goal =
+(*the major premise is the literal term, up to renaming of its variables*)
+fun major_prem_is ctxt text th =
+  same_shape (Thm.major_prem_of th, Logic.varify_global (Syntax.read_prop ctxt text));
+
+(* driving Isar proofs programmatically (test 6, the Rule_Cases rows): the state after
+   "lemma goals using facts proof (method)" -- or "apply (method)" -- whose context is read for
+   its cases; the facts are given as theorems, the method as text, the goals as terms (one per
+   "and" group) or, for run and run_apply, as the text of one goal *)
+
+fun proof_after_goals {apply} ctxt facts method goals =
   let
     val (text, _) = Method.read_closure_input ctxt (Input.string method);
-    val state = Proof.theorem NONE (K I) [[(goal, [])]] ctxt |> Proof.using [[(facts, [])]];
+    val state =
+      Proof.theorem NONE (K I) (map (fn goal => [(goal, [])]) goals) ctxt |> Proof.using [[(facts, [])]];
     val results =
       if apply then Proof.apply (text, Position.no_range) state
       else Proof.proof (SOME (text, Position.no_range)) state;
   in Seq.the_result "proof_after" results end;
 
-(*what print_cases prints, without markup, the schematic variables renamed by order of first
-  occurrence: the heavy twin D fixes P, so its rules say ?Pa where the light ones say ?P*)
+fun proof_after flags ctxt facts method goal = proof_after_goals flags ctxt facts method [goal];
+fun run_goals ctxt facts method goals =
+  proof_after_goals {apply = false} ctxt facts method (map (Syntax.read_prop ctxt) goals);
+fun run ctxt facts method goal = run_goals ctxt facts method [goal];
+fun run_apply ctxt facts method goal = proof_after {apply = true} ctxt facts method (Syntax.read_prop ctxt goal);
+
+(*what print_cases prints, without markup or line layout, the schematic variables renamed by
+  order of first occurrence: the heavy twin D fixes P, so its rules say ?Pa where the light ones
+  say ?P*)
 fun canonical_text s =
   let
     fun scan [] _ acc = implode (rev acc)
@@ -357,22 +410,45 @@ fun canonical_text s =
   in scan (Symbol.explode s) [] [] end;
 
 fun cases_text st =
-  map (canonical_text o XML.content_of o YXML.parse_body o Pretty.string_of)
+  map (canonical_text o Protocol_Message.clean_output o Pretty.unformatted_string_of)
     (Proof_Context.pretty_cases (Proof.context_of st));
 
-fun case_names st = map #1 (Proof_Context.dest_cases NONE (Proof.context_of st));
+fun dest_cases st = Proof_Context.dest_cases NONE (Proof.context_of st);
 
-fun subgoals st = Thm.nprems_of (#goal (Proof.goal st));
+fun case_names st = map #1 (dest_cases st);
+
+(*the number of assumptions of each case*)
+fun counts st = map (fn (_, Rule_Cases.Case {assumes, ...}) => length (maps #2 assumes)) (dest_cases st);
+
+(*each case's name, fixes, assumption groups and binds, with f applied to every term*)
+fun cases_terms f st =
+  dest_cases st |> map (fn (name, Rule_Cases.Case {fixes, assumes, binds, ...}) =>
+    (name, map (apfst Binding.name_of) fixes, map (apsnd (map f)) assumes, map (apsnd (Option.map f)) binds));
+
+fun goal_prems st = Thm.prems_of (#goal (Proof.goal st));
+val subgoals = length o goal_prems;
+
+(*a context with the variables fixed*)
+fun fix_in ctxt fixes =
+  #2 (Proof_Context.add_fixes (map (fn (x, T) => (Binding.name x, SOME T, NoSyn)) fixes) ctxt);
 
 (*a context with the variables fixed and the assumption name: prop, read there*)
 fun assume_in ctxt fixes name prop =
   let
-    val (_, ctxt') =
-      Proof_Context.add_fixes (map (fn (x, T) => (Binding.name x, SOME T, NoSyn)) fixes) ctxt;
+    val ctxt' = fix_in ctxt fixes;
     val ([(_, [th])], ctxt'') =
       Proof_Context.add_assms Assumption.assume_export
         [((Binding.name name, []), [(Syntax.read_prop ctxt' prop, [])])] ctxt';
   in (th, ctxt'') end;
+
+(*note <name> [<attribs>] = th in the context*)
+fun note_in ctxt name atts th =
+  let
+    val thy = Proof_Context.theory_of ctxt;
+    val ([(_, [th'])], ctxt') =
+      Proof_Context.note_thmss ""
+        [((Binding.name name, map (Attrib.attribute_cmd ctxt) (attribs_of thy atts)), [([th], [])])] ctxt;
+  in (th', ctxt') end;
 
 (*the Induct table entry Thm.eq_thm_prop with the theorem, if any*)
 fun induct_entry find ctxt key th = find_first (fn r => Thm.eq_thm_prop (r, th)) (find ctxt key);
@@ -381,6 +457,11 @@ fun induct_entry find ctxt key th = find_first (fn r => Thm.eq_thm_prop (r, th))
 fun claset_entries ctxt th =
   Classical.dest_decls ctxt (fn (key, _) => Thm.eq_thm_prop (key, th))
   |> map (fn (key, {kind, info = {plain, ...}, ...}) => (key, plain, kind));
+
+(*the one entry of the kind: key and derived plain rule*)
+fun claset_rule ctxt kind th =
+  the_single (map_filter (fn (key, plain, k) => if k = kind then SOME (key, plain) else NONE)
+    (claset_entries ctxt th));
 
 end;
 \<close>

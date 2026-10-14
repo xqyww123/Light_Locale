@@ -28,13 +28,13 @@ end
 ML \<open>
 val tags = Thm.get_tags @{thm Setting.r};
 val _ = \<^assert> (not (AList.defined (op =) tags "consumes") andalso not (has_K_tag @{thm Setting.r}));
-val _ = \<^assert> (diff_K (@{thm Setting.r}, heavy_r) andalso Exported_Premises.count_of @{thm Setting.r} = 0);
+val _ = \<^assert> (diff_K 0 (@{thm Setting.r}, heavy_r));
 \<close>
 context Setting begin
 lemmas rs [cases set: Aset] = Setting.r
 end
 ML \<open>
-val _ = \<^assert> (diff_K (@{thm Setting.rs}, heavy_rs) andalso Exported_Premises.count_of @{thm Setting.rs} = 0);
+val _ = \<^assert> (diff_K 0 (@{thm Setting.rs}, heavy_rs));
 val _ = \<^assert> (Rule_Cases.get @{thm Setting.rs} = ([(("1", []), []), (("2", []), [])], 1));
 val SOME e = induct_entry Induct.find_casesP \<^context> \<^prop>\<open>x \<in> Aset\<close> @{thm Setting.rs};
 val _ = \<^assert> (Thm.prop_of e aconv Thm.prop_of @{thm Setting.rs});

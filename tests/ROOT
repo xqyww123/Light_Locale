@@ -118,7 +118,6 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test6_Exported_Dest
     Test6_Exported_Dest0
     Test6_Tag_A
-    Test6_Tag_A3
     Test6_Tag_B
     Test6_Tag_For
     Test6_Tag_Aux

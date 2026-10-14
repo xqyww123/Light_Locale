@@ -1,8 +1,9 @@
 (* Plan section 7 test 6 (plan lines 4720-4721): [Pure.intro] and then [Pure.elim] on the same fact
    leave only the elim entry (stock's by-kind replacement in Context_Rules), read from the two nets
-   of Context_Rules.netpair; the elim net holds the rule in its elim form (for the light theory copy
-   the K-aware transposition Pc ?x ==> LF ?S ==> ..., for the heavy twin the rule itself).  The heavy
-   twin's block as the control. *)
+   of Context_Rules.netpair, in the block and (the light theory copy's registration) at theory
+   level; the elim net holds the rule in its elim form (for the light theory copy the K-aware
+   transposition Pc ?x ==> LF ?S ==> ..., for the heavy twin the rule itself).  The heavy twin's
+   block as the control. *)
 theory Test6_Del_PureIntroElim
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -34,11 +35,12 @@ end
 
 context LF begin
 declare LF.fooPIE [Pure.intro]
-ML_val \<open>\<^assert> (in_intros \<^context> @{thm LF.fooPIE} andalso not (in_elims \<^context> @{thm LF.fooPIE}))\<close>
+ML_val \<open>\<^assert> (in_intros \<^context> @{thm LF.fooPIE} andalso not (in_elims \<^context> @{thm LF.fooPIE})
+  andalso in_intros (thy_ctxt \<^context>) @{thm LF.fooPIE})\<close>
 declare LF.fooPIE [Pure.elim]
 ML_val \<open>
 val _ = \<^assert> (not (in_intros \<^context> @{thm LF.fooPIE}) andalso in_elims \<^context> @{thm LF.fooPIE});
-val tctxt = Proof_Context.init_global (Proof_Context.theory_of \<^context>);
+val tctxt = thy_ctxt \<^context>;
 val _ = \<^assert> (not (in_intros tctxt @{thm LF.fooPIE}) andalso in_elims tctxt @{thm LF.fooPIE});
 \<close>
 end

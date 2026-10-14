@@ -13,7 +13,6 @@ consts Qx :: "nat \<Rightarrow> bool"
 inductive ev' :: "nat \<Rightarrow> bool" where "ev' 0" | "ev' n \<Longrightarrow> ev' (Suc (Suc n))"
 
 ML \<open>
-fun run ctxt facts method goal = proof_after {apply = false} ctxt facts method (Syntax.read_prop ctxt goal);
 val (h1, ctxt1) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "h1" "Qx n";
 val (h2, ctxt2) = assume_in ctxt1 [] "h2" "ev' n";
 val _ = \<^assert> (case_names (run ctxt2 [h2] "induct" "W n") = ["1", "2"]);

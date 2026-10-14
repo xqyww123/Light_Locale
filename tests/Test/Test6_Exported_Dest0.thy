@@ -15,10 +15,10 @@ end
 declare LF.fooD0 [dest]
 
 ML \<open>
-val _ = \<^assert> (exists (fn (_, plain, _) =>
-    (case Term.strip_comb (HOLogic.dest_Trueprop (Thm.major_prem_of plain)) of
-      (Const (c, _), [Var _, Var _]) => c = \<^const_name>\<open>Rc\<close> | _ => false))
-  (claset_entries \<^context> @{thm LF.fooD0}));
+(* the one derived rule, literally the plan's (line 4606) *)
+val (_, plain) = claset_rule \<^context> Bires.dest_kind @{thm LF.fooD0};
+val _ = \<^assert> (same_shape (Thm.prop_of plain,
+  Logic.varify_global \<^prop>\<open>Rc x S \<Longrightarrow> LF S \<Longrightarrow> (Sc x \<Longrightarrow> PROP W) \<Longrightarrow> PROP W\<close>));
 \<close>
 
 end

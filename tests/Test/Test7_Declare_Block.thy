@@ -6,13 +6,9 @@ begin
 ML \<open>open Test_Support\<close>
 
 ML \<open>
-fun proves tac ctxt prop = can (fn () => Goal.prove ctxt [] [] prop (fn {context, ...} => tac context)) ();
-val by_simp = proves (fn c => simp_tac c 1);
 val by_safe = proves safe_tac;
 val by_clarify = proves (fn c => clarify_tac c 1);
 val by_clarsimp = proves (fn c => clarsimp_tac c 1);
-val by_blast = proves (fn c => blast_tac c 1);
-fun ws f = #2 (with_warnings f);
 \<close>
 
 context LF begin
@@ -72,10 +68,9 @@ end
 declare (in LF) tsimp [simp del]
 lemma (in LF) lfsimp: "k0 = 0" by simp
 declare (in D) tsimp [simp del]
-ML \<open>
-val _ = \<^assert> (not (can (fn () =>
-  Named_Target.init [] (Locale.check_global \<^theory> ("D", Position.none)) \<^theory>
-  |> (fn lthy => Goal.prove lthy [] [] \<^prop>\<open>k0 = 0\<close> (fn {context, ...} => simp_tac context 1))) ()));
+ML_val \<open>
+val lthy = Named_Target.init [] (Locale.check_global \<^theory> ("D", Position.none)) \<^theory>;
+val _ = \<^assert> (not (by_simp lthy \<^prop>\<open>k0 = 0\<close>));
 \<close>
 
 end

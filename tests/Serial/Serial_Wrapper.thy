@@ -7,8 +7,9 @@ theory Serial_Wrapper
 begin
 
 ML \<open>
-  (* plan section 7, session graph: this session's name is set by build.ML:80 *)
-  val _ = \<^assert> (Session.get_name () = "Light_Locale_Test_Serial");
+  (* the leaf's own mode binding: it was processed in this session with unforked proofs, not taken
+     from Light_Locale_Test's heap *)
+  val _ = \<^assert> (not fork);
 \<close>
 
 end

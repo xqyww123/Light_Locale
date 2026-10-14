@@ -20,9 +20,8 @@ lemmas xp = LF.foo[OF LF_axioms, THEN aux]
 end
 
 ML \<open>
-val light_prems = filter (Light_Locale_Axiom_Facts.is_light_prop \<^context>) o Thm.prems_of;
-val _ = \<^assert> (length (light_prems @{thm LF.xt}) = 2 andalso Exported_Premises.count_of @{thm LF.xt} = 1);
-val _ = \<^assert> (length (light_prems @{thm LF.xp}) = 1 andalso Exported_Premises.count_of @{thm LF.xp} = 1);
+val _ = \<^assert> (length (light_prems \<^context> @{thm LF.xt}) = 2 andalso Exported_Premises.count_of @{thm LF.xt} = 1);
+val _ = \<^assert> (length (light_prems \<^context> @{thm LF.xp}) = 1 andalso Exported_Premises.count_of @{thm LF.xp} = 1);
 \<close>
 
 end

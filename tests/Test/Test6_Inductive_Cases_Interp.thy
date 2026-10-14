@@ -21,6 +21,11 @@ inductive_cases ipE4: "LF.ip t0 (Suc n)"
 ML \<open>
 val _ = \<^assert> (not (exists (Light_Locale_Axiom_Facts.is_light_prop \<^context>) (Thm.prems_of @{thm ipE4})));
 val _ = \<^assert> (Thm.nprems_of @{thm ipE4} = Thm.nprems_of @{thm LF.ipE} - 1);
+(* the ind_cases method on the instance: no light subgoal, one subgoal per case of ipE4 *)
+val ctxt = fix_in \<^context> [("n", \<^typ>\<open>nat\<close>)];
+val st = run_apply ctxt [] "ind_cases \"LF.ip t0 (Suc n)\"" "LF.ip t0 (Suc n) \<Longrightarrow> W";
+val _ = \<^assert> (not (exists (Light_Locale_Axiom_Facts.is_light_prop ctxt) (goal_prems st)) andalso
+  subgoals st = Thm.nprems_of @{thm ipE4} - 1);
 \<close>
 
 end

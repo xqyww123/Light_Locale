@@ -1,11 +1,14 @@
 (* Plan section 7 test 6, coinduction and coinduct (plan lines 4730-4739), rows in the reopened
    block: with coinductive cp in the block, "using LF_axioms proof (coinduction arbitrary: x rule:
-   LF.cp.coinduct)" prints the twin's cases and its invariant has no LF S; unchained it fails;
-   "using LF_axioms h proof (coinduct rule: LF.cp.coinduct)" is the regression row; row A: cT
-   [coinduct type: tr0] is stored LF ?S first with consumes 1 and K 1, and "using LF_axioms proof
-   (coinduct x z)" prints the twin's cases (the instantiation makes inst_rule use main_prop_of);
-   row B: the block codatatype's coinduction (with its rule) prints the twin's cases, no LF S in
-   the invariant.  Section 11 item (27). *)
+   LF.cp.coinduct)" prints the twin's cases and its invariant has no LF S; unchained it fails with
+   the stock method failure; "using LF_axioms h proof (coinduct rule: LF.cp.coinduct)" is the
+   regression row, and its instantiated form "coinduct x rule: LF.cp.coinduct" pins the
+   own_major_prem branch of the patched main_prop_of; row A: cT [coinduct type: tr0] is stored LF
+   ?S first with consumes 1 and K 1, and "using LF_axioms proof (coinduct x z)" prints the twin's
+   cases through the instantiated rule, no LF S left; row B: the block codatatype's coinduction
+   without a rule (the coinduct type registration attached to the closure) prints the twin's
+   cases, no LF S in the invariant.  The twin's rows are bound as ML values in its block.  Section
+   11 item (27). *)
 theory Test6_Coinduct
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -18,13 +21,8 @@ consts Q0 :: "('a, 'b) ring_scheme \<Rightarrow> tr0 \<Rightarrow> bool"
 
 ML \<open>
 val natT = \<^typ>\<open>nat\<close>;
-fun fix_in ctxt fixes =
-  #2 (Proof_Context.add_fixes (map (fn (x, T) => (Binding.name x, SOME T, NoSyn)) fixes) ctxt);
-fun run ctxt facts method goal = proof_after {apply = false} ctxt facts method (Syntax.read_prop ctxt goal);
-val texts = Unsynchronized.ref (Symtab.empty: string list Symtab.table);
-fun row name st = texts := Symtab.update (name, cases_text st) (! texts);
-fun same (a, b) = Symtab.lookup (! texts) a = Symtab.lookup (! texts) b andalso is_some (Symtab.lookup (! texts) a);
-fun no_LF ctxt st = not (exists (fn p => exists_subterm (fn t => t aconv \<^term>\<open>LF S\<close> orelse (case t of Const (c, _) $ _ => c = \<^const_name>\<open>LF\<close> | _ => false)) p) (Thm.prems_of (#goal (Proof.goal st))));
+(*no LF premise in any subgoal*)
+fun no_LF st = not (exists (exists_Const (fn (c, _) => c = \<^const_name>\<open>LF\<close>)) (goal_prems st));
 \<close>
 
 context D begin
@@ -33,21 +31,20 @@ codatatype str = SCons nat str
 lemma cT [coinduct type: tr0]: "Q0 S y \<Longrightarrow> (y = y \<Longrightarrow> x = (z :: tr0)) \<Longrightarrow> x = z" by simp
 end
 context D begin
-ML_val \<open>
-val ctxt = fix_in \<^context> [("x", natT)];
-val _ = row "heavy coinduction" (run ctxt [] "coinduction arbitrary: x rule: cp.coinduct" "cp x");
-\<close>
-ML_val \<open>
-val (h, ctxth) = assume_in \<^context> [("x", natT)] "h" "W x";
-val _ = row "heavy coinduct" (run ctxth [h] "coinduct rule: cp.coinduct" "cp x");
-\<close>
-ML_val \<open>
-val ctxts = fix_in \<^context> [("s", \<^typ>\<open>str\<close>), ("t", \<^typ>\<open>str\<close>)];
-val _ = row "heavy codatatype coinduction" (run ctxts [] "coinduction arbitrary: s t rule: str.coinduct" "s = t");
-\<close>
-ML_val \<open>
-val ctxty = fix_in \<^context> [("x", \<^typ>\<open>tr0\<close>), ("z", \<^typ>\<open>tr0\<close>)];
-val _ = row "heavy coinduct y" (run ctxty [] "coinduct x z" "x = z");
+ML \<open>
+val heavy =
+  let
+    val ctxt = fix_in \<^context> [("x", natT)];
+    val (h, ctxth) = assume_in \<^context> [("x", natT)] "h" "W x";
+    val ctxts = fix_in \<^context> [("s", \<^typ>\<open>str\<close>), ("t", \<^typ>\<open>str\<close>)];
+    val ctxty = fix_in \<^context> [("x", \<^typ>\<open>tr0\<close>), ("z", \<^typ>\<open>tr0\<close>)];
+  in
+    {coinduction = cases_text (run ctxt [] "coinduction arbitrary: x rule: cp.coinduct" "cp x"),
+     coinduct = cases_text (run ctxth [h] "coinduct rule: cp.coinduct" "cp x"),
+     coinduct_x = cases_text (run ctxth [h] "coinduct x rule: cp.coinduct" "cp x"),
+     codatatype = cases_text (run ctxts [] "coinduction arbitrary: s t" "s = t"),
+     coinduct_xz = cases_text (run ctxty [] "coinduct x z" "x = z")}
+  end;
 \<close>
 end
 
@@ -61,25 +58,26 @@ context LF begin
 ML_val \<open>
 val LFa = @{thm LF_axioms};
 val ctxt = fix_in \<^context> [("x", natT)];
-val _ = row "light coinduction" (run ctxt [LFa] "coinduction arbitrary: x rule: LF.cp.coinduct" "LF.cp S x");
 val st = run ctxt [LFa] "coinduction arbitrary: x rule: LF.cp.coinduct" "LF.cp S x";
-val _ = \<^assert> (same ("light coinduction", "heavy coinduction"));
-val _ = \<^assert> (no_LF ctxt st);
-val _ = \<^assert> (not (can (fn () => run ctxt [] "coinduction arbitrary: x rule: LF.cp.coinduct" "LF.cp S x") ()));
+val _ = \<^assert> (cases_text st = #coinduction heavy andalso no_LF st);
+val _ = \<^assert> ((run ctxt [] "coinduction arbitrary: x rule: LF.cp.coinduct" "LF.cp S x"; false)
+  handle ERROR msg => String.isPrefix "Failed to apply initial proof method" (Protocol_Message.clean_output msg));
 val (h, ctxth) = assume_in \<^context> [("x", natT)] "h" "W x";
-val _ = row "light coinduct" (run ctxth [LFa, h] "coinduct rule: LF.cp.coinduct" "LF.cp S x");
-val _ = \<^assert> (same ("light coinduct", "heavy coinduct"));
+val _ = \<^assert> (cases_text (run ctxth [LFa, h] "coinduct rule: LF.cp.coinduct" "LF.cp S x") = #coinduct heavy);
+(* with an instantiation, inst_rule calls main_prop_of: strong_consumes 1 takes the own_major_prem
+   branch, not LF ?S *)
+val _ = \<^assert> (cases_text (run ctxth [LFa, h] "coinduct x rule: LF.cp.coinduct" "LF.cp S x") = #coinduct_x heavy);
+(* row B *)
 val ctxts = fix_in \<^context> [("s", \<^typ>\<open>LF.str\<close>), ("t", \<^typ>\<open>LF.str\<close>)];
-val _ = row "light codatatype coinduction" (run ctxts [LFa] "coinduction arbitrary: s t rule: LF.str.coinduct" "s = t");
-val st = run ctxts [LFa] "coinduction arbitrary: s t rule: LF.str.coinduct" "s = t";
-val _ = \<^assert> (same ("light codatatype coinduction", "heavy codatatype coinduction"));
-val _ = \<^assert> (no_LF ctxts st);
-(* row A: the instantiation y makes inst_rule use main_prop_of, the own major premise *)
+val st = run ctxts [LFa] "coinduction arbitrary: s t" "s = t";
+val _ = \<^assert> (cases_text st = #codatatype heavy andalso no_LF st);
+(* row A: the stored form; with the instantiation x z, inst_rule calls main_prop_of, and
+   strong_consumes 0 takes the conclusion, not LF ?S *)
 val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Thm.prems_of @{thm LF.cT}))
   andalso Exported_Premises.count_of @{thm LF.cT} = 1 andalso Rule_Cases.get_consumes @{thm LF.cT} = 1);
 val ctxty = fix_in \<^context> [("x", \<^typ>\<open>tr0\<close>), ("z", \<^typ>\<open>tr0\<close>)];
-val _ = row "light coinduct y" (run ctxty [LFa] "coinduct x z" "x = z");
-val _ = \<^assert> (same ("light coinduct y", "heavy coinduct y"));
+val st = run ctxty [LFa] "coinduct x z" "x = z";
+val _ = \<^assert> (cases_text st = #coinduct_xz heavy andalso no_LF st);
 \<close>
 end
 

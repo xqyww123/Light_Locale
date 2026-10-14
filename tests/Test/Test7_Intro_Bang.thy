@@ -13,7 +13,6 @@ interpretation IQ1: LQ a1 by unfold_locales (rule ax_QG_a1)
 interpretation IQ2: LQ a2 by unfold_locales (rule ax_QG_a2)
 
 ML \<open>
-fun proves tac ctxt prop = can (fn () => Goal.prove ctxt [] [] prop (fn {context, ...} => tac context)) ();
 val ctxt = Proof_Context.init_global \<^theory> addIs @{thms ax_WW ax_key};
 val _ = \<^assert> (proves Clasimp.auto_tac ctxt \<^prop>\<open>KG\<close>);
 val _ = \<^assert> (proves (fn c => blast_tac c 1) ctxt \<^prop>\<open>KG\<close>);

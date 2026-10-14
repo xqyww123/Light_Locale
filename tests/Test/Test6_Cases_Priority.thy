@@ -20,7 +20,6 @@ ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm LF_cases} = 0);\<
 
 context LF begin
 ML_val \<open>
-fun run ctxt facts method goal = proof_after {apply = false} ctxt facts method (Syntax.read_prop ctxt goal);
 val (h, ctxt) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "h" "LF.ip S n";
 val _ = \<^assert> (case_names (run ctxt [@{thm LF_axioms}, h] "cases" "W n") = ["lf"]);
 val _ = \<^assert> (case_names (run ctxt [@{thm LF_axioms}, h] "cases rule: LF.ip.cases" "W n") = ["z", "s"]);

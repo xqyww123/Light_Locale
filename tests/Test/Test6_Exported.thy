@@ -12,19 +12,7 @@ begin
 ML \<open>open Test_Support\<close>
 
 ML \<open>
-fun plain msg = XML.content_of (YXML.parse_body msg);
-val thy_ctxt = Proof_Context.init_global o Proof_Context.theory_of;
-fun proves tac ctxt prop = can (fn () => Goal.prove ctxt [] [] prop (fn {context, ...} => tac context)) ();
-fun tag_names th = map #1 (Thm.get_tags th);
-fun no_rule_cases_tags th = not (exists (fn (a, _) => member (op =) ["consumes", "case_names", "cases_hyp_names", "case_conclusion", "cases_open"] a) (Thm.get_tags th));
 fun attr att th ctxt = #1 (Thm.apply_attribute att th (Context.Proof ctxt));
-fun note_in ctxt name atts th =
-  let
-    val thy = Proof_Context.theory_of ctxt;
-    val ([(_, [th'])], ctxt') =
-      Proof_Context.note_thmss "" [((Binding.name name, map (Attrib.attribute_cmd ctxt) (attribs_of thy atts)), [([th], [])])] ctxt;
-  in (th', ctxt') end;
-fun run ctxt facts method goal = proof_after {apply = false} ctxt facts method (Syntax.read_prop ctxt goal);
 \<close>
 
 consts Rc :: 'a  Sc :: 'a  Pc :: 'a  Qc :: 'a  c :: 'a
@@ -62,19 +50,20 @@ ML_val \<open>\<^assert> (not (can (fn () => theorem_in \<^context> (Binding.nam
 ML_val \<open>
 fun insert_assume ctxt i = Method.insert_tac ctxt @{thms LF_axioms} i THEN assume_tac ctxt i;
 val _ = \<^assert> ((theorem_in \<^context> (Binding.name "e1") "[exported_premises 3]" "A \<Longrightarrow> A" insert_assume; false)
-  handle ERROR msg => String.isPrefix "exported_premises: count out of range" (plain msg));
+  handle ERROR msg => String.isPrefix "exported_premises: count out of range" (Protocol_Message.clean_output msg));
 \<close>
-local_setup \<open>fn lthy =>
-  theorem_in lthy (Binding.name "e1") "[exported_premises 2]" "A \<Longrightarrow> A \<Longrightarrow> A"
-    (fn ctxt => fn i => Method.insert_tac ctxt @{thms LF_axioms} i THEN assume_tac ctxt i)\<close>
+lemma e1 [exported_premises 2]: "A \<Longrightarrow> A \<Longrightarrow> A"
+  apply (insert LF_axioms) apply assumption done
 (* the same-row note with cases pred, up to K with the twin's *)
 ML_val \<open>
 val r = #1 (note_in \<^context> "r" "[cases pred: Qc]" @{thm LF.fooQ [of _ c]});
-val _ = \<^assert> (diff_K (r, heavy_r));
-(* in-proof note: THEN clears the tag, [exported_premises 1] writes it back *)
-val r = @{thm LF.foo [THEN conjunct1]};
+val _ = \<^assert> (diff_K 1 (r, heavy_r));
+(* the notes in a proof in the block (plan lines 4629-4632), driven through note_in -- the
+   Proof_Context.note_thmss an in-proof note runs, the attributes parsed from their text: THEN
+   clears the tag, [exported_premises 1] writes it back *)
+val (r, ctxt_r) = note_in \<^context> "r" "[THEN conjunct1]" @{thm LF.foo};
 val _ = \<^assert> (Exported_Premises.count_of r = 0);
-val r' = attr (Exported_Premises.exported_premises 1) r \<^context>;
+val (r', _) = note_in ctxt_r "r'" "[exported_premises 1]" r;
 val _ = \<^assert> (Exported_Premises.count_of r' = 1 andalso not (AList.defined (op =) (Thm.get_tags r') "consumes")
   andalso Rule_Cases.get_consumes r' = 1 andalso Exported_Premises.strong_consumes r' = 0);
 (* THEN renames to conjunct1's ?P ?Q: compared up to variable names *)
@@ -94,14 +83,14 @@ val _ = \<^assert> (Exported_Premises.count_of fooP = 1 andalso Rule_Cases.get_c
   andalso not (AList.defined (op =) (Thm.get_tags fooP) "consumes"));
 val rot = @{thm LF.bad [rotated]};
 val _ = \<^assert> (Exported_Premises.count_of rot = 0 andalso Rule_Cases.get_consumes rot = 0);
-(* consumes / default_consumes on untagged theorems, as stock *)
-val u1 = attr (Rule_Cases.consumes 1) @{thm untagged} ctxt;
-val _ = \<^assert> (Thm.eq_thm (u1, @{thm untagged}) andalso AList.lookup (op =) (Thm.get_tags u1) "consumes" = SOME "1");
-val u2 = attr (Rule_Cases.consumes (~1)) @{thm untagged} ctxt;
-val _ = \<^assert> (AList.lookup (op =) (Thm.get_tags u2) "consumes" = SOME "1");
-val u3 = Rule_Cases.default_consumes 1 @{thm untagged};
-val _ = \<^assert> (AList.lookup (op =) (Thm.get_tags u3) "consumes" = SOME "1");
-val _ = \<^assert> (Thm.get_tags (Rule_Cases.default_consumes 1 @{thm tagged_c}) = Thm.get_tags @{thm tagged_c});
+(* consumes / default_consumes on untagged theorems, as stock: the theorem with the consumes tag
+   in front of its tags (rule_cases.ML:221-224, more_thm.ML:623; the result on the stock copy
+   written by hand, section 11 item (22)) *)
+val _ = List.app (fn u =>
+    \<^assert> (Thm.eq_thm (u, @{thm untagged}) andalso Thm.get_tags u = ("consumes", "1") :: Thm.get_tags @{thm untagged}))
+  [attr (Rule_Cases.consumes 1) @{thm untagged} ctxt, attr (Rule_Cases.consumes (~1)) @{thm untagged} ctxt,
+   Rule_Cases.default_consumes 1 @{thm untagged}];
+val _ = \<^assert> (Thm.eq_thm_strict (Rule_Cases.default_consumes 1 @{thm tagged_c}, @{thm tagged_c}));
 (* on tagged theorems: offset by K *)
 val f1 = attr (Rule_Cases.consumes 1) foo ctxt;
 val _ = \<^assert> (AList.lookup (op =) (Thm.get_tags f1) "consumes" = SOME "2" andalso Exported_Premises.count_of f1 = 1);
@@ -109,7 +98,7 @@ val f2 = attr (Rule_Cases.consumes (~1)) foo ctxt;
 val _ = \<^assert> (AList.lookup (op =) (Thm.get_tags f2) "consumes" = SOME "2");
 val p1 = Rule_Cases.default_consumes 1 fooP;
 val _ = \<^assert> (AList.lookup (op =) (Thm.get_tags p1) "consumes" = SOME "2");
-val _ = \<^assert> (Thm.get_tags (Rule_Cases.default_consumes 1 foo) = Thm.get_tags foo);
+val _ = \<^assert> (Thm.eq_thm_strict (Rule_Cases.default_consumes 1 foo, foo));
 (* get_consumes: the max of K and the recorded value *)
 val _ = \<^assert> (Rule_Cases.get_consumes fooP = 1);
 val _ = \<^assert> (Rule_Cases.get_consumes @{thm LF.fooP [exported_premises 0]} = 0);
@@ -119,14 +108,14 @@ val _ = \<^assert> (Rule_Cases.get_consumes p0 = 1 andalso Exported_Premises.str
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fooP [of _ c]} = 1);
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fooP [where x = c]} = 1);
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fooB [params a b]} = 1);
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo [THEN conjunct1]} = 0 andalso no_rule_cases_tags @{thm LF.foo [THEN conjunct1]});
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo [rotated]} = 0 andalso no_rule_cases_tags @{thm LF.foo [rotated]});
+val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo [THEN conjunct1]} = 0 andalso null (Thm.get_tags @{thm LF.foo [THEN conjunct1]}));
+val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo [rotated]} = 0 andalso null (Thm.get_tags @{thm LF.foo [rotated]}));
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fooP [simplified]} = 1);
 (* put *)
-val _ = \<^assert> (Thm.get_tags (Exported_Premises.put 0 @{thm untagged}) = Thm.get_tags @{thm untagged});
+val _ = \<^assert> (Thm.eq_thm_strict (Exported_Premises.put 0 @{thm untagged}, @{thm untagged}));
 val fp0 = Exported_Premises.put 0 foo;
 val _ = \<^assert> (not (has_K_tag fp0) andalso AList.lookup (op =) (Thm.get_tags fp0) "consumes" = SOME "2"
-  andalso filter (fn (a, _) => a <> "exported_premises") (Thm.get_tags foo) = Thm.get_tags fp0);
+  andalso tags_without_K foo = Thm.get_tags fp0);
 val up1 = Exported_Premises.put 1 @{thm untagged};
 val _ = \<^assert> (Exported_Premises.count_of up1 = 1 andalso not (AList.defined (op =) (Thm.get_tags up1) "consumes"));
 (* the tag strings of two freshly stored theorems are shared *)
@@ -136,13 +125,14 @@ val _ = \<^assert> (pointer_eq (the (AList.lookup (op =) (Thm.get_tags fooP) "ex
 val _ = \<^assert> (Thm.prop_of (Exported_Premises.put_major_prem_first foo) aconv
   Logic.varify_global \<^prop>\<open>A \<Longrightarrow> LF S \<Longrightarrow> B \<Longrightarrow> A \<and> B\<close>
   andalso null (Thm.get_tags (Exported_Premises.put_major_prem_first foo)));
-val _ = \<^assert> (Thm.eq_thm (Exported_Premises.put_major_prem_first @{thm untagged}, @{thm untagged}));
-val _ = \<^assert> (Thm.eq_thm (Exported_Premises.put_major_prem_first @{thm LF.z0}, @{thm LF.z0}));
+(* "identical" / "returned as is" rows: Thm.eq_thm_strict, tags included *)
+val _ = \<^assert> (Thm.eq_thm_strict (Exported_Premises.put_major_prem_first @{thm untagged}, @{thm untagged}));
+val _ = \<^assert> (Thm.eq_thm_strict (Exported_Premises.put_major_prem_first @{thm LF.z0}, @{thm LF.z0}));
 val _ = \<^assert> (Exported_Premises.own_major_prem foo aconv Logic.strip_assums_concl (nth (Thm.prems_of foo) 1));
 val _ = \<^assert> (Exported_Premises.own_major_prem @{thm untagged} aconv Thm.major_prem_of @{thm untagged});
 val _ = \<^assert> (Exported_Premises.own_major_prem @{thm LF.z0} aconv hd (Thm.prems_of @{thm LF.z0}));
-val _ = \<^assert> (Thm.eq_thm (Exported_Premises.discharge [] @{thm untagged}, @{thm untagged}));
-val _ = \<^assert> (Thm.eq_thm (Bires.kind_make_elim Bires.intro_kind foo, foo));
+val _ = \<^assert> (Thm.eq_thm_strict (Exported_Premises.discharge [] @{thm untagged}, @{thm untagged}));
+val _ = \<^assert> (Thm.eq_thm_strict (Bires.kind_make_elim Bires.intro_kind foo, foo));
 val _ = \<^assert> (same_shape (Thm.prop_of (Bires.kind_make_elim Bires.dest_kind @{thm LF.fooD0}),
   Logic.varify_global \<^prop>\<open>Rc x S \<Longrightarrow> LF S \<Longrightarrow> (Sc x \<Longrightarrow> PROP W) \<Longrightarrow> PROP W\<close>));
 val _ = \<^assert> (Thm.prop_of (Bires.kind_make_elim Bires.dest_kind @{thm LF.z0}) aconv
@@ -159,32 +149,30 @@ val _ = \<^assert> (AList.lookup (op =) (Thm.get_tags foo2) "consumes" = SOME "2
 val _ = \<^assert> (same_shape (Thm.prop_of (Bires.kind_make_elim Bires.dest_kind d0),
   Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Rc x S \<Longrightarrow> (Sc x \<Longrightarrow> PROP W) \<Longrightarrow> PROP W\<close>));
 val _ = \<^assert> (Thm.get_tags @{thm LF.foo [exported_premises 1]} = Thm.get_tags foo);
-val _ = \<^assert> (Thm.eq_thm (@{thm untagged [exported_premises 0]}, @{thm untagged})
-  andalso Thm.get_tags @{thm untagged [exported_premises 0]} = Thm.get_tags @{thm untagged});
-val _ = \<^assert> (Thm.get_tags @{thm untagged [exported_premises 1]} = Thm.get_tags @{thm untagged} @ [("exported_premises", "1")]
-  orelse (Exported_Premises.count_of @{thm untagged [exported_premises 1]} = 1
-    andalso not (AList.defined (op =) (Thm.get_tags @{thm untagged [exported_premises 1]}) "consumes")));
+val _ = \<^assert> (Thm.eq_thm_strict (@{thm untagged [exported_premises 0]}, @{thm untagged}));
+(* [exported_premises 1] on an untagged theorem: the K tag and nothing else *)
+val _ = \<^assert> (Exported_Premises.count_of @{thm untagged [exported_premises 1]} = 1
+  andalso tags_without_K @{thm untagged [exported_premises 1]} = Thm.get_tags @{thm untagged});
 val tc1 = @{thm tagged_c [exported_premises 1]};
-val _ = \<^assert> (Exported_Premises.count_of tc1 = 1 andalso AList.lookup (op =) (Thm.get_tags tc1) "consumes" = SOME "1");
+val _ = \<^assert> (Exported_Premises.count_of tc1 = 1 andalso tags_without_K tc1 = Thm.get_tags @{thm tagged_c});
 val _ = \<^assert> ((attr (Exported_Premises.exported_premises 5) foo ctxt; false)
-  handle ERROR msg => String.isPrefix "exported_premises: count out of range" (plain msg));
+  handle ERROR msg => String.isPrefix "exported_premises: count out of range" (Protocol_Message.clean_output msg));
 val _ = \<^assert> ((attr (Exported_Premises.exported_premises (~1)) foo ctxt; false)
-  handle ERROR msg => String.isPrefix "exported_premises: count out of range" (plain msg));
+  handle ERROR msg => String.isPrefix "exported_premises: count out of range" (Protocol_Message.clean_output msg));
 val _ = \<^assert> (Long_Name.base_name (#1 (Token.name_of_src (Attrib.check_src ctxt (hd (attribs_of \<^theory> "[exported_premises 1]"))))) = "exported_premises");
-(* n = K outside the block: the stock idiom dest!: works on both sides *)
-val _ = \<^assert> (proves (fn c => auto_tac (c addSDs @{thms LF.zP})) ctxt \<^prop>\<open>LF t \<Longrightarrow> Pc t\<close>);
-val _ = \<^assert> (proves (fn c => auto_tac (c addSDs @{thms D.zP})) ctxt \<^prop>\<open>D t \<Longrightarrow> Pc t\<close>);
 \<close>
 
+(* n = K outside the block: the stock idiom dest!: works on both sides *)
+lemma "LF t \<Longrightarrow> Pc t" by (auto dest!: LF.zP)
+lemma "D t \<Longrightarrow> Pc t" by (auto dest!: D.zP)
 declare LF.zP [dest]
 declare D.zP [dest]
-ML \<open>
-val _ = \<^assert> (proves auto_tac \<^context> \<^prop>\<open>LF t \<Longrightarrow> Pc t\<close> andalso proves auto_tac \<^context> \<^prop>\<open>D t \<Longrightarrow> Pc t\<close>);
-\<close>
+lemma "LF t \<Longrightarrow> Pc t" by auto
+lemma "D t \<Longrightarrow> Pc t" by auto
 
 (* the reopened block *)
 declare D.z0 [dest]
-ML \<open>val heavy_z0_plain = #2 (hd (claset_entries \<^context> @{thm D.z0}));\<close>
+ML \<open>val heavy_z0_plain = #2 (the_single (claset_entries \<^context> @{thm D.z0}));\<close>
 
 context LF begin
 declare LF.z0 [dest]
@@ -193,19 +181,18 @@ lemmas foo0c [exported_premises 0, consumes 2] = LF.foo
 lemmas x1 = LF.foo_iff[THEN iffD1, exported_premises 1]
 ML_val \<open>
 val LFa = @{thm LF_axioms};
-val SOME (_, plain, _) = find_first (fn (key, _, _) => Thm.eq_thm_prop (key, @{thm LF.z0})) (claset_entries \<^context> @{thm LF.z0});
+val (_, plain) = claset_rule \<^context> Bires.dest_kind @{thm LF.z0};
 val _ = \<^assert> (Thm.prop_of plain aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> (Sc x \<Longrightarrow> PROP W) \<Longrightarrow> PROP W\<close>);
 val _ = \<^assert> (phi_equal (\<^const_name>\<open>LF\<close>, \<^const_name>\<open>D\<close>) (plain, heavy_z0_plain));
 (* discharge *)
 val d = Exported_Premises.discharge [LFa] @{thm LF.fooP};
-val _ = \<^assert> (Thm.prop_of d aconv Logic.varify_global \<^prop>\<open>Pc x y\<close> andalso not (has_K_tag d) andalso no_rule_cases_tags d);
-val _ = \<^assert> (not (can (fn () => Exported_Premises.discharge [] @{thm LF.fooP}) ()));
-val h = @{thm LF.fooQ [OF LF_axioms, of c, OF Qc1_ax]};
-val _ = \<^assert> (same_shape (Thm.prop_of h, Logic.varify_global \<^prop>\<open>Pc c y\<close>));
-val _ = \<^assert> ((Exported_Premises.discharge [h] @{thm LF.fooP}; false) handle THM _ => true);
-val _ = \<^assert> (no_rule_cases_tags (Exported_Premises.discharge [LFa] @{thm LF.foo}));
+val _ = \<^assert> (Thm.prop_of d aconv Logic.varify_global \<^prop>\<open>Pc x y\<close> andalso null (Thm.get_tags d));
+(* plan line 4594: too few facts, or a fact that does not match LF ?S -- THM either way *)
+val h = @{thm Qc1_ax [of c]};
+val _ = \<^assert> (forall (fn facts => (Exported_Premises.discharge facts @{thm LF.fooP}; false) handle THM _ => true) [[], [h]]);
+val _ = \<^assert> (null (Thm.get_tags (Exported_Premises.discharge [LFa] @{thm LF.foo})));
 (* [OF] clears the tag together with consumes *)
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo [OF LF_axioms]} = 0 andalso no_rule_cases_tags @{thm LF.foo [OF LF_axioms]});
+val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo [OF LF_axioms]} = 0 andalso null (Thm.get_tags @{thm LF.foo [OF LF_axioms]}));
 (* cases rule: LF.ev.cases[exported_premises 0] chained LF_axioms h prints as without *)
 val (hev, ctxte) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "h" "LF.ev S n";
 val _ = \<^assert> (cases_text (run ctxte [LFa, hev] "cases rule: LF.ev.cases[exported_premises 0]" "W n") =

@@ -12,9 +12,6 @@ consts Rc :: 'a  Sc :: 'a
 axiomatization where Sc_ax: "Sc x"
 
 ML \<open>
-val thy_ctxt = Proof_Context.init_global o Proof_Context.theory_of;
-fun proves tac ctxt prop = can (fn () => Goal.prove ctxt [] [] prop (fn {context, ...} => tac context)) ();
-val by_auto = proves auto_tac;
 fun elim_entry ctxt th = exists (fn (_, _, kind) => Bires.kind_is_elim kind) (claset_entries ctxt th);
 \<close>
 

@@ -11,18 +11,14 @@ ML \<open>open Test_Support\<close>
 consts Pc :: 'a
 axiomatization where Pc_ax: "Pc x y"
 
-ML \<open>
-fun run ctxt facts method goal = proof_after {apply = false} ctxt facts method (Syntax.read_prop ctxt goal);
-val texts = Unsynchronized.ref ([]: string list);
-\<close>
-
 context D begin
 inductive_set Evs :: "nat set" where "0 \<in> Evs" | "n \<in> Evs \<Longrightarrow> Suc (Suc n) \<in> Evs" | "Pc S (7::nat) \<Longrightarrow> 7 \<in> Evs"
 end
 context D begin
 ML \<open>
-val (hs, ctxt) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "hs" "n \<in> Evs";
-val _ = texts := cases_text (run ctxt [hs] "cases n" "W n");
+val heavy_cases =
+  let val (hs, ctxt) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "hs" "n \<in> Evs"
+  in cases_text (run ctxt [hs] "cases n" "W n") end;
 \<close>
 end
 
@@ -32,7 +28,7 @@ end
 context LF begin
 ML_val \<open>
 val (hs, ctxt) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "hs" "n \<in> LF.Evs S";
-val _ = \<^assert> (cases_text (run ctxt [@{thm LF_axioms}, hs] "cases n" "W n") = ! texts);
+val _ = \<^assert> (cases_text (run ctxt [@{thm LF_axioms}, hs] "cases n" "W n") = heavy_cases);
 \<close>
 end
 

@@ -6,8 +6,9 @@
    (a) and K 0, erule leaves LF p as the first new subgoal, [OF LF_axioms] on it in the reopened
    block has no unifier, and the heavy twin's theory-level inductive_cases is refused;
    inductive_simps and fun_cases succeed in the declaration block and fail in the reopened one,
-   the_inductive (what print_inductives lists) knows ip only in the declaration block, code_pred
-   fails in both; a hand-written inversion lemma is phi-equal to the twin's inductive_cases. *)
+   the_inductive_global by full name (print_inductives' own reader) knows LF.ip only in the
+   declaration block, code_pred fails in both; a hand-written inversion lemma is phi-equal to the
+   twin's inductive_cases; the ind_cases method in the three settings beside inductive_cases. *)
 theory Test6_Inductive_Cases
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -17,14 +18,22 @@ consts Pc :: 'a
 axiomatization where Pc_ax: "Pc x y"
 
 ML \<open>
-fun plain msg = XML.content_of (YXML.parse_body msg);
 (*the thunk fails and its message (whatever the exception) starts with the prefix*)
 fun fails_with prefix f =
   (case Exn.capture f () of
-    Exn.Exn exn => String.isPrefix prefix (plain (Runtime.exn_message exn))
+    Exn.Exn exn => String.isPrefix prefix (Protocol_Message.clean_output (Runtime.exn_message exn))
   | Exn.Res _ => false);
 val natT = \<^typ>\<open>nat\<close>;
-fun light_prems ctxt th = filter (Light_Locale_Axiom_Facts.is_light_prop ctxt) (Thm.prems_of th);
+(*row (a) on a stored result: LF ?S first, the twin's premise count, phi-equal to it, exactly one
+  light premise*)
+fun stored_ok ctxt (thl, thh) =
+  Light_Locale_Axiom_Facts.is_light_prop ctxt (hd (Thm.prems_of thl)) andalso
+  Thm.nprems_of thl = Thm.nprems_of thh andalso
+  phi_equal (\<^const_name>\<open>LF\<close>, \<^const_name>\<open>D\<close>) (thl, thh) andalso
+  length (light_prems ctxt thl) = 1;
+(*the ind_cases method on the goal, by the number of subgoals it leaves*)
+fun ind_cases_subgoals ctxt prop goal =
+  subgoals (run_apply (fix_in ctxt [("n", natT)]) [] ("ind_cases \"" ^ prop ^ "\"") goal);
 fun code_pred_fails lthy name =
   not (can (fn () => Predicate_Compile_Core.code_pred_cmd Predicate_Compile_Aux.default_options name lthy) ());
 fun inductive_simps_cmd lthy name prop =
@@ -42,12 +51,16 @@ fun f :: "nat \<Rightarrow> nat" where "f 0 = 0" | "f (Suc n) = f n"
 inductive_cases ipE: "ip (Suc n)"
 inductive_simps ipS: "ip (Suc n)"
 fun_cases fC: "f n = m"
-ML \<open>val heavy_ipE = @{thm ipE};\<close>
+ML \<open>
+val heavy_ipE = @{thm ipE};
+val heavy_ind_cases_decl = ind_cases_subgoals \<^context> "ip (Suc n)" "ip (Suc n) \<Longrightarrow> W";
+\<close>
 ML_val \<open>\<^assert> (code_pred_fails \<^context> "D.ip")\<close>
 end
 context D begin
 inductive_cases ipE2: "ip (Suc n)"
 inductive_simps ipS2: "ip (Suc n)"
+ML \<open>val heavy_ind_cases_reopened = ind_cases_subgoals \<^context> "ip (Suc n)" "ip (Suc n) \<Longrightarrow> W";\<close>
 end
 ML \<open>
 val _ = \<^assert> (fails_with "Proposition not an inductive predicate"
@@ -64,32 +77,32 @@ inductive_simps ipS: "ip (Suc n)"
 fun_cases fC: "f n = m"
 ML_val \<open>
 val _ = \<^assert> (three_items (@{thm ipE}, heavy_ipE));
-val _ = \<^assert> (can (Inductive.the_inductive \<^context>) \<^term>\<open>ip\<close>);
+val _ = \<^assert> (ind_cases_subgoals \<^context> "ip (Suc n)" "ip (Suc n) \<Longrightarrow> W" = heavy_ind_cases_decl);
+val _ = \<^assert> (can (Inductive.the_inductive_global \<^context>) \<^const_name>\<open>LF.ip\<close>);
 val _ = \<^assert> (code_pred_fails \<^context> "LF.ip");
 \<close>
 end
 
 ML \<open>
 (* (a) the stored result of the declaration block *)
-val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Thm.prems_of @{thm LF.ipE})));
-val _ = \<^assert> (Thm.nprems_of @{thm LF.ipE} = Thm.nprems_of @{thm D.ipE});
-val _ = \<^assert> (phi_equal (\<^const_name>\<open>LF\<close>, \<^const_name>\<open>D\<close>) (@{thm LF.ipE}, @{thm D.ipE}));
-val _ = \<^assert> (length (light_prems \<^context> @{thm LF.ipE}) = 1);
+val _ = \<^assert> (stored_ok \<^context> (@{thm LF.ipE}, @{thm D.ipE}));
 \<close>
 
 (* (b) at theory level, on a free instance *)
 inductive_cases ipE3: "LF.ip p (Suc n)"
 ML \<open>
 val ps = Thm.prems_of @{thm ipE3};
-val _ = \<^assert> (HOLogic.dest_Trueprop (hd ps) |> Term.head_of |> (fn Const (c, _) => Long_Name.base_name c = "ip" | _ => false));
-val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop \<^context> (nth ps 1));
+(* the proposition first, then LF ?p *)
+val _ = \<^assert> (same_shape (Logic.mk_implies (nth ps 0, nth ps 1), Logic.varify_global \<^prop>\<open>LF.ip p (Suc n) \<Longrightarrow> LF p\<close>));
 val _ = \<^assert> (length (light_prems \<^context> @{thm ipE3}) = 1);
 val _ = \<^assert> (Exported_Premises.count_of @{thm ipE3} = 0);
 val _ = \<^assert> (Thm.nprems_of @{thm ipE3} = Thm.nprems_of @{thm LF.ipE});
-(* erule: LF p is the first new subgoal *)
+(* erule ipE3, and the ind_cases method: LF p is the first new subgoal *)
 val ctxt = #2 (Proof_Context.add_fixes [(Binding.name "p", NONE, NoSyn), (Binding.name "n", SOME natT, NoSyn)] \<^context>);
-val st = proof_after {apply = true} ctxt [] "erule ipE3" (Syntax.read_prop ctxt "LF.ip p (Suc n) \<Longrightarrow> W");
-val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop ctxt (hd (Thm.prems_of (#goal (Proof.goal st)))));
+val _ = List.app (fn method =>
+    let val st = run_apply ctxt [] method "LF.ip p (Suc n) \<Longrightarrow> W"
+    in \<^assert> (Light_Locale_Axiom_Facts.is_light_prop ctxt (hd (goal_prems st))) end)
+  ["erule ipE3", "ind_cases \"LF.ip p (Suc n)\""];
 \<close>
 
 section \<open>The reopened light block\<close>
@@ -100,20 +113,20 @@ lemma ipE': "LF.ip S (Suc n) \<Longrightarrow> (Pc S n \<Longrightarrow> LF.ip S
   by (erule LF.ip.cases[OF LF_axioms]) auto
 ML_val \<open>
 val _ = \<^assert> ((@{thm ipE3} OF [@{thm LF_axioms}]; false) handle THM (msg, _, _) => String.isPrefix "OF: no unifiers" msg);
-val _ = \<^assert> ((case Exn.capture (fn () => inductive_simps_cmd \<^context> "ipS2" "LF.ip S (Suc n)") () of
-    Exn.Exn exn => String.isSubstring "is not unique" (plain (Runtime.exn_message exn))
-  | Exn.Res _ => false));
+(* the ind_cases method in the reopened block, nothing chained: the twin's subgoal count *)
+val _ = \<^assert> (ind_cases_subgoals \<^context> "LF.ip S (Suc n)" "LF.ip S (Suc n) \<Longrightarrow> W" = heavy_ind_cases_reopened);
+(* a plain ERROR (inductive.ML:663): the leading text of the message, plan line 4693's "is not
+   unique" being its end *)
+val _ = \<^assert> ((inductive_simps_cmd \<^context> "ipS2" "LF.ip S (Suc n)"; false)
+  handle ERROR msg => String.isPrefix "equations matching pattern" (Protocol_Message.clean_output msg));
 val _ = \<^assert> (fails_with "Proposition is not a function equation:" (fn () => fun_cases_cmd \<^context> "fC2" "LF.f n = m"));
-val _ = \<^assert> (not (can (Inductive.the_inductive \<^context>) \<^term>\<open>LF.ip S\<close>));
+val _ = \<^assert> (not (can (Inductive.the_inductive_global \<^context>) \<^const_name>\<open>LF.ip\<close>));
 val _ = \<^assert> (code_pred_fails \<^context> "LF.ip");
 \<close>
 end
 
 ML \<open>
-val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Thm.prems_of @{thm LF.ipE2})));
-val _ = \<^assert> (Thm.nprems_of @{thm LF.ipE2} = Thm.nprems_of @{thm D.ipE2});
-val _ = \<^assert> (phi_equal (\<^const_name>\<open>LF\<close>, \<^const_name>\<open>D\<close>) (@{thm LF.ipE2}, @{thm D.ipE2}));
-val _ = \<^assert> (length (light_prems \<^context> @{thm LF.ipE2}) = 1);
+val _ = \<^assert> (stored_ok \<^context> (@{thm LF.ipE2}, @{thm D.ipE2}));
 (* the hand-written inversion lemma *)
 val _ = \<^assert> (phi_equal (\<^const_name>\<open>LF\<close>, \<^const_name>\<open>D\<close>) (@{thm LF.ipE'}, @{thm D.ipE2}));
 \<close>

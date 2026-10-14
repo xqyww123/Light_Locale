@@ -11,19 +11,17 @@
    K 1; the local copy Sub ?H G ==> Grp.ip G ?H with K 0 and no tag), the same declaration in the
    predicate-free Nop. *)
 theory Test6_Fork
-  imports "Light_Locale_Base.Light_Locale_Base"
+  imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
 
 (* plan section 7, session graph: the one mode assertion of the leaf *)
 ML \<open>
+open Test_Support;
 val fork = Session.get_name () <> "Light_Locale_Test_Serial";
 val _ = \<^assert> (Future.proofs_enabled 1 = fork);
 
-val light_prems = filter (Light_Locale_Axiom_Facts.is_light_prop \<^context>) o Thm.prems_of;
-fun has_K_tag th = AList.defined (op =) (Thm.get_tags th) Exported_Premises.exported_premises_tagN;
-fun shape th (prop, n, k) =
-  Thm.prop_of th aconv Logic.varify_global prop andalso Thm.nprems_of th = n andalso
-  Exported_Premises.count_of th = k;
+fun shape th (prop, k) =
+  Thm.prop_of th aconv Logic.varify_global prop andalso Exported_Premises.count_of th = k;
 \<close>
 
 consts Sc :: 'a  Pc :: 'a
@@ -50,35 +48,34 @@ lemma (in LF) fa8 [OF LF.ax]: "Pc S y \<Longrightarrow> Pc S y \<and> C"
   by (rule conjI, assumption, rule C_ax)
 
 ML \<open>
-val _ = \<^assert> (shape @{thm LF.ax} (\<^prop>\<open>LF S \<Longrightarrow> Pc S y\<close>, 1, 1));
+val _ = \<^assert> (shape @{thm LF.ax} (\<^prop>\<open>LF S \<Longrightarrow> Pc S y\<close>, 1));
 
 (* gate: two LF premises and K 1 in both modes *)
-val _ = \<^assert> (shape @{thm LF.tq'} (\<^prop>\<open>LF S \<Longrightarrow> Q \<Longrightarrow> LF q \<Longrightarrow> Q \<and> C\<close>, 3, 1));
-val _ = \<^assert> (length (light_prems @{thm LF.tq'}) = 2);
+val _ = \<^assert> (shape @{thm LF.tq'} (\<^prop>\<open>LF S \<Longrightarrow> Q \<Longrightarrow> LF q \<Longrightarrow> Q \<and> C\<close>, 1));
 
 (* evidence: forked, the block assumption is among the hyps and is exported on top of the
    statement's own LF premise; serial, the statement is already in exported form *)
 val _ = \<^assert>
   (if fork
-   then shape @{thm LF.tq} (\<^prop>\<open>LF S \<Longrightarrow> Q \<Longrightarrow> LF q \<Longrightarrow> Q \<and> C\<close>, 3, 1) andalso
+   then shape @{thm LF.tq} (\<^prop>\<open>LF S \<Longrightarrow> Q \<Longrightarrow> LF q \<Longrightarrow> Q \<and> C\<close>, 1) andalso
      #2 (Rule_Cases.get @{thm LF.tq}) = 2
-   else shape @{thm LF.tq} (\<^prop>\<open>Q \<Longrightarrow> LF (q :: ('c, 'd) ring_scheme) \<Longrightarrow> Q \<and> C\<close>, 2, 0) andalso
+   else shape @{thm LF.tq} (\<^prop>\<open>Q \<Longrightarrow> LF (q :: ('c, 'd) ring_scheme) \<Longrightarrow> Q \<and> C\<close>, 0) andalso
      #2 (Rule_Cases.get @{thm LF.tq}) = 1);
 val _ = \<^assert> (map (#1 o #1) (#1 (Rule_Cases.get @{thm LF.tq})) = ["a"]);
 val _ = \<^assert>
   (if fork
-   then shape @{thm LF.bad2} (\<^prop>\<open>LF S \<Longrightarrow> LF q \<Longrightarrow> Sc x\<close>, 2, 1)
-   else shape @{thm LF.bad2} (\<^prop>\<open>LF (q :: ('c, 'd) ring_scheme) \<Longrightarrow> Sc (x :: 'e)\<close>, 1, 0));
+   then shape @{thm LF.bad2} (\<^prop>\<open>LF S \<Longrightarrow> LF q \<Longrightarrow> Sc x\<close>, 1)
+   else shape @{thm LF.bad2} (\<^prop>\<open>LF (q :: ('c, 'd) ring_scheme) \<Longrightarrow> Sc (x :: 'e)\<close>, 0));
 val _ = \<^assert>
   (if fork
-   then shape @{thm LF.foo5} (\<^prop>\<open>LF S \<Longrightarrow> Q \<Longrightarrow> LF S \<Longrightarrow> C\<close>, 3, 1) andalso
+   then shape @{thm LF.foo5} (\<^prop>\<open>LF S \<Longrightarrow> Q \<Longrightarrow> LF S \<Longrightarrow> C\<close>, 1) andalso
      #2 (Rule_Cases.get @{thm LF.foo5}) = 2
-   else shape @{thm LF.foo5} (\<^prop>\<open>Q \<Longrightarrow> LF S \<Longrightarrow> C\<close>, 2, 0) andalso
+   else shape @{thm LF.foo5} (\<^prop>\<open>Q \<Longrightarrow> LF S \<Longrightarrow> C\<close>, 0) andalso
      #2 (Rule_Cases.get @{thm LF.foo5}) = 1);
 val _ = \<^assert>
   (if fork
-   then shape @{thm LF.fa8} (\<^prop>\<open>LF S \<Longrightarrow> LF S \<Longrightarrow> Pc S y \<and> C\<close>, 2, 1)
-   else shape @{thm LF.fa8} (\<^prop>\<open>LF S \<Longrightarrow> Pc S y \<and> C\<close>, 1, 0));
+   then shape @{thm LF.fa8} (\<^prop>\<open>LF S \<Longrightarrow> LF S \<Longrightarrow> Pc S y \<and> C\<close>, 1)
+   else shape @{thm LF.fa8} (\<^prop>\<open>LF S \<Longrightarrow> Pc S y \<and> C\<close>, 0));
 \<close>
 
 
@@ -102,19 +99,8 @@ inductive ip where ipI: "Sub H G \<Longrightarrow> ip H"
 ML \<open>
 val th = the_single @{thms ip.intros};
 val _ = \<^assert> (Exported_Premises.count_of th = 0 andalso not (has_K_tag th));
-val G = \<^term>\<open>G\<close>;
-val v =
-  (case Thm.prems_of th of
-    [p] =>
-      (case Term.strip_comb (HOLogic.dest_Trueprop p) of
-        (Const (s, _), [v as Var _, g]) => (\<^assert> (Long_Name.base_name s = "Sub" andalso g aconv G); v)
-      | _ => raise Fail "premise")
-  | _ => raise Fail "premises");
-val _ =
-  (case Term.strip_comb (HOLogic.dest_Trueprop (Thm.concl_of th)) of
-    (Const (c, _), [g, v']) =>
-      \<^assert> (Long_Name.base_name c = "ip" andalso g aconv G andalso v' aconv v)
-  | _ => raise Fail "conclusion");
+val _ = \<^assert> (Thm.prop_of th aconv
+  (\<^prop>\<open>Sub H G \<Longrightarrow> Grp.ip G H\<close> |> Term.map_aterms (fn Free ("H", T) => Var (("H", 0), T) | t => t)));
 \<close>
 
 end
@@ -123,15 +109,15 @@ ML \<open>
 (* evidence *)
 val _ = \<^assert>
   (if fork
-   then shape @{thm Grp.l} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Sub H G\<close>, 2, 1)
-   else shape @{thm Grp.l} (\<^prop>\<open>Sub H (G :: 'x set) \<Longrightarrow> Sub H G\<close>, 1, 0));
+   then shape @{thm Grp.l} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Sub H G\<close>, 1)
+   else shape @{thm Grp.l} (\<^prop>\<open>Sub H (G :: 'x set) \<Longrightarrow> Sub H G\<close>, 0));
 
 (* gate: the nested writing exports both layers' assumptions in either mode *)
-val _ = \<^assert> (shape @{thm Grp.l'} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Sub H G\<close>, 2, 2));
+val _ = \<^assert> (shape @{thm Grp.l'} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Sub H G\<close>, 2));
 
 (* gate: the package's result goes through the block's fp_def and carries the block's hyps *)
 val _ = \<^assert> (shape (the_single @{thms Grp.ip.intros})
-  (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Grp.ip G H\<close>, 2, 1));
+  (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Grp.ip G H\<close>, 1));
 \<close>
 
 
@@ -145,7 +131,7 @@ end
 
 ML \<open>
 val th = the_single @{thms Nop.ipn.intros};
-val _ = \<^assert> (shape th (\<^prop>\<open>Sub H (G :: 'x set) \<Longrightarrow> Nop.ipn G H\<close>, 1, 0));
+val _ = \<^assert> (shape th (\<^prop>\<open>Sub H (G :: 'x set) \<Longrightarrow> Nop.ipn G H\<close>, 0));
 val _ = \<^assert> (not (has_K_tag th));
 \<close>
 

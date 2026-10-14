@@ -1,4 +1,4 @@
-(* Plan section 7 test 6, the nested-target leaf (plan lines 4370-4386, 4400-4428): inside
+(* Plan section 7 test 6, the nested-target leaf (plan lines 4373-4389, 4403-4431): inside
    context LF begin, a nested context fixes y assumes hy: "Qc y" begin block.  The lemma rows
    there (fooN [simp], the simp goal, bad' [elim] without warning, d [dest]) and the redeclaration
    rows (r9 [cases pred: Rc] = LF.foo9, declare LF.foo9[elim]) are compared with the heavy twin's
@@ -10,8 +10,8 @@
    the theorem (bn, bS), as stock when it does (bn3), a theory fact unchanged (bn2); the leaf's own
    Thm_Data6 table filled by declaration (pervasive) / plain declaration in nested blocks is read
    in the outer block by its head and absolute length, and at theory level after the outer end;
-   bx = refl[of x, keep] in the outer block keeps its loose x.  The print_cases comparison of r9
-   belongs to the Rule_Cases leaf. *)
+   bx = refl[of x, keep] in the outer block keeps its loose x.  The r9 row, with its print_cases
+   comparison, lives here in whole (section 11, item (20)). *)
 theory Test6_Nested
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -19,14 +19,6 @@ begin
 ML \<open>open Test_Support\<close>
 
 ML \<open>
-fun proves tac ctxt prop = can (fn () => Goal.prove ctxt [] [] prop (fn {context, ...} => tac context)) ();
-val by_simp = proves (fn c => asm_full_simp_tac c 1);
-val thy_ctxt = Proof_Context.init_global o Proof_Context.theory_of;
-fun major_is c th =
-  (case Term.strip_comb (HOLogic.dest_Trueprop (Thm.major_prem_of th)) of
-    (Const (c', _), args) => c' = c andalso forall is_Var args
-  | _ => false);
-fun simp_props ctxt = map (Thm.prop_of o #2) (Raw_Simplifier.dest_simps (simpset_of ctxt));
 fun mentions c = exists_Const (fn (c', _) => c' = c);
 (*the leaf's own table for the block-layer guard group*)
 structure Thm_Data6 = Generic_Data (type T = thm list val empty = [] val merge = op @);
@@ -55,9 +47,23 @@ local_setup \<open>fn lthy =>
       theorem_in lthy (Binding.name "bad'") "[elim]" "Rc x S \<Longrightarrow> Sc x" (fn ctxt => resolve_tac ctxt @{thms Sc_ax}));
   in \<^assert> (null w); lthy' end\<close>
 lemma d [dest]: "Qc x \<Longrightarrow> Pc x" by (rule Pc1_ax)
-ML \<open>val heavy_nested = {fooN = @{thm fooN}, bad' = @{thm bad'}, d = @{thm d}};\<close>
+lemmas r9 [cases pred: Rc] = foo9
+ML \<open>
+val heavy_nested = {fooN = @{thm fooN}, bad' = @{thm bad'}, d = @{thm d}};
+(* the r9 row's print_cases, on the rule's own conclusion Sc x so that an Rc rule and not the
+   case_split fallback decides the cases; the rule closes the goal (positive control) *)
+val heavy_r9 =
+  let
+    val (hr, ctxtr) = assume_in \<^context> [("x", \<^typ>\<open>nat\<close>)] "hr" "Rc x S";
+    val st = run ctxtr [hr] "cases" "Sc x";
+  in \<^assert> (subgoals st = 0); (cases_text st, subgoals st) end;
+\<close>
 end
-ML \<open>val heavy_outer_fooN = @{thm fooN};\<close>
+ML \<open>
+val heavy_outer_fooN = @{thm fooN};
+val heavy_outer_Pc_simps = filter (mentions \<^const_name>\<open>Pc\<close>) (simp_props \<^context>);
+val _ = \<^assert> (not (null heavy_outer_Pc_simps));
+\<close>
 ML_val \<open>
 val _ = \<^assert> (by_simp \<^context> \<^prop>\<open>Qc z \<Longrightarrow> Pc S z\<close>);
 val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>Pc S z\<close>));
@@ -88,15 +94,25 @@ ML_val \<open>
 val _ = \<^assert> (plain_equal (@{thm bad'}, #bad' heavy_nested));
 (* the theory copy's registration: major premise Rc ?x ?S, then LF ?S, then Qc ?y *)
 val _ = \<^assert> (exists (fn (key, plain, _) =>
-    Exported_Premises.count_of key = 2 andalso major_is \<^const_name>\<open>Rc\<close> plain andalso
-    Light_Locale_Axiom_Facts.is_light_prop \<^context> (nth (Thm.prems_of plain) 1) andalso
-    mentions \<^const_name>\<open>Qc\<close> (nth (Thm.prems_of plain) 2))
+    Exported_Premises.count_of key = 2 andalso
+    same_shape (Logic.mk_conjunction_list (Thm.prems_of plain), Logic.varify_global
+      (Logic.mk_conjunction_list [\<^prop>\<open>Rc (x :: 'd) S\<close>, \<^prop>\<open>LF S\<close>, \<^prop>\<open>Qc (y :: 'c)\<close>])))
   (claset_entries (thy_ctxt \<^context>) @{thm LF.bad'}));
+\<close>
+(* r9 (plan lines 4409-4412): the redeclaration in the nested block, and the cases it prints,
+   the same as the twin's up to renaming; before r9 the same text falls to case_split (the
+   block's own foo9 has K 0 and the theory copy LF.foo9 is not in the open block's table) *)
+ML_val \<open>
+val (hr, ctxtr) = assume_in \<^context> [("x", \<^typ>\<open>nat\<close>)] "hr" "Rc x S";
+val _ = \<^assert> (case_names (run ctxtr [@{thm LF_axioms}, hr] "cases" "Sc x") = ["True", "False"]);
 \<close>
 lemmas r9 [cases pred: Rc] = LF.foo9
 ML_val \<open>
 val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.r9}, @{thm LF.foo9}) andalso Exported_Premises.count_of @{thm LF.r9} = 1);
-val _ = \<^assert> (can (fn () => @{thm LF.r9 [OF LF_axioms]}) ());
+val _ = @{thm LF.r9 [OF LF_axioms]};
+val (hr, ctxtr) = assume_in \<^context> [("x", \<^typ>\<open>nat\<close>)] "hr" "Rc x S";
+val st = run ctxtr [@{thm LF_axioms}, hr] "cases" "Sc x";
+val _ = \<^assert> ((cases_text st, subgoals st) = heavy_r9);
 \<close>
 declare LF.foo9[elim]
 ML_val \<open>
@@ -108,13 +124,24 @@ fun elim_shape ctxt = exists (fn (_, plain, _) =>
 val _ = \<^assert> (elim_shape \<^context> andalso elim_shape (thy_ctxt \<^context>));
 \<close>
 lemma d [dest]: "Qc x \<Longrightarrow> Pc x" by (rule Pc1_ax)
+ML \<open>
+(* the derived dest rule of LF.d, literally: the user premise Qc ?x first, then the exported block
+   premises LF ?S and Qc ?y -- a K = 1 export would put the block's Qc ?y first *)
+fun d_registered ctxt =
+  exists (fn (_, plain, _) => same_shape (Thm.prop_of plain, Logic.varify_global
+      \<^prop>\<open>Qc (x :: 'd) \<Longrightarrow> LF S \<Longrightarrow> Qc (y :: 'c) \<Longrightarrow> (Pc x \<Longrightarrow> PROP W) \<Longrightarrow> PROP W\<close>))
+    (claset_entries ctxt @{thm LF.d});
+\<close>
 ML_val \<open>
 val _ = \<^assert> (plain_equal (@{thm d}, #d heavy_nested));
 val _ = \<^assert> (Thm.prop_of @{thm LF.d} aconv
   Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Qc (y :: 'c) \<Longrightarrow> Qc (x :: 'd) \<Longrightarrow> Pc x\<close>);
 val _ = \<^assert> (Thm.nprems_of @{thm LF.d} = 3 andalso Exported_Premises.count_of @{thm LF.d} = 2);
-val _ = \<^assert> (exists (fn (_, plain, _) => major_is \<^const_name>\<open>Qc\<close> plain)
-  (claset_entries (thy_ctxt \<^context>) @{thm LF.d}));
+val _ = \<^assert> (d_registered (thy_ctxt \<^context>));
+(* the theory copies of the nested block's lemmas: the three items of the preface, K 2 *)
+val _ = \<^assert> (block_lemma ("LF", "D") 2 (@{thm LF.fooN}, #fooN heavy_nested));
+val _ = \<^assert> (block_lemma ("LF", "D") 2 (@{thm LF.bad'}, #bad' heavy_nested));
+val _ = \<^assert> (block_lemma ("LF", "D") 2 (@{thm LF.d}, #d heavy_nested));
 \<close>
 end
 
@@ -126,22 +153,24 @@ val _ = \<^assert>
     ([Const (q, _) $ (v' as Var _)], (Const (c, _), [s, v as Var _])) =>
       q = \<^const_name>\<open>Qc\<close> andalso c = \<^const_name>\<open>Pc\<close> andalso s aconv \<^term>\<open>S\<close> andalso v' aconv v
   | _ => false);
-val _ = \<^assert> (Thm.eq_thm_prop (@{thm fooN}, heavy_outer_fooN));
+val _ = \<^assert> (plain_equal (@{thm fooN}, heavy_outer_fooN));
 val _ = \<^assert> (Thm.prop_of @{thm LF.fooN} aconv
   Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Qc y \<Longrightarrow> Pc S y\<close>);
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fooN} = 2);
 val _ = \<^assert> (by_simp \<^context> \<^prop>\<open>Qc z \<Longrightarrow> Pc S z\<close>);
 val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>Pc S z\<close>));
-(* the outer simpset: fooN's outer copy, with the premise Qc ?y, and not the theory copy *)
+(* the outer simpset's Pc rules are the heavy outer block's (fooN's outer copy with the premise
+   Qc ?y), and none carries a light premise (the theory copy is not there) *)
 val simps = simp_props \<^context>;
-val _ = \<^assert> (exists (fn p => mentions \<^const_name>\<open>Pc\<close> p andalso
-    length (Logic.strip_imp_prems p) = 1 andalso mentions \<^const_name>\<open>Qc\<close> (hd (Logic.strip_imp_prems p))) simps);
+val _ = \<^assert> (eq_set (op aconv) (filter (mentions \<^const_name>\<open>Pc\<close>) simps, heavy_outer_Pc_simps));
 val _ = \<^assert> (not (exists (fn p => mentions \<^const_name>\<open>Pc\<close> p andalso
     exists (Light_Locale_Axiom_Facts.is_light_prop \<^context>) (Logic.strip_imp_prems p)) simps));
 \<close>
-(* the theory registration of LF.d does not reach the open block; declared here, its major premise is Qc ?x *)
+(* the theory registration of LF.d does not reach the open block: no LF.d-keyed rule before the
+   declare; declared here, the same rule *)
+ML_val \<open>\<^assert> (null (claset_entries \<^context> @{thm LF.d}))\<close>
 declare LF.d [dest]
-ML_val \<open>\<^assert> (exists (fn (_, plain, _) => major_is \<^const_name>\<open>Qc\<close> plain) (claset_entries \<^context> @{thm LF.d}))\<close>
+ML_val \<open>\<^assert> (d_registered \<^context>)\<close>
 
 (* h2b: the nested type variable 'b does not survive in the outer copy *)
 (* 'a and 'b are the block's own (S :: ('a, 'b) ring_scheme), so the nested one is 'e *)
@@ -165,10 +194,10 @@ val _ = \<^assert> (Thm.eq_thm_prop (th, @{thm LF.fooP}));
 val [([th2], _)] = bundle_of \<^context> "bn2";
 val _ = \<^assert> (Thm.eq_thm_prop (th2, @{thm add.assoc}) andalso Thm.get_tags th2 = Thm.get_tags @{thm add.assoc});
 val [([th3], _)] = bundle_of \<^context> "bn3";
-val _ = \<^assert> (not (exists (fn (x, _) => x = "y") (Term.add_frees (Thm.prop_of th3) [])));
-val _ = \<^assert> ((case Term.strip_comb (HOLogic.dest_Trueprop (hd (Thm.prems_of th3))) of
-    (Const (c, _), [Var _]) => c = \<^const_name>\<open>Qc\<close> | _ => false));
-val _ = \<^assert> (Thm.nprems_of th3 = Thm.nprems_of @{thm LF.fooP} + 1 andalso Exported_Premises.count_of th3 = 0);
+(* (ii): the nested y generalised, hy on top, as stock: Qc ?ya ==> LF ?S ==> Pc ?ya ?y, no tag *)
+val _ = \<^assert> (same_shape (Thm.prop_of th3,
+    Logic.varify_global \<^prop>\<open>Qc (ya :: 'c) \<Longrightarrow> LF S \<Longrightarrow> Pc ya (y :: 'd)\<close>) andalso
+  Exported_Premises.count_of th3 = 0);
 val [([thS], _)] = bundle_of \<^context> "bS";
 val _ = \<^assert> (Thm.eq_thm_prop (thS, @{thm LF.fooP [of S]}) andalso no_Qc thS andalso Exported_Premises.count_of thS = 1);
 \<close>
@@ -236,13 +265,14 @@ val _ = \<^assert> ((case HOLogic.dest_Trueprop (Thm.prop_of bx) of
 val _ = \<^assert> (Thm.nprems_of bx = 0 andalso null (Thm.hyps_of bx) andalso Exported_Premises.count_of bx = 0);
 \<close>
 
-(* reopened: the theory copy LF.fooN is in the simpset with the premises LF ?S, Qc ?y *)
+(* reopened (plan line 4431): the theory copy LF.fooN is in the simpset, a Pc rule whose premises
+   are exactly LF ?S, Qc ?y *)
 context LF begin
 ML_val \<open>
 val _ = \<^assert> (exists (fn p => mentions \<^const_name>\<open>Pc\<close> p andalso
-    (case Logic.strip_imp_prems p of
-      [p1, p2] => Light_Locale_Axiom_Facts.is_light_prop \<^context> p1 andalso mentions \<^const_name>\<open>Qc\<close> p2
-    | _ => false)) (simp_props \<^context>));
+    same_shape (Logic.mk_conjunction_list (Logic.strip_imp_prems p),
+      Logic.varify_global (Logic.mk_conjunction_list [\<^prop>\<open>LF S\<close>, \<^prop>\<open>Qc (y :: 'c)\<close>])))
+  (simp_props \<^context>));
 \<close>
 end
 

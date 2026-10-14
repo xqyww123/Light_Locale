@@ -1,5 +1,7 @@
 (* Plan section 7 test 6 (plan line 4717): blast del: LF.fooE in a reopened block -- the control
-   first (blast closes Pc c ==> Sc c, which only fooE closes), then blast del: LF.fooE does not. *)
+   first (blast closes Pc c ==> Sc c, which only fooE closes), then blast del: LF.fooE does not;
+   the same method text closes a goal that needs no rule, so a misread of the text cannot pass the
+   negative row (plan line 3792). *)
 theory Test6_Del_BlastDel
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -15,8 +17,10 @@ end
 
 context LF begin
 ML_val \<open>
-val _ = \<^assert> (can (fn () => proof_after {apply = false} \<^context> [] "blast" \<^prop>\<open>Pc c \<Longrightarrow> Sc c\<close>) ());
-val _ = \<^assert> (not (can (fn () => proof_after {apply = false} \<^context> [] "blast del: LF.fooE" \<^prop>\<open>Pc c \<Longrightarrow> Sc c\<close>) ()));
+val del = "blast del: LF.fooE";
+val _ = \<^assert> (can (fn () => run \<^context> [] "blast" "Pc c \<Longrightarrow> Sc c") ());
+val _ = \<^assert> (can (fn () => run \<^context> [] del "Pc c \<Longrightarrow> Pc c") ());
+val _ = \<^assert> (not (can (fn () => run \<^context> [] del "Pc c \<Longrightarrow> Sc c") ()));
 \<close>
 end
 

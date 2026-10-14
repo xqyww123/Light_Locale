@@ -19,8 +19,7 @@ lemmas fooPf [dest] = LF.fooP[of _ y] for y
 end
 ML \<open>
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fooPf} = 0);
-val _ = \<^assert> (exists (fn (_, plain, _) => Light_Locale_Axiom_Facts.is_light_prop \<^context> (Thm.major_prem_of plain))
-  (claset_entries \<^context> @{thm LF.fooPf}));
+val _ = \<^assert> (major_prem_is \<^context> "LF S" (#2 (claset_rule \<^context> Bires.dest_kind @{thm LF.fooPf})));
 \<close>
 
 end

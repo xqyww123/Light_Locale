@@ -1,0 +1,25 @@
+diff -ruN a/src/Pure/Pure.thy b/src/Pure/Pure.thy
+--- a/src/Pure/Pure.thy
++++ b/src/Pure/Pure.thy
+@@ -702,19 +702,11 @@
+ ML \<open>
+ local
+ 
+-val locale_context_elements =
+-  Scan.repeat1 Parse_Spec.context_element;
+-
+-val locale_val =
+-  ((Parse_Spec.locale_expression -- Scan.optional Parse_Spec.opening [])
+-    || Parse_Spec.opening >> pair ([], []))
+-  -- Scan.optional (\<^keyword>\<open>+\<close> |-- Parse.!!! locale_context_elements) []
+-  || locale_context_elements >> pair (([], []), []);
+-
+ val _ =
+   Outer_Syntax.command \<^command_keyword>\<open>locale\<close> "define named specification context"
+     (Parse.binding --
+-      Scan.optional (\<^keyword>\<open>=\<close> |-- Parse.!!! locale_val) ((([], []), []), []) -- Parse.opt_begin
++      Scan.optional (\<^keyword>\<open>=\<close> |-- Parse.!!! Parse_Spec.locale_val) ((([], []), []), []) --
++      Parse.opt_begin
+       >> (fn ((name, ((expr, includes), elems)), begin) =>
+           Toplevel.begin_main_target begin
+             (Expression.add_locale_cmd name Binding.empty includes expr elems #> snd)));

@@ -1,0 +1,100 @@
+diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
+--- a/src/Pure/exported_premises.ML	1970-01-01 00:00:00.000000000 +0000
++++ b/src/Pure/exported_premises.ML
+@@ -0,0 +1,96 @@
++(*  Title:      Pure/exported_premises.ML
++
++Leading premises of a rule that are exported contextual assumptions (light locale
++predicates and nested "assumes" layers), recorded in the "exported_premises" tag as a
++count K.  The "consumes" primitives of Rule_Cases live here so that get_consumes can
++default to K.
++*)
++
++signature EXPORTED_PREMISES =
++sig
++  val lookup_consumes: thm -> int option
++  val get_consumes: thm -> int
++  val put_consumes: int option -> thm -> thm
++  val exported_premises_tagN: string
++  val count_of: thm -> int
++  val put: int -> thm -> thm
++  val own_prems: thm -> term list
++  val own_major_prem: thm -> term
++  val strong_consumes: thm -> int
++  val discharge: thm list -> thm -> thm
++  val put_major_prem_first: thm -> thm
++  val exported_premises: int -> attribute
++end;
++
++structure Exported_Premises: EXPORTED_PREMISES =
++struct
++
++(* tags *)
++
++fun lookup_nat_tag tagN th =
++  (case AList.lookup (op =) (Thm.get_tags th) tagN of
++    NONE => NONE
++  | SOME s =>
++      (case Lexicon.read_nat s of
++        SOME n => SOME n
++      | _ => raise THM ("Malformed '" ^ tagN ^ "' tag of theorem", 0, [th])));
++
++val exported_premises_tagN = "exported_premises";
++
++val count_of = the_default 0 o lookup_nat_tag exported_premises_tagN;
++
++(*K = 0 removes every entry; otherwise the value changes in place, since
++  Thm.eq_thm_strict compares tags in order*)
++fun put 0 = Thm.untag_rule exported_premises_tagN
++  | put k = Thm.map_tags (Properties.put (exported_premises_tagN, string_of_int k));
++
++val consumes_tagN = "consumes";
++
++val lookup_consumes = lookup_nat_tag consumes_tagN;
++
++(*a rule consumes at least its exported premises*)
++fun get_consumes th = Integer.max (count_of th) (the_default 0 (lookup_consumes th));
++
++fun put_consumes NONE th = th
++  | put_consumes (SOME n) th = th
++      |> Thm.untag_rule consumes_tagN
++      |> Thm.tag_rule (consumes_tagN, string_of_int (if n < 0 then Thm.nprems_of th + n else n));
++
++
++(* the rule's own premises *)
++
++fun own_prems th = drop (count_of th) (Thm.prems_of th);
++
++fun own_major_prem th =
++  (case own_prems th of
++    prem :: _ => Logic.strip_assums_concl prem
++  | [] => Thm.major_prem_of th);
++
++fun strong_consumes th = get_consumes th - count_of th;
++
++
++(* operations on the exported premises *)
++
++fun discharge facts th =
++  (case count_of th of
++    0 => th
++  | k =>
++      if length facts < k then raise THM ("discharge: too few facts", k, th :: facts)
++      else take k facts MRS th);
++
++(*rotate the first own premise in front of the exported ones; with nothing to rotate the rule
++  is returned as it is, since permute_prems clears the tags*)
++fun put_major_prem_first th =
++  let val k = count_of th and n = Thm.nprems_of th in
++    if k = 0 orelse n = k then th
++    else th |> Thm.permute_prems 0 k |> Thm.permute_prems 1 (n - 1 - k)
++  end;
++
++fun exported_premises n =
++  Thm.rule_attribute [] (fn context => fn th =>
++    if 0 <= n andalso n <= Thm.nprems_of th then put n th
++    else
++      error ("exported_premises: count out of range\n" ^
++        Thm.string_of_thm (Context.proof_of context) th));
++
++end;

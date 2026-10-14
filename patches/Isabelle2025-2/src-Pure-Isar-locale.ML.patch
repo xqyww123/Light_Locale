@@ -1,0 +1,809 @@
+diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
+--- a/src/Pure/Isar/locale.ML
++++ b/src/Pure/Isar/locale.ML
+@@ -33,6 +33,10 @@
+ 
+ signature LOCALE =
+ sig
++  (* Light locales: activation levels and header position kinds *)
++  datatype level = Syntax_only | Full
++  datatype position_kind = Written | Inherited | Eliminated
++
+   (* Locale specification *)
+   val register_locale: binding ->
+     (string * sort) list * ((string * typ) * mixfix) list ->
+@@ -42,6 +46,17 @@
+     Morphism.declaration_entity list ->
+     (string * Attrib.fact list) list ->
+     (string * morphism) list -> theory -> theory
++  val register_locale': bool -> binding ->
++    (string * sort) list * ((string * typ) * mixfix) list ->
++    term option * term list ->
++    thm option * thm option -> thm list ->
++    Element.context_i list ->
++    Morphism.declaration_entity list ->
++    (string * Attrib.fact list) list ->
++    (string * morphism * position_kind list) list -> theory -> theory
++  val is_light: theory -> string -> bool
++  val is_light_predicate: theory -> string -> bool
++  val set_implicit_structure: string -> term -> theory -> theory
+   val locale_space: theory -> Name_Space.T
+   val intern: theory -> xstring -> string
+   val check_global: theory -> xstring * Position.T -> string
+@@ -65,8 +80,23 @@
+ 
+   (* Activation *)
+   val activate_facts: morphism option -> string * morphism -> Context.generic -> Context.generic
++  val activate_facts_level: level -> morphism option -> string * morphism ->
++    Context.generic -> Context.generic
+   val activate_declarations: string * morphism -> Proof.context -> Proof.context
+   val init: string -> theory -> Proof.context
++  val matching_marks_of: Context.generic -> string * term list ->
++    (term list * level * string list) list
++
++  (* Light locale hooks and eliminated names *)
++  val set_light_axioms_attributes: Token.src list -> theory -> theory
++  val light_axioms_attributes_of: theory -> Token.src list
++  val set_light_degeneracy_check: (string -> Attrib.fact list -> local_theory -> unit) ->
++    theory -> theory
++  val light_degeneracy_check_of: theory ->
++    (string -> Attrib.fact list -> local_theory -> unit) option
++  val eliminated_names_of: Proof.context -> (string * term) Symtab.table
++  val eliminated_names_declaration: (string * (string * term)) list -> Morphism.declaration
++  val eliminated_name_warning: Proof.context -> string * string -> unit
+ 
+   (* Reasoning about locales *)
+   val get_witnesses: Proof.context -> thm list
+@@ -81,6 +111,7 @@
+   type registration = {inst: string * morphism, mixin: (morphism * bool) option, export: morphism}
+   val amend_registration: registration -> Context.generic -> Context.generic
+   val add_registration: registration -> Context.generic -> Context.generic
++  val add_registration_level: level -> registration -> Context.generic -> Context.generic
+   val registrations_of: Context.generic -> string -> (string * morphism) list
+   val add_dependency: string -> registration -> theory -> theory
+ 
+@@ -106,15 +137,49 @@
+ 
+ (*** Locales ***)
+ 
+-type dep = {name: string, morphisms: morphism * morphism, pos: Position.T, serial: serial};
++(* light locales (plan decisions 2-7, 16): activation level of an arrival, header position
++   kinds, note tags, marks of activated instances, note selection and roundup client kinds *)
++
++datatype level = Syntax_only | Full;
++datatype position_kind = Written | Inherited | Eliminated;
++datatype note_tag = Plain | Syntax_copy | Axiom;
++datatype mark = Full_mark | Syntax_only_mark of string list;  (*named effects served*)
++datatype selection = All | Light | Rest;
++(*a roundup client carries its callback, which receives only what that kind consumes*)
++datatype 'a client =
++  Installs_notes of selection -> string * morphism -> 'a -> 'a |
++  Declarations_only of string * morphism -> 'a -> 'a |
++  Collects_only of level -> string * morphism -> 'a -> 'a;
++
++fun level_of Full_mark = Full
++  | level_of (Syntax_only_mark _) = Syntax_only;
++
++fun effects_of Full_mark = []
++  | effects_of (Syntax_only_mark effs) = effs;
++
++(*recorded level satisfies the requested one*)
++fun satisfies requested recorded = not (requested = Full andalso recorded = Syntax_only);
++
++fun syntax_only_tag Plain = false
++  | syntax_only_tag Syntax_copy = true
++  | syntax_only_tag Axiom = true;
++
++(*the named effect of an activation chain on fact names*)
++fun named_effect morph = Binding.long_name_of (Morphism.binding morph (Binding.name "x"));
++
++type dep =
++ {name: string, morphisms: morphism * morphism, header: position_kind list option,
++  pos: Position.T, serial: serial};
+ fun eq_dep (dep1: dep, dep2: dep) = #serial dep1 = #serial dep2;
+ 
+-fun transfer_dep thy ({name, morphisms, pos, serial}: dep) : dep =
+-  {name = name, morphisms = apply2 (Morphism.set_context thy) morphisms, pos = pos, serial = serial};
++fun transfer_dep thy ({name, morphisms, header, pos, serial}: dep) : dep =
++  {name = name, morphisms = apply2 (Morphism.set_context thy) morphisms, header = header,
++    pos = pos, serial = serial};
+ 
+-fun make_dep (name, morphisms) : dep =
++fun make_dep (name, morphisms) header : dep =
+  {name = name,
+   morphisms = apply2 Morphism.reset_context morphisms,
++  header = header,
+   pos = Position.thread_data (),
+   serial = serial ()};
+ 
+@@ -150,39 +215,49 @@
+   axioms: thm list,
+   (*diagnostic device: theorem part of hypothetical body as specified by the user*)
+   hyp_spec: Element.context_i list,
++  (*declared by light_locale*)
++  light: bool,
+ 
+   (* dynamic part *)
+ 
+   (*syntax declarations*)
+   syntax_decls: (Morphism.declaration_entity * serial) list,
+-  (*theorem declarations*)
+-  notes: ((string * Attrib.fact list) * serial) list,
++  (*theorem declarations, tagged for syntax-only activation*)
++  notes: ((string * Attrib.fact list) * serial * note_tag) list,
+   (*locale dependencies (sublocale relation) in reverse order*)
+   dependencies: dep list,
+   (*mixin part of dependencies*)
+-  mixins: mixins
++  mixins: mixins,
++  (*implicit structure slot (plan decision 16 (b))*)
++  implicit_structure: term option
+ };
+ 
+-fun mk_locale ((parameters, spec, intros, axioms, hyp_spec),
+-    ((syntax_decls, notes), (dependencies, mixins))) =
++fun mk_locale ((parameters, spec, intros, axioms, hyp_spec, light),
++    (((syntax_decls, notes), (dependencies, mixins)), implicit_structure)) =
+   Loc {parameters = parameters, spec = spec, intros = intros, axioms = axioms, hyp_spec = hyp_spec,
+-    syntax_decls = syntax_decls, notes = notes, dependencies = dependencies, mixins = mixins};
++    light = light, syntax_decls = syntax_decls, notes = notes, dependencies = dependencies,
++    mixins = mixins, implicit_structure = implicit_structure};
+ 
+-fun map_locale f (Loc {parameters, spec, intros, axioms, hyp_spec,
+-    syntax_decls, notes, dependencies, mixins}) =
+-  mk_locale (f ((parameters, spec, intros, axioms, hyp_spec),
+-    ((syntax_decls, notes), (dependencies, mixins))));
++fun map_locale f (Loc {parameters, spec, intros, axioms, hyp_spec, light,
++    syntax_decls, notes, dependencies, mixins, implicit_structure}) =
++  mk_locale (f ((parameters, spec, intros, axioms, hyp_spec, light),
++    (((syntax_decls, notes), (dependencies, mixins)), implicit_structure)));
++
++val eq_note = op = o apply2 #2;
+ 
+ fun merge_locale
+- (Loc {parameters, spec, intros, axioms, hyp_spec, syntax_decls, notes, dependencies, mixins},
++ (Loc {parameters, spec, intros, axioms, hyp_spec, light, syntax_decls, notes, dependencies,
++    mixins, implicit_structure},
+   Loc {syntax_decls = syntax_decls', notes = notes',
+-      dependencies = dependencies', mixins = mixins', ...}) =
++      dependencies = dependencies', mixins = mixins',
++      implicit_structure = implicit_structure', ...}) =
+     mk_locale
+-      ((parameters, spec, intros, axioms, hyp_spec),
+-        ((merge (eq_snd op =) (syntax_decls, syntax_decls'),
+-          merge (eq_snd op =) (notes, notes')),
++      ((parameters, spec, intros, axioms, hyp_spec, light),
++        (((merge (eq_snd op =) (syntax_decls, syntax_decls'),
++          merge eq_note (notes, notes')),
+             (merge eq_dep (dependencies, dependencies'),
+-              (merge_mixins (mixins, mixins')))));
++              (merge_mixins (mixins, mixins')))),
++          merge_options (implicit_structure, implicit_structure')));
+ 
+ structure Locales = Theory_Data
+ (
+@@ -222,22 +297,39 @@
+     SOME (Loc loc) => loc
+   | NONE => error ("Unknown locale " ^ quote name));
+ 
+-fun register_locale
++fun register_locale_tagged tag light
+     binding parameters spec intros axioms hyp_spec syntax_decls notes dependencies thy =
+   thy |> Locales.map (Name_Space.define (Context.Theory thy) true
+     (binding,
+       mk_locale ((parameters, spec, (apply2 o Option.map) Thm.trim_context intros,
+           map Thm.trim_context axioms,
+-          map Element.trim_context_ctxt hyp_spec),
+-        ((map (fn decl => (Morphism.entity_reset_context decl, serial ())) syntax_decls,
+-          map (fn (a, facts) => ((a, map Attrib.trim_context_fact facts), serial ())) notes),
+-          (map (fn (name, morph) => make_dep (name, (morph, Morphism.identity))) dependencies,
+-            Inttab.empty)))) #> snd);
++          map Element.trim_context_ctxt hyp_spec, light),
++        (((map (fn decl => (Morphism.entity_reset_context decl, serial ())) syntax_decls,
++          map (fn (a, facts) => ((a, map Attrib.trim_context_fact facts), serial (), tag)) notes),
++          (map (fn (name, morph, header) => make_dep (name, (morph, Morphism.identity)) header)
++            dependencies,
++            Inttab.empty)),
++          NONE))) #> snd);
+           (* FIXME Morphism.identity *)
+ 
++(*the old entry point: Plain notes, heavy, no header record -- as before*)
++fun register_locale binding parameters spec intros axioms hyp_spec syntax_decls notes dependencies =
++  register_locale_tagged Plain false binding parameters spec intros axioms hyp_spec syntax_decls notes
++    (map (fn (name, morph) => (name, morph, NONE)) dependencies);
++
++(*the entry point of the locale and light_locale commands: Axiom notes, header record*)
++fun register_locale' light binding parameters spec intros axioms hyp_spec syntax_decls notes
++    dependencies =
++  register_locale_tagged Axiom light binding parameters spec intros axioms hyp_spec syntax_decls notes
++    (map (fn (name, morph, header) => (name, morph, SOME header)) dependencies);
++
+ fun change_locale name =
+   Locales.map o Name_Space.map_table_entry name o map_locale o apsnd;
+ 
++fun is_light thy = #light o the_locale thy;
++
++fun set_implicit_structure name t = change_locale name (apsnd (K (SOME t)));
++
+ 
+ 
+ (** Primitive operations **)
+@@ -294,14 +386,63 @@
+ 
+ (*** Identifiers: activated locales in theory or proof context ***)
+ 
+-type idents = term list list Symtab.table;  (* name ~> instance (grouped by name) *)
++(*name ~> instances with their marks; one record per instance (plan decision 5)*)
++type idents = (term list * mark) list Symtab.table;
+ 
+ val empty_idents : idents = Symtab.empty;
+-val insert_idents = Symtab.insert_list (eq_list (op aconv));
+-val merge_idents = Symtab.merge_list (eq_list (op aconv));
+ 
+-fun redundant_ident thy idents (name, instance) =
+-  exists (fn pat => Pattern.matchess thy (pat, instance)) (Symtab.lookup_list idents name);
++val eq_instance = eq_list (op aconv);
++
++(*Full_mark absorbs Syntax_only_mark; effect sets of Syntax_only_marks unite*)
++fun merge_marks (Syntax_only_mark effs, Syntax_only_mark effs') =
++      Syntax_only_mark (merge (op =) (effs, effs'))
++  | merge_marks _ = Full_mark;
++
++(*unchanged entries are returned as they are, like Library.insert*)
++fun insert_mark (instance, mark) entries =
++  (case AList.lookup eq_instance entries instance of
++    NONE => (instance, mark) :: entries
++  | SOME mark' =>
++      let val mark'' = merge_marks (mark', mark) in
++        if mark'' = mark' then entries
++        else AList.update eq_instance (instance, mark'') entries
++      end);
++
++fun insert_idents (name, entry) : idents -> idents = Symtab.map_default (name, []) (insert_mark entry);
++
++fun delete_ident (name, instance) : idents -> idents =
++  Symtab.map_entry name (AList.delete eq_instance instance);
++
++fun eq_entry ((instance1, mark1), (instance2, mark2)) =
++  eq_instance (instance1, instance2) andalso mark1 = mark2;
++
++(*Symtab.merge_list with the per-instance insert of plan decision 5*)
++fun merge_idents (idents1, idents2) : idents =
++  Symtab.join (fn _ => fn (entries1, entries2) =>
++    if eq_list eq_entry (entries1, entries2) then raise Symtab.SAME
++    else fold_rev insert_mark entries2 entries1)
++    (idents1, idents2);
++
++(*stock's redundant_ident scan, keeping the mark: p tests the mark before Pattern.matchess;
++  scan is exists (stops at the first hit, like stock) or filter*)
++fun matching_marks scan p thy idents (name, instance) =
++  scan (fn (pat, mark) => p mark andalso Pattern.matchess thy (pat, instance))
++    (Symtab.lookup_list idents name);
++
++fun redundant_ident thy idents requested (name, instance) =
++  matching_marks exists (satisfies requested o level_of) thy idents (name, instance);
++
++(*the level of the record of exactly this instance (decision 3)*)
++fun level_in idents (name, instance) =
++  Option.map level_of (AList.lookup eq_instance (Symtab.lookup_list idents name) instance);
++
++fun effect_served thy idents (name, instance) eff =
++  matching_marks exists (fn Syntax_only_mark effs => member (op =) effs eff | Full_mark => false)
++    thy idents (name, instance);
++
++fun record_effect eff (name, instance) : idents -> idents =
++  Symtab.map_entry name (AList.map_entry eq_instance instance
++    (fn Syntax_only_mark effs => Syntax_only_mark (insert (op =) eff effs) | mark => mark));
+ 
+ structure Idents = Generic_Data
+ (
+@@ -310,6 +451,10 @@
+   val merge = merge_idents;
+ );
+ 
++fun matching_marks_of context (name, instance) =
++  matching_marks filter (K true) (Context.theory_of context) (Idents.get context) (name, instance)
++  |> map (fn (inst, mark) => (inst, level_of mark, effects_of mark));
++
+ 
+ (** Resolve locale dependencies in a depth-first fashion **)
+ 
+@@ -317,44 +462,98 @@
+ 
+ val roundup_bound = 120;
+ 
+-fun add thy depth stem export (name, morph) (deps, marked) =
++fun mark_of Full = Full_mark
++  | mark_of Syntax_only = Syntax_only_mark [];
++
++(*deps: emitted instances in reverse activation order; marked: this traversal's marks;
++  first: the morphism each instance was first emitted with (plan decision 3)*)
++fun add thy depth stem export start_level crossed_light_edge (name, morph) (deps, marked, first) =
+   if depth > roundup_bound
+   then error "Roundup bound exceeded (sublocale relation probably not terminating)."
+   else
+     let
+       val instance = instance_of thy name (morph $> stem $> export);
++      val level = if start_level = Full andalso not crossed_light_edge then Full else Syntax_only;
++      (*no inheritance of mixins, regardless of requests by clients*)
++      fun descend stem' =
++        let
++          val {dependencies, light, ...} = the_locale thy name;
++          (*the dependency edge of name on the imported locale p is light (plan decision 2)*)
++          fun light_edge p = light andalso not (is_light thy p);
++        in
++          fold_rev (fn dep0 =>
++            let
++              val dep as {morphisms = (morph', export'), ...} = transfer_dep thy dep0;
++              val crossed_light_edge' = crossed_light_edge orelse light_edge (#name dep);
++            in
++              add thy (depth + 1) stem' export start_level crossed_light_edge'
++                (#name dep, morph' $> export' $> compose_mixins (mixins_of thy name (#serial dep)))
++            end) dependencies
++        end;
+     in
+-      if redundant_ident thy marked (name, instance) then (deps, marked)
++      if level = Full andalso level_in marked (name, instance) = SOME Syntax_only then
++        (*upgrade: re-descend with the first emission's morphism, do not emit again*)
++        let
++          val stem' =
++            (case AList.lookup eq_instance (Symtab.lookup_list first name) instance of
++              SOME stem' => stem'
++            | NONE => raise Fail "Locale.roundup: upgrade of an instance never emitted");
++          val (deps', marked', first') =
++            descend stem' ([], insert_idents (name, (instance, Full_mark)) marked, first);
++        in (deps' @ deps, marked', first') end
++      else if redundant_ident thy marked level (name, instance) then (deps, marked, first)
+       else
+         let
+-          (*no inheritance of mixins, regardless of requests by clients*)
+-          val dependencies =
+-            dependencies_of thy name |> map (fn dep as {morphisms = (morph', export'), ...} =>
+-              (#name dep, morph' $> export' $> compose_mixins (mixins_of thy name (#serial dep))));
+-          val marked' = insert_idents (name, instance) marked;
+-          val (deps', marked'') =
+-            fold_rev (add thy (depth + 1) (morph $> stem) export) dependencies
+-              ([], marked');
+-        in ((name, morph $> stem) :: deps' @ deps, marked'') end
++          val stem' = morph $> stem;
++          val (deps', marked', first') =
++            descend stem'
++              ([], insert_idents (name, (instance, mark_of level)) marked,
++                Symtab.cons_list (name, (instance, stem')) first);
++        in ((name, stem') :: deps' @ deps, marked', first') end
+     end;
+ 
+ in
+ 
+-(* Note that while identifiers always have the external (exported) view, activate_dep
+-   is presented with the internal view. *)
++(* Note that while identifiers always have the external (exported) view, the client's
++   callback is presented with the internal view. *)
+ 
+-fun roundup thy activate_dep export (name, morph) (marked, input) =
++fun roundup thy start_level client export (name, morph) (marked, input) =
+   let
+     (* Find all dependencies including new ones (which are dependencies enriching
+       existing registrations). *)
+-    val (dependencies, marked') =
+-      add thy 0 Morphism.identity export (name, morph) ([], empty_idents);
+-    (* Filter out fragments from marked; these won't be activated. *)
+-    val dependencies' = filter_out (fn (name, morph) =>
+-      redundant_ident thy marked (name, instance_of thy name (morph $> export))) dependencies;
+-  in
+-    (merge_idents (marked, marked'), input |> fold_rev activate_dep dependencies')
+-  end;
++    val (dependencies, marked', _) =
++      add thy 0 Morphism.identity export start_level false (name, morph)
++        ([], empty_idents, Symtab.empty);
++    (* Per element, in activation order: level, redundancy against marked, then by client kind:
++       a note installer gets the note selection and has its effect recorded (plan decision 5),
++       a collector gets the level. Fragments redundant by marked are dropped together with
++       their own record. *)
++    fun process (name, morph) (marked', input) =
++      let
++        val instance = instance_of thy name (morph $> export);
++        val level =
++          (case level_in marked' (name, instance) of
++            SOME level => level
++          | NONE => raise Fail "Locale.roundup: emitted instance without a record");
++      in
++        if redundant_ident thy marked level (name, instance)
++        then (delete_ident (name, instance) marked', input)
++        else
++          (case client of
++            Installs_notes activate =>
++              let
++                val eff = named_effect morph;
++                val selection =
++                  if level = Syntax_only then Light
++                  else if effect_served thy marked (name, instance) eff orelse
++                    effect_served thy marked' (name, instance) eff then Rest
++                  else All;
++              in (record_effect eff (name, instance) marked', activate selection (name, morph) input) end
++          | Declarations_only activate => (marked', activate (name, morph) input)
++          | Collects_only collect => (marked', collect level (name, morph) input))
++      end;
++    val (marked'', input') = fold_rev process dependencies (marked', input);
++  in (merge_idents (marked, marked''), input') end;
+ 
+ end;
+ 
+@@ -364,7 +563,7 @@
+ val total_ident_ord = prod_ord fast_string_ord (list_ord Term_Ord.fast_term_ord);
+ structure Idtab = Table(type key = string * term list val ord = total_ident_ord);
+ 
+-type reg = {morphisms: morphism * morphism, pos: Position.T, serial: serial};
++type reg = {morphisms: morphism * morphism, level: level, pos: Position.T, serial: serial};
+ val eq_reg: reg * reg -> bool = op = o apply2 #serial;
+ 
+ (* FIXME consolidate with locale dependencies, consider one data slot only *)
+@@ -380,21 +579,34 @@
+       fun recursive_merge ((regs1, mixins1), (regs2, mixins2)) : T =
+         (Idtab.merge eq_reg (regs1, regs2), merge_mixins (mixins1, mixins2))
+         handle Idtab.DUP id =>
+-          (*distinct interpretations with same base: merge their mixins*)
+           let
+             val reg1 = Idtab.lookup regs1 id |> the;
+             val reg2 = Idtab.lookup regs2 id |> the;
+-            val reg2' =
+-             {morphisms = #morphisms reg2,
+-              pos = Position.thread_data (),
+-              serial = #serial reg1};
+-            val regs2' = Idtab.update (id, reg2') regs2;
+-            val mixins2' = rename_mixin (#serial reg2, #serial reg1) mixins2;
+-            val _ =
+-              warning ("Removed duplicate interpretation after retrieving its mixins" ^
+-                Position.here_list [#pos reg1, #pos reg2] ^ ":\n  " ^
+-                Pretty.string_of (pretty_reg_inst ctxt0 [] id));
+-          in recursive_merge ((regs1, mixins1), (regs2', mixins2')) end;
++          in
++            if #level reg1 <> #level reg2 then
++              (*levels differ: the Full record wins on both sides, with its own serial
++                (plan decision 6)*)
++              let val winner = if #level reg1 = Full then reg1 else reg2 in
++                recursive_merge
++                  ((Idtab.update (id, winner) regs1, mixins1),
++                    (Idtab.update (id, winner) regs2, mixins2))
++              end
++            else
++              (*distinct interpretations with same base: merge their mixins*)
++              let
++                val reg2' =
++                 {morphisms = #morphisms reg2,
++                  level = #level reg2,
++                  pos = Position.thread_data (),
++                  serial = #serial reg1};
++                val regs2' = Idtab.update (id, reg2') regs2;
++                val mixins2' = rename_mixin (#serial reg2, #serial reg1) mixins2;
++                val _ =
++                  warning ("Removed duplicate interpretation after retrieving its mixins" ^
++                    Position.here_list [#pos reg1, #pos reg2] ^ ":\n  " ^
++                    Pretty.string_of (pretty_reg_inst ctxt0 [] id));
++              in recursive_merge ((regs1, mixins1), (regs2', mixins2')) end
++          end;
+     in Library.foldl1 recursive_merge (map #2 args) end;
+ );
+ 
+@@ -412,14 +624,25 @@
+ 
+ (* Primitive operations *)
+ 
+-fun add_reg thy export (name, morph) =
++fun add_reg thy export level (name, morph) =
+   let
+     val reg =
+      {morphisms = (Morphism.reset_context morph, Morphism.reset_context export),
++      level = level,
+       pos = Position.thread_data (),
+       serial = serial ()};
+     val id = (name, instance_of thy name (morph $> export));
+-  in (map_registrations o apfst) (Idtab.insert (K false) (id, reg)) end;
++    (*a Full record replaces a Syntax_only one (new serial: the old mixins become unreachable);
++      the same-level cases are unreachable and keep stock's DUP (plan decision 6)*)
++    fun insert regs =
++      (case Idtab.lookup regs id of
++        NONE => Idtab.insert (K false) (id, reg) regs
++      | SOME old =>
++          (case (#level old, level) of
++            (Syntax_only, Full) => Idtab.update (id, reg) regs
++          | (Full, Syntax_only) => regs
++          | _ => Idtab.insert (K false) (id, reg) regs));
++  in (map_registrations o apfst) insert end;
+ 
+ fun add_mixin serial' mixin =
+   (* registration to be amended identified by its serial id *)
+@@ -441,9 +664,10 @@
+   let
+     val thy = Context.theory_of context;
+   in
+-    roundup thy (fn dep => fn mixins => merge (eq_snd op =) (mixins, get_mixins context dep))
++    roundup thy Full
++      (Collects_only (K (fn dep => fn mixins => merge (eq_snd op =) (mixins, get_mixins context dep))))
+       Morphism.identity (name, morph)
+-      (insert_idents (name, instance_of thy name morph) empty_idents, [])
++      (insert_idents (name, (instance_of thy name morph, Full_mark)) empty_idents, [])
+     |> snd |> filter (snd o fst)  (* only inheritable mixins *)
+     |> (fn x => merge (eq_snd op =) (x, get_mixins context (name, morph)))
+     |> compose_mixins
+@@ -473,12 +697,65 @@
+   then Lazy_Notes (kind, (b, Lazy.value (maps #1 facts)))
+   else Notes (kind, [((b, atts), facts)]));
+ 
+-fun locale_notes thy loc =
+-  fold (cons o #1) (#notes (the_locale thy loc)) [];
++(* HOL-side hooks of light locales (plan decisions 11, 12), set once by Light_Locale.thy *)
++
++structure Light_Hooks = Theory_Data
++(
++  type T = Token.src list option * (string -> Attrib.fact list -> local_theory -> unit) option;
++  val empty: T = (NONE, NONE);
++  fun merge ((attrs1, check1), (attrs2, check2)) =
++    (merge_options (attrs1, attrs2), merge_options (check1, check2));
++);
++
++fun set_light_axioms_attributes attrs = Light_Hooks.map (apfst (K (SOME attrs)));
++val light_axioms_attributes_of = these o #1 o Light_Hooks.get;
++fun set_light_degeneracy_check check = Light_Hooks.map (apsnd (K (SOME check)));
++val light_degeneracy_check_of = #2 o Light_Hooks.get;
++
++
++(* names eliminated by light locale headers, per proof context (plan decision 1, D20) *)
++
++structure Eliminated_Names = Generic_Data
++(
++  type T = (string * term) Symtab.table;
++  val empty = Symtab.empty;
++  val merge = Symtab.join (K #1);
++);
++
++val eliminated_names_of = Eliminated_Names.get o Context.Proof;
+ 
+-fun lazy_notes thy loc =
+-  locale_notes thy loc
+-  |> maps (fn (kind, notes) => make_notes kind notes);
++fun eliminated_names_declaration entries phi context =
++  (case context of
++    Context.Proof _ =>
++      Eliminated_Names.map
++        (fold (fn (x, (loc, t)) => Symtab.default (x, (loc, Morphism.term phi t))) entries) context
++  | Context.Theory _ => context);
++
++(*a name x eliminated by locale loc is written where it is not bound*)
++fun eliminated_name_warning ctxt (x, loc) =
++  warning ("The parameter `" ^ x ^ "` from locale `" ^ extern ctxt loc ^
++    "` is not bound any more and treated as a fresh variable here.");
++
++
++fun locale_notes_tagged thy loc =
++  fold (fn (notes, _, tag) => cons (notes, tag)) (#notes (the_locale thy loc)) [];
++
++fun locale_notes thy loc = map #1 (locale_notes_tagged thy loc);
++
++(*which notes a note selection installs (plan decisions 4, 7): Light keeps the syntax-only
++  tags, appending the light axioms attributes to Axiom notes; Rest keeps their complement*)
++fun lazy_notes_select selection thy loc =
++  let
++    val attrs = light_axioms_attributes_of thy;
++    fun select ((kind, notes), tag) =
++      (case selection of
++        All => make_notes kind notes
++      | Light =>
++          if not (syntax_only_tag tag) then []
++          else if tag = Axiom then make_notes kind (map (apfst (apsnd (fn atts => atts @ attrs))) notes)
++          else make_notes kind notes
++      | Rest => if syntax_only_tag tag then [] else make_notes kind notes);
++  in maps select (locale_notes_tagged thy loc) end;
+ 
+ fun consolidate_notes elems =
+   elems
+@@ -514,7 +791,7 @@
+       handle ERROR msg => activate_err msg "syntax" (name, morph) context
+   end;
+ 
+-fun activate_notes activ_elem context export' (name, morph) input =
++fun activate_notes activ_elem context export' selection (name, morph) input =
+   let
+     val thy = Context.theory_of context;
+     val mixin =
+@@ -522,17 +799,17 @@
+         NONE => Morphism.identity
+       | SOME export => collect_mixins context (name, morph $> export) $> export);
+     val morph' = Morphism.set_context thy (morph $> mixin);
+-    val notes' = map (Element.transform_ctxt morph') (lazy_notes thy name);
++    val notes' = map (Element.transform_ctxt morph') (lazy_notes_select selection thy name);
+   in
+     (notes', input) |-> fold (fn elem => fn res =>
+       activ_elem (Element.transfer_ctxt thy elem) res)
+   end handle ERROR msg => activate_err msg "facts" (name, morph) context;
+ 
+-fun activate_notes_trace activ_elem context export' (name, morph) context' =
++fun activate_notes_trace activ_elem context export' selection (name, morph) context' =
+   let
+     val _ = trace "facts" (name, morph) context';
+   in
+-    activate_notes activ_elem context export' (name, morph) context'
++    activate_notes activ_elem context export' selection (name, morph) context'
+   end;
+ 
+ fun activate_all name thy activ_elem (marked, input) =
+@@ -547,27 +824,31 @@
+         activ_elem (Defines (map (fn def => (Binding.empty_atts, (def, []))) defs)));
+     val activate = activate_notes activ_elem (Context.Theory thy) NONE;
+   in
+-    roundup thy activate Morphism.identity (name, Morphism.identity) (marked, input')
++    roundup thy Full (Installs_notes activate) Morphism.identity (name, Morphism.identity)
++      (marked, input')
+   end;
+ 
+ 
+ (** Public activation functions **)
+ 
+-fun activate_facts export dep context =
++fun activate_facts_level level export dep context =
+   context
+   |> Context_Position.set_visible_generic false
+   |> pair (Idents.get context)
+-  |> roundup (Context.theory_of context)
+-      (activate_notes_trace init_element context export)
++  |> roundup (Context.theory_of context) level
++      (Installs_notes (activate_notes_trace init_element context export))
+       (Morphism.default export) dep
+   |-> Idents.put
+   |> Context_Position.restore_visible_generic context;
+ 
++val activate_facts = activate_facts_level Full;
++
+ fun activate_declarations dep = Context.proof_map (fn context =>
+   context
+   |> Context_Position.set_visible_generic false
+   |> pair (Idents.get context)
+-  |> roundup (Context.theory_of context) activate_syntax_decls Morphism.identity dep
++  |> roundup (Context.theory_of context) Syntax_only (Declarations_only activate_syntax_decls)
++      Morphism.identity dep
+   |-> Idents.put
+   |> Context_Position.restore_visible_generic context);
+ 
+@@ -613,7 +894,7 @@
+ (* Note that a registration that would be subsumed by an existing one will not be
+    generated, and it will not be possible to amend it. *)
+ 
+-fun add_registration {inst = (name, base_morph), mixin, export} context =
++fun gen_add_registration level {inst = (name, base_morph), mixin, export} context =
+   let
+     val thy = Context.theory_of context;
+     val pos_morph = Morphism.binding_morphism "position" (Binding.set_pos (Position.thread_data ()));
+@@ -621,72 +902,95 @@
+     val inst = instance_of thy name mix_morph;
+     val idents = Idents.get context;
+   in
+-    if redundant_ident thy idents (name, inst) then context  (* FIXME amend mixins? *)
++    if redundant_ident thy idents level (name, inst) then context  (* FIXME amend mixins? *)
+     else
+       (idents, context)
+       (* add new registrations with inherited mixins *)
+-      |> roundup thy (add_reg thy export) export (name, mix_morph) |> #2
++      |> roundup thy level (Collects_only (add_reg thy export)) export (name, mix_morph) |> #2
+       (* add mixin *)
+       |> amend_registration {inst = (name, mix_morph), mixin = mixin, export = export}
+       (* activate import hierarchy as far as not already active *)
+-      |> activate_facts (SOME export) (name, mix_morph $> pos_morph)
++      |> activate_facts_level level (SOME export) (name, mix_morph $> pos_morph)
+   end;
+ 
++val add_registration_level = gen_add_registration;
++val add_registration = gen_add_registration Full;
++
+ 
+ 
+ (*** Dependencies ***)
+ 
+-fun registrations_of context loc =
+-  Idtab.fold_rev (fn ((name, _), {morphisms, ...}) =>
+-    name = loc ? cons (name, morphisms)) (get_regs context) []
++(*with the level and the key instance of each registration*)
++fun registrations_of_level context loc =
++  Idtab.fold_rev (fn ((name, instance), {morphisms, level, ...}) =>
++    name = loc ? cons (level, instance, (name, morphisms))) (get_regs context) []
+   (*with inherited mixins*)
+-  |> map (fn (name, (base, export)) =>
+-      (name, base $> (collect_mixins context (name, base $> export)) $> export));
++  |> map (fn (level, instance, (name, (base, export))) =>
++      (level, instance, (name, base $> (collect_mixins context (name, base $> export)) $> export)));
++
++val registrations_of = map #3 oo registrations_of_level;
+ 
+ fun add_dependency loc {inst = (name, morph), mixin, export} thy =
+   let
+-    val dep = make_dep (name, (morph, export));
++    val dep = make_dep (name, (morph, export)) NONE;
+     val add_dep =
+       apfst (cons dep) #>
+       apsnd (case mixin of NONE => I | SOME mixin => insert_mixin (#serial dep) mixin);
+-    val thy' = change_locale loc (apsnd add_dep) thy;
++    val thy' = change_locale loc (apfst (apsnd add_dep)) thy;
+     val context' = Context.Theory thy';
++    (*collect from each registration at its own level; register the Full ones after the
++      Syntax_only ones, fold_rev starting from the end (plan decision 6 (b))*)
+     val (_, regs) =
+-      fold_rev (roundup thy' cons export)
+-        (registrations_of context' loc) (Idents.get context', []);
++      fold_rev (fn (level, _, inst) =>
++          roundup thy' level (Collects_only (curry cons)) export inst)
++        (registrations_of_level context' loc) (Idents.get context', []);
++    val (full, syn) = List.partition (fn (level, _) => level = Full) regs;
+   in
+-    fold_rev (fn inst => Context.theory_map (add_registration {inst = inst, mixin = NONE, export = export}))
+-      regs thy'
++    fold_rev (fn (level, inst) =>
++        Context.theory_map (gen_add_registration level {inst = inst, mixin = NONE, export = export}))
++      (full @ syn) thy'
+   end;
+ 
+ 
+ 
+ (*** Storing results ***)
+ 
+-fun add_facts loc kind facts ctxt =
++fun add_facts_tagged tag loc kind facts ctxt =
+   if null facts then ctxt
+   else
+     let
+-      val stored_notes = ((kind, map Attrib.trim_context_fact facts), serial ());
++      val stored_notes = ((kind, map Attrib.trim_context_fact facts), serial (), tag);
+       val applied_notes = make_notes kind facts;
+ 
+       fun apply_notes morph = applied_notes |> fold (fn elem => fn thy =>
+         let val elem' = Element.transform_ctxt (Morphism.set_context thy morph) elem
+         in Context.theory_map (Element.init elem') thy end);
++      (*a Syntax_only registration replays the syntax-only tags only; a Full registration
++        whose named effect a Syntax_only_mark already served replays Plain only (decision 6)*)
++      fun replays thy (Syntax_only, _, _) = syntax_only_tag tag
++        | replays thy (Full, instance, (_, morph)) =
++            not (syntax_only_tag tag) orelse
++            not (effect_served thy (Idents.get (Context.Theory thy)) (loc, instance)
++              (named_effect morph));
+       fun apply_registrations thy =
+-        fold_rev (apply_notes o #2) (registrations_of (Context.Theory thy) loc) thy;
++        fold_rev (fn reg => replays thy reg ? apply_notes (#2 (#3 reg)))
++          (registrations_of_level (Context.Theory thy) loc) thy;
+     in
+       ctxt
+       |> Attrib.local_notes kind facts |> #2
+       |> Proof_Context.background_theory
+-        ((change_locale loc o apfst o apsnd) (cons stored_notes) #> apply_registrations)
++        ((change_locale loc o apfst o apfst o apsnd) (cons stored_notes) #> apply_registrations)
+     end;
+ 
++val add_facts = add_facts_tagged Plain;
++
+ fun add_declaration loc {syntax, pos} decl =
+   let val decl0 = Morphism.entity_reset_context decl in
+     syntax ?
+-      Proof_Context.background_theory ((change_locale loc o apfst o apfst) (cons (decl0, serial ())))
+-    #> add_facts loc "" [(Binding.empty_atts, Attrib.internal_declaration pos decl0)]
++      Proof_Context.background_theory
++        ((change_locale loc o apfst o apfst o apfst) (cons (decl0, serial ())))
++    #> add_facts_tagged (if syntax then Syntax_copy else Plain) loc ""
++      [(Binding.empty_atts, Attrib.internal_declaration pos decl0)]
+   end;
+ 
+ 
+@@ -761,11 +1065,16 @@
+       |> snd |> rev
+       |> tap consolidate_notes
+       |> map force_notes;
++    val keyword = if is_light thy name then "light_locale" else "locale";
+   in
+-    Pretty.block (Pretty.keyword1 "locale" :: Pretty.brk 1 :: pretty_name locale_ctxt name ::
++    Pretty.block (Pretty.keyword1 keyword :: Pretty.brk 1 :: pretty_name locale_ctxt name ::
+       maps (fn elem => [Pretty.fbrk, Pretty.chunks (Element.pretty_ctxt locale_ctxt elem)]) elems)
+   end;
+ 
++(*a light locale's own predicate, when it has assumptions (plan decision 19)*)
++fun is_light_predicate thy c =
++  defined thy c andalso is_light thy c andalso is_some (#1 (specification_of thy c));
++
+ fun pretty_registrations ctxt name =
+   (case registrations_of (Context.Proof ctxt) name of
+     [] => Pretty.str "no interpretations"

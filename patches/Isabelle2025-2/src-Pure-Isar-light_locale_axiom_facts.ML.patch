@@ -1,0 +1,120 @@
+diff -ruN a/src/Pure/Isar/light_locale_axiom_facts.ML b/src/Pure/Isar/light_locale_axiom_facts.ML
+--- a/src/Pure/Isar/light_locale_axiom_facts.ML	1970-01-01 00:00:00.000000000 +0000
++++ b/src/Pure/Isar/light_locale_axiom_facts.ML
+@@ -0,0 +1,116 @@
++(*  Title:      Pure/Isar/light_locale_axiom_facts.ML
++
++Unconditional facts "LF t" of light locale predicates, indexed by proposition, and the export
++criteria of light targets (plan decisions 9 and 19).
++*)
++
++signature LIGHT_LOCALE_AXIOM_FACTS =
++sig
++  val is_light_prop: Proof.context -> term -> bool
++  val add: thm -> Context.generic -> Context.generic
++  val add_attribute: attribute
++  val retrieve: Proof.context -> term -> thm list
++  val is_exported_form_strict: Proof.context -> thm -> bool
++  val unchanged_by: morphism -> thm -> bool
++  val is_exported_form: Proof.context -> morphism -> thm -> bool
++  val replace_fact: string -> (thm -> thm) -> morphism -> morphism
++  val keep_unchanged: morphism -> morphism
++  val premise_count: local_theory -> int
++  val norm_result: Proof.context -> thm -> thm
++  val light_export: local_theory -> Proof.context -> thm -> thm
++end;
++
++structure Light_Locale_Axiom_Facts: LIGHT_LOCALE_AXIOM_FACTS =
++struct
++
++(* light predicates *)
++
++fun is_light_prop ctxt t =
++  (case Term.head_of (Object_Logic.drop_judgment ctxt t) of
++    Const (c, _) => Locale.is_light_predicate (Proof_Context.theory_of ctxt) c
++  | _ => false);
++
++
++(* predicate facts *)
++
++structure Data = Generic_Data
++(
++  type T = thm Item_Net.T;
++  val empty = Thm.item_net;
++  val merge = Item_Net.merge;
++);
++
++(*only unconditional facts of a light predicate are recorded*)
++fun add th context =
++  if Thm.nprems_of th = 0 andalso is_light_prop (Context.proof_of context) (Thm.concl_of th)
++  then Data.map (Item_Net.update (Thm.trim_context th)) context
++  else context;
++
++val add_attribute = Thm.declaration_attribute add;
++
++fun retrieve ctxt t =
++  map (Thm.transfer' ctxt) (Item_Net.retrieve (Data.get (Context.Proof ctxt)) t);
++
++
++(* export criteria *)
++
++(*note path: shape only -- a lemma's stored form must not depend on whether its proof was forked,
++  and a re-declared theory fact is stored under the block's premises, as in the heavy twin*)
++fun is_exported_form_strict ctxt th =
++  null (Thm.hyps_of th) andalso
++    (exists (is_light_prop ctxt) (Thm.prems_of th) orelse Exported_Premises.count_of th > 0);
++
++(*the term part of phi; the theorem part of an export morphism would also prepend the layer's
++  assumptions, which is exactly what keep_unchanged skips*)
++fun unchanged_by phi th =
++  null (Thm.hyps_of th) andalso
++    (case try (Morphism.term phi) (Thm.full_prop_of th) of
++      SOME p => p aconv Thm.full_prop_of th
++    | NONE => false);
++
++fun is_exported_form ctxt phi th = is_exported_form_strict ctxt th orelse unchanged_by phi th;
++
++(*phi with its theorem part replaced*)
++fun replace_fact name thm phi =
++  Morphism.morphism name
++   {binding = [K (Morphism.binding phi)],
++    typ = [K (Morphism.typ phi)],
++    term = [K (Morphism.term phi)],
++    fact = [K (map thm)]};
++
++(*each theorem comes back either unchanged or as Morphism.thm phi would give it*)
++fun keep_unchanged phi =
++  replace_fact "Light_Locale_Axiom_Facts.keep_unchanged"
++    (fn th => if unchanged_by phi th then th else Morphism.thm phi th) phi;
++
++
++(* export of theorems in exported form *)
++
++fun premise_count lthy =
++  Thm.nprems_of
++    (Assumption.export lthy (Proof_Context.init_global (Proof_Context.theory_of lthy)) Drule.dummy_thm);
++
++(*unfold the fixed variables defined between lthy and ctxt, generalise the ones ctxt does not
++  know, add no assumption; only the exported_premises tag survives*)
++(*Goal.norm_result keeping the exported-premise count: normalisation clears every tag*)
++fun norm_result ctxt th =
++  Goal.norm_result ctxt th |> Exported_Premises.put (Exported_Premises.count_of th);
++
++fun light_export lthy ctxt th =
++  let
++    val k = Exported_Premises.count_of th;
++    val defined =
++      Frees.build (Thm.fold_terms {hyps = false} Frees.add_frees th) |> Frees.list_set
++      |> map_filter (fn v =>
++        let val t = Assumption.export_term lthy ctxt (Free v)
++        in if t aconv Free v then NONE else SOME (v, Thm.cterm_of lthy t) end);
++  in
++    th
++    |> Thm.instantiate_frees (TFrees.empty, Frees.make defined)
++    |> singleton (Variable.export lthy ctxt)
++    |> Thm.map_tags (K [])
++    |> Exported_Premises.put k
++    |> norm_result ctxt
++  end;
++
++end;

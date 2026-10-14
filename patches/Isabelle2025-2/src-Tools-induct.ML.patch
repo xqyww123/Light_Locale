@@ -1,0 +1,112 @@
+diff -ruN a/src/Tools/induct.ML b/src/Tools/induct.ML
+--- a/src/Tools/induct.ML
++++ b/src/Tools/induct.ML
+@@ -19,6 +19,7 @@
+ sig
+   (*rule declarations*)
+   val vars_of: term -> term list
++  val own_vars_of: thm -> term -> term list
+   val dest_rules: Proof.context ->
+     {type_cases: (string * thm) list, pred_cases: (string * thm) list,
+       type_induct: (string * thm) list, pred_induct: (string * thm) list,
+@@ -111,6 +112,14 @@
+ fun vars_of tm =
+   rev (distinct (op =) (Term.fold_aterms (fn t as Var _ => cons t | _ => I) tm []));
+ 
++(*the variables of prem that do not occur in the exported premises of th*)
++fun own_vars_of th prem =
++  let
++    val exported =
++      fold (Term.fold_aterms (fn t as Var _ => insert (op =) t | _ => I))
++        (take (Exported_Premises.count_of th) (Thm.prems_of th)) [];
++  in filter_out (member (op =) exported) (vars_of prem) end;
++
+ local
+ 
+ val mk_var = Net.encode_type o #2 o Term.dest_Var;
+@@ -120,8 +129,13 @@
+ 
+ in
+ 
+-fun left_var_prem thm = mk_var (hd (vars_of (hd (Thm.take_prems_of 1 thm)))) handle List.Empty =>
+-  raise THM ("No variables in major premise of rule", 0, [thm]);
++(*a rule without own premises is keyed on its first premise, as in stock*)
++fun left_var_prem thm =
++  mk_var (hd
++    (case Exported_Premises.own_prems thm of
++      prem :: _ => own_vars_of thm prem
++    | [] => maps vars_of (Thm.take_prems_of 1 thm)))
++  handle List.Empty => raise THM ("No variables in major premise of rule", 0, [thm]);
+ 
+ val left_var_concl = concl_var hd;
+ val right_var_concl = concl_var List.last;
+@@ -226,8 +240,8 @@
+ (
+   type T = (rules * rules) * (rules * rules) * (rules * rules) * simpset;
+   val empty =
+-    ((init_rules (left_var_prem o #2), init_rules (Thm.major_prem_of o #2)),
+-     (init_rules (right_var_concl o #2), init_rules (Thm.major_prem_of o #2)),
++    ((init_rules (left_var_prem o #2), init_rules (Exported_Premises.own_major_prem o #2)),
++     (init_rules (right_var_concl o #2), init_rules (Exported_Premises.own_major_prem o #2)),
+      (init_rules (left_var_concl o #2), init_rules (Thm.concl_of o #2)),
+      simpset_of ((empty_simpset \<^context>
+       |> Simplifier.add_proc rearrange_eqs_simproc) |> Simplifier.add_simp Drule.norm_hhf_eq));
+@@ -298,6 +312,11 @@
+ 
+ end;
+ 
++(*the i-th chained fact (from 0) selects the rules with i exported premises*)
++fun rules_of_chained_facts find ctxt facts =
++  flat (map_index (fn (i, fact) =>
++    filter (fn r => Exported_Premises.count_of r = i) (find ctxt (Thm.concl_of fact))) facts);
++
+ 
+ 
+ (** attributes **)
+@@ -485,8 +504,13 @@
+ fun get_casesT ctxt ((SOME t :: _) :: _) = find_casesT ctxt (Term.fastype_of t)
+   | get_casesT _ _ = [];
+ 
+-fun get_casesP ctxt (fact :: _) = find_casesP ctxt (Thm.concl_of fact)
+-  | get_casesP _ _ = [];
++fun get_casesP ctxt = rules_of_chained_facts find_casesP ctxt;
++
++(*instantiations address the rule's own variables: positions of exported ones are skipped*)
++fun pad own (x :: xs) ts =
++      if member (op =) own x then (case ts of t :: ts' => t :: pad own xs ts' | [] => [])
++      else NONE :: pad own xs ts
++  | pad _ [] ts = ts;
+ 
+ in
+ 
+@@ -496,7 +520,9 @@
+       fun inst_rule r =
+         (if null insts then r
+          else
+-           (align_left "Rule has fewer premises than arguments given" (Thm.prems_of r) insts
++           (align_left "Rule has fewer premises than arguments given"
++              (Exported_Premises.own_prems r) insts
++             |> map (fn (prem, ts) => (prem, pad (own_vars_of r prem) (vars_of prem) ts))
+              |> maps (prep_inst ctxt align_left I)
+              |> infer_instantiate ctxt) r)
+         |> simp ? mark_constraints (Rule_Cases.get_constraints r) ctxt
+@@ -751,8 +777,7 @@
+         find_inductT ctxt)) [[]]
+   |> filter_out (forall Rule_Cases.is_inner_rule);
+ 
+-fun get_inductP ctxt (fact :: _) = map single (find_inductP ctxt (Thm.concl_of fact))
+-  | get_inductP _ _ = [];
++fun get_inductP ctxt = map single o rules_of_chained_facts find_inductP ctxt;
+ 
+ fun gen_induct_context_tactic mod_cases simp def_insts arbitrary taking opt_rule facts =
+   CONTEXT_SUBGOAL (fn (_, i) => fn (ctxt, st) =>
+@@ -848,7 +873,8 @@
+ fun get_coinductP ctxt goal = find_coinductP ctxt (Logic.strip_assums_concl goal);
+ 
+ fun main_prop_of th =
+-  if Rule_Cases.get_consumes th > 0 then Thm.major_prem_of th else Thm.concl_of th;
++  if Exported_Premises.strong_consumes th > 0 then Exported_Premises.own_major_prem th
++  else Thm.concl_of th;
+ 
+ in
+ 

@@ -1,0 +1,608 @@
+diff -ruN a/src/Pure/Isar/expression.ML b/src/Pure/Isar/expression.ML
+--- a/src/Pure/Isar/expression.ML
++++ b/src/Pure/Isar/expression.ML
+@@ -36,6 +36,10 @@
+     expression_i -> Element.context_i list -> theory -> string * local_theory
+   val add_locale_cmd: binding -> binding -> Bundle.xname list ->
+     expression -> Element.context list -> theory -> string * local_theory
++  val add_light_locale: binding -> binding -> Bundle.name list ->
++    expression_i -> Element.context_i list -> theory -> string * local_theory
++  val add_light_locale_cmd: binding -> binding -> Bundle.xname list ->
++    expression -> Element.context list -> theory -> string * local_theory
+ 
+   (* Processing of locale expressions *)
+   val cert_goal_expression: expression_i -> Proof.context ->
+@@ -71,15 +75,35 @@
+ 
+ (** Parameters of expression **)
+ 
++(*The parameters of loc that its defines clauses define: name, 1-based position in
++  Locale.params_of, definition body (not normalised).  A light header eliminates these
++  positions (plan decision 1); a light locale stores no defs, so it has none.*)
++
++fun eliminated_params thy loc =
++  let val params = Locale.params_of thy loc in
++    #2 (Locale.specification_of thy loc)
++    |> map_filter (fn eq =>
++      let val ((y, _), b) = Local_Defs.abs_def eq in
++        (case find_index (fn ((x, _), _) => x = y) params of
++          ~1 => NONE
++        | j => SOME (y, j + 1, b))
++      end)
++    |> sort (int_ord o apply2 #2)
++  end;
++
+ (*Sanity check of instantiations and extraction of implicit parameters.
+   The latter only occurs iff strict = false.
+   Positional instantiations are extended to match full length of parameter list
+-  of instantiated locale.*)
++  of instantiated locale.
++  A light header treats the eliminated positions as instantiated, whatever is written there,
++  and records the kind of every position (plan section 3.2 item 4, decision 16 (b)).*)
+ 
+-fun parameters_of thy strict (expr, fixed) =
++fun parameters_of thy strict light (expr, fixed) =
+   let
+     val ctxt = Proof_Context.init_global thy;
+ 
++    fun eliminated loc = if light then map #1 (eliminated_params thy loc) else [];
++
+     fun reject_dups message xs =
+       (case duplicates (op =) xs of
+         [] => ()
+@@ -101,28 +125,39 @@
+                 error ("More arguments than parameters in instantiation of locale " ^
+                   quote (Locale.markup_name ctxt loc))
+               else insts @ replicate d NONE;
++            val elim = eliminated loc;
+             val ps' = (ps ~~ insts') |>
+-              map_filter (fn (p, NONE) => SOME p | (_, SOME _) => NONE);
+-          in (ps', (loc, (prfx, (Positional insts', eqns)))) end
++              map_filter (fn (p, NONE) => if member (op =) elim (#1 p) then NONE else SOME p
++                | (_, SOME _) => NONE);
++            val kinds = (ps ~~ insts') |> map (fn ((p, _), inst) =>
++              if member (op =) elim p then Locale.Eliminated
++              else if is_some inst then Locale.Written else Locale.Inherited);
++          in ((ps', kinds), (loc, (prfx, (Positional insts', eqns)))) end
+       | params_inst (loc, (prfx, (Named insts, eqns))) =
+           let
+             val _ =
+               reject_dups "Duplicate instantiation of the following parameter(s): "
+                 (map fst insts);
++            val elim = eliminated loc;
+             val ps' = (insts, params_loc loc) |-> fold (fn (p, _) => fn ps =>
+               if AList.defined (op =) ps p then AList.delete (op =) p ps
+-              else error (quote p ^ " not a parameter of instantiated expression"));
+-          in (ps', (loc, (prfx, (Named insts, eqns)))) end;
++              else error (quote p ^ " not a parameter of instantiated expression"))
++              |> filter_out (member (op =) elim o #1);
++            val kinds = params_loc loc |> map (fn (p, _) =>
++              if member (op =) elim p then Locale.Eliminated
++              else if AList.defined (op =) insts p then Locale.Written else Locale.Inherited);
++          in ((ps', kinds), (loc, (prfx, (Named insts, eqns)))) end;
+     fun params_expr is =
+       let
+-        val (is', ps') = fold_map (fn i => fn ps =>
++        val ((is', kindss), ps') = fold_map (fn i => fn ps =>
+           let
+-            val (ps', i') = params_inst i;
++            val ((ps', kinds), i') = params_inst i;
+             val ps'' = distinct parm_eq (ps @ ps');
+-          in (i', ps'') end) is []
+-      in (ps', is') end;
++          in ((i', kinds), ps'') end) is []
++          |>> split_list;
++      in (ps', is', kindss) end;
+ 
+-    val (implicit, expr') = params_expr expr;
++    val (implicit, expr', kindss) = params_expr expr;
+ 
+     val implicit' = map #1 implicit;
+     val fixed' = map (Variable.check_name o #1) fixed;
+@@ -137,7 +172,7 @@
+               (implicit' @ fixed');
+         in map (fn (x, mx) => (Binding.name x, NONE, mx)) implicit end;
+ 
+-  in (expr', implicit'' @ fixed) end;
++  in (expr', implicit'' @ fixed, kindss) end;
+ 
+ 
+ (** Read instantiation **)
+@@ -200,6 +235,64 @@
+   end;
+ 
+ 
++(** Light headers: eliminated positions (plan section 3.2 items 4 and 5) **)
++
++val norm_term = Envir.beta_norm oo Term.subst_atomic;
++
++(*the type variables named in names become schematic at index i, then inference parameters;
++  other TFrees stay*)
++fun paramify_at i names =
++  Term.map_type_tfree (fn (x, S) => if member (op =) names x then TVar ((x, i), S) else TFree (x, S))
++  #> Type_Infer.paramify_vars;
++
++(*strip the constraints decode_term wraps around atomic position markup (syntax_phases.ML),
++  so that a bare underscore shows*)
++fun strip_position_constraints (t as Const ("_type_constraint_", Type ("fun", [T, _])) $ u) =
++      if Term_Position.detect_positionT T then strip_position_constraints u else t
++  | strip_position_constraints t = t;
++
++fun ordinal n =
++  string_of_int n ^
++    (if n mod 100 div 10 = 1 then "th"
++     else (case n mod 10 of 1 => "st" | 2 => "nd" | 3 => "rd" | _ => "th"));
++
++(*names about to become free variables must not be names eliminated by this declaration (own)
++  or by a light ancestor (the table of ctxt); names is in reverse order of occurrence*)
++fun check_eliminated own (names: (string * typ) list) ctxt =
++  let val eliminated = own @ Symtab.dest (Locale.eliminated_names_of ctxt) in
++    (case get_first (fn (x, _) => Option.map (pair x) (AList.lookup (op =) eliminated x)) (rev names) of
++      NONE => ()
++    | SOME (x, (loc, t)) =>
++        let val t' = Syntax.string_of_term ctxt t in
++          error ("A light locale does not support definitions. `" ^ x ^ " \<equiv> " ^ t' ^
++            "` from locale `" ^ Locale.extern ctxt loc ^ "` is unfolded and `" ^ x ^
++            "` is not bound here. Write `" ^ t' ^ "` instead.")
++        end)
++  end;
++
++(*steps (a) and (b) of plan section 3.2 item 4: the bodies of the eliminated parameters
++  normalised in the parent's vocabulary -- the fixed environment env0 applied length elims times;
++  a body that still mentions an eliminated name is a cycle of the parent's defines, reported
++  through check_eliminated*)
++fun normalise_eliminated ctxt loc elims =
++  let
++    val params = map #1 (Locale.params_of (Proof_Context.theory_of ctxt) loc);
++    val eliminated = map #1 elims;
++    fun mentions t = Term.exists_subterm (fn Free (x, _) => member (op =) eliminated x | _ => false) t;
++    fun subst env = norm_term (map (apfst Free) env);
++    val env0 =
++      fold (fn (y, j, b) => fn env => ((y, #2 (nth params (j - 1))), subst env b) :: env) elims []
++      |> rev;
++    val env = funpow (length elims) (map (apsnd (subst env0))) env0;
++    val remaining = map (fn ((y, _), b) => (y, (loc, b))) (filter (mentions o #2) env);
++    val names =
++      fold (Term.fold_aterms (fn Free (x, T) =>
++          AList.defined (op =) remaining x ? insert (op =) (x, T) | _ => I) o #2 o #2)
++        remaining [];
++    val _ = check_eliminated remaining names ctxt;
++  in map2 (fn (y, j, _) => fn (_, b) => (y, j, b)) elims env end;
++
++
+ (*** Locale processing ***)
+ 
+ (** Parsing **)
+@@ -327,8 +420,8 @@
+ 
+ local
+ 
+-fun closeup _ _ false elem = elem
+-  | closeup (outer_ctxt, ctxt) parms true elem =
++fun closeup _ _ _ false elem = elem
++  | closeup (outer_ctxt, ctxt) parms own true elem =
+       let
+         (* FIXME consider closing in syntactic phase -- before type checking *)
+         fun close_frees t =
+@@ -337,6 +430,7 @@
+               Term.fold_aterms (fn Free (x, T) =>
+                 if Variable.is_fixed outer_ctxt x orelse AList.defined (op =) parms x then I
+                 else insert (op =) (x, T) | _ => I) t [];
++            val _ = check_eliminated own rev_frees ctxt;
+           in fold (Logic.all o Free) rev_frees t end;
+ 
+         fun no_binds [] = []
+@@ -353,12 +447,14 @@
+ 
+ in
+ 
+-fun finish_elem _ parms _ (Fixes fixes) = Fixes (finish_fixes parms fixes)
+-  | finish_elem _ _ _ (Constrains _) = Constrains []
+-  | finish_elem ctxts parms do_close (Assumes asms) = closeup ctxts parms do_close (Assumes asms)
+-  | finish_elem ctxts parms do_close (Defines defs) = closeup ctxts parms do_close (Defines defs)
+-  | finish_elem _ _ _ (elem as Notes _) = elem
+-  | finish_elem _ _ _ (elem as Lazy_Notes _) = elem;
++fun finish_elem _ parms _ _ (Fixes fixes) = Fixes (finish_fixes parms fixes)
++  | finish_elem _ _ _ _ (Constrains _) = Constrains []
++  | finish_elem ctxts parms own do_close (Assumes asms) =
++      closeup ctxts parms own do_close (Assumes asms)
++  | finish_elem ctxts parms own do_close (Defines defs) =
++      closeup ctxts parms own do_close (Defines defs)
++  | finish_elem _ _ _ _ (elem as Notes _) = elem
++  | finish_elem _ _ _ _ (elem as Lazy_Notes _) = elem;
+ 
+ end;
+ 
+@@ -372,22 +468,98 @@
+ fun abs_def ctxt =
+   Thm.cterm_of ctxt #> Assumption.assume ctxt #> Local_Defs.abs_def_rule ctxt #> Thm.prop_of;
+ 
++(*the filled eliminated positions are stored as the image of the parent's definition body
++  under the morphism of the checked instance -- the value stock eval_inst computes
++  (plan section 3.2 item 4 (d)); imports without filled positions are untouched*)
++fun finish_deps ctxt5 insts filled =
++  let
++    val deps0 = map (finish_inst ctxt5) insts;
++    fun refill (_, dep) [] = dep
++      | refill ((loc, (prfx, ts)), (_, m)) entries =
++          finish_inst ctxt5
++            (loc, (prfx, fold (fn (j, body) => nth_map j (K (Morphism.term m body))) entries ts));
++  in map2 refill (insts ~~ deps0) filled end;
++
+ fun prep_full_context_statement
+     parse_typ parse_prop prep_obtains prep_var_elem prep_inst prep_eqns prep_attr prep_var_inst prep_expr
+-    {strict, do_close, fixed_frees} raw_import init_body raw_elems raw_stmt ctxt1 =
++    {strict, do_close, fixed_frees, light} raw_import init_body raw_elems raw_stmt ctxt1 =
+   let
+     val thy = Proof_Context.theory_of ctxt1;
+ 
+-    val (raw_insts, fixed) = parameters_of thy strict (apfst (prep_expr ctxt1) raw_import);
++    val (raw_insts, fixed, kindss) =
++      parameters_of thy strict light (apfst (prep_expr ctxt1) raw_import);
+ 
+-    fun prep_insts_cumulative (loc, (prfx, (inst, eqns))) (i, insts, eqnss, ctxt) =
++    (*fold state: index, instances, rewrites, context, the names this declaration eliminates
++      (name, (locale the definition comes from, term for printing)), and per import the eliminated
++      positions not kept (0-based position, the parent's normalised definition body), which
++      finish_deps stores as the unfolded term*)
++    fun prep_insts_cumulative (loc, (prfx, (inst, eqns))) (i, insts, eqnss, ctxt, own, filled) =
+       let
+         val params = map #1 (Locale.params_of thy loc);
+         val inst' = prep_inst ctxt (map #1 params) inst;
+-        val parm_types' =
+-          params |> map (#2 #> Logic.varifyT_global #>
+-              Term.map_type_tvar (fn ((x, _), S) => TVar ((x, i), S)) #>
+-              Type_Infer.paramify_vars);
++        val type_names = map #1 (fold (Term.add_tfreesT o #2) params []);
++        val parm_types' = map (paramify_at i type_names o #2) params;
++
++        (* eliminated positions of a light header (plan section 3.2 item 4) *)
++        val elims = if light then normalise_eliminated ctxt loc (eliminated_params thy loc) else [];
++        val (inst', own', filled') =
++          if null elims then (inst', own, [])
++          else
++            let
++              val eliminated = map #1 elims;
++
++              (* (c) the parent's type variables at this index, then the non-eliminated parameters
++                 replaced by their terms in inst', each under the type of the Free it replaces *)
++              val param_inst = (map #1 params ~~ inst') |> filter_out (member (op =) eliminated o #1);
++              fun substitute b =
++                b |> Term.map_types (paramify_at i type_names)
++                  |> Term.map_aterms (fn Free (p, T) =>
++                      (case AList.lookup (op =) param_inst p of
++                        SOME t => Type.constraint T t
++                      | NONE => Free (p, T)) | a => a);
++              val substituted = fold (fn (_, j, b) => nth_map (j - 1) (K (substitute b))) elims inst';
++              fun written y j =
++                (case inst of
++                  Positional xs => is_some (nth xs (j - 1))
++                | Named xs => AList.defined (op =) xs y);
++              fun constrained ts = (loc, (prfx, map2 Type.constraint parm_types' ts));
++
++              (* a written position is checked jointly with the substituted term: accepted iff
++                 they are equal up to beta, eta and types; kept (the user's term stays) iff equal
++                 including types; otherwise the substituted term is filled in *)
++              fun keeps (y, j, _) =
++                let val t = nth inst' (j - 1) in
++                  written y j andalso not (Term.is_dummy_pattern (strip_position_constraints t))
++                  andalso
++                    let
++                      val copies = map constrained [nth_map (j - 1) (K t) substituted, substituted];
++                      val ((checked_insts, _, _, _), _) =
++                        check_autofix (insts @ copies) [] [] [] ctxt;
++                      val checked_copies = map (#2 o #2) (drop (length insts) checked_insts);
++                      val checked = Envir.beta_eta_contract (nth (hd checked_copies) (j - 1));
++                      val shown = Envir.beta_norm (nth (List.last checked_copies) (j - 1));
++                      val shown' = Envir.beta_eta_contract shown;
++                    in
++                      if Term.aconv_untyped (checked, shown') then checked aconv shown'
++                      else
++                        error ("The " ^ ordinal j ^ " parameter `" ^ y ^ "` of locale `" ^
++                          Locale.extern ctxt loc ^ "` is defined as `" ^
++                          Syntax.string_of_term ctxt shown ^
++                          "` and cannot be instantiated. You must write `_`.")
++                    end
++                end;
++              val decisions = map (fn e => (e, keeps e)) elims;
++              val decided =
++                fold (fn ((_, j, _), kept) => not kept ? nth_map (j - 1) (K (nth substituted (j - 1))))
++                  decisions inst';
++              fun print_term t =
++                singleton (Type_Infer.fixate ctxt false) (Envir.beta_norm (Type.strip_constraints t));
++            in
++              (decided,
++                own @ map (fn (y, j, _) => (y, (loc, print_term (nth decided (j - 1))))) elims,
++                map_filter (fn ((_, j, b), kept) => if kept then NONE else SOME (j - 1, b)) decisions)
++            end;
++
+         val inst'' = map2 Type.constraint parm_types' inst';
+         val insts' = insts @ [(loc, (prfx, inst''))];
+         val ((insts'', _, _, _), ctxt2) = check_autofix insts' [] [] [] ctxt;
+@@ -410,7 +582,7 @@
+           |> Morphism.default;
+        val ctxt'' = Locale.activate_declarations (loc, inst_morph $> rewrite_morph) ctxt;
+        val eqnss' = eqnss @ [attrss ~~ Variable.export_terms ctxt' ctxt eqns'];
+-      in (i + 1, insts', eqnss', ctxt'') end;
++      in (i + 1, insts', eqnss', ctxt'', own', filled @ [filled']) end;
+ 
+     fun prep_elem raw_elem ctxt =
+       let
+@@ -423,7 +595,8 @@
+ 
+     val fors = fold_map prep_var_inst fixed ctxt1 |> fst;
+     val ctxt2 = ctxt1 |> Proof_Context.add_fixes fors |> snd;
+-    val (_, insts', eqnss', ctxt3) = fold prep_insts_cumulative raw_insts (0, [], [], ctxt2);
++    val (_, insts', eqnss', ctxt3, own, filled) =
++      fold prep_insts_cumulative raw_insts (0, [], [], ctxt2, [], []);
+ 
+     fun prep_stmt elems ctxt =
+       check_autofix insts' [] elems (prepare_stmt parse_prop prep_obtains ctxt raw_stmt) ctxt;
+@@ -433,8 +606,10 @@
+       else
+         (case fold (fold (Variable.add_frees ctxt3) o snd o snd) insts' [] of
+           [] => ()
+-        | frees => error ("Illegal free variables in expression: " ^
+-            commas_quote (map (Syntax.string_of_term ctxt3 o Free) (rev frees))));
++        | frees =>
++            (check_eliminated own frees ctxt3;
++             error ("Illegal free variables in expression: " ^
++              commas_quote (map (Syntax.string_of_term ctxt3 o Free) (rev frees)))));
+ 
+     val ((insts, _, elems', concl), ctxt4) = ctxt3
+       |> init_body
+@@ -450,10 +625,10 @@
+ 
+     val fors' = finish_fixes parms fors;
+     val fixed = map (fn (b, SOME T, mx) => ((Binding.name_of b, T), mx)) fors';
+-    val deps = map (finish_inst ctxt5) insts;
+-    val elems'' = map (finish_elem (ctxt1, ctxt5) parms do_close) elems';
++    val deps = finish_deps ctxt5 insts filled;
++    val elems'' = map (finish_elem (ctxt1, ctxt5) parms own do_close) elems';
+ 
+-  in ((fixed, deps, eqnss', elems'', concl), (parms, ctxt5)) end;
++  in ((fixed, deps, eqnss', elems'', concl, kindss), (parms, ctxt5)) end;
+ 
+ in
+ 
+@@ -478,8 +653,8 @@
+ 
+ fun prep_statement prep activate raw_elems raw_stmt ctxt =
+   let
+-    val ((_, _, _, elems, concl), _) =
+-      prep {strict = true, do_close = false, fixed_frees = true}
++    val ((_, _, _, elems, concl, _), _) =
++      prep {strict = true, do_close = false, fixed_frees = true, light = false}
+         ([], []) I raw_elems raw_stmt ctxt;
+     val ctxt' = ctxt
+       |> Proof_Context.set_stmt true
+@@ -502,27 +677,37 @@
+ 
+ local
+ 
+-fun prep_declaration prep activate raw_import init_body raw_elems ctxt =
++(*the locale declarations also return the position kinds of the header (plan section 3.2 item 2)*)
++fun prep_locale_declaration prep activate {light} raw_import init_body raw_elems ctxt =
+   let
+-    val ((fixed, deps, eqnss, elems, _), (parms, ctxt0)) =
+-      prep {strict = false, do_close = true, fixed_frees = false}
++    val thy = Proof_Context.theory_of ctxt;
++    val ((fixed, deps, eqnss, elems, _, kindss), (parms, ctxt0)) =
++      prep {strict = false, do_close = true, fixed_frees = false, light = light}
+         raw_import init_body raw_elems (Element.Shows []) ctxt;
+     val _ = null (flat eqnss) orelse error "Illegal rewrites clause(s) in declaration of locale";
+-    (* Declare parameters and imported facts *)
++    (* Declare parameters and imported facts; a light header activates its heavy imports
++       syntax-only (plan decision 10) *)
+     val ctxt' = ctxt
+       |> fix_params fixed
+-      |> fold (Context.proof_map o Locale.activate_facts NONE) deps;
++      |> (if light then
++            fold (fn dep => Context.proof_map (Locale.activate_facts_level
++              (if Locale.is_light thy (#1 dep) then Locale.Full else Locale.Syntax_only) NONE dep)) deps
++          else fold (Context.proof_map o Locale.activate_facts NONE) deps);
+     val (elems', ctxt'') = ctxt'
+       |> Proof_Context.set_stmt true
+       |> fold_map activate elems
+       ||> Proof_Context.restore_stmt ctxt';
+-  in ((fixed, deps, elems', ctxt''), (parms, ctxt0)) end;
++  in (((fixed, deps, elems', ctxt''), (parms, ctxt0)), kindss) end;
+ 
+ in
+ 
+-fun cert_declaration x = prep_declaration cert_full_context_statement Element.activate_i x;
+-fun cert_read_declaration x = prep_declaration cert_read_full_context_statement Element.activate x;
+-fun read_declaration x = prep_declaration read_full_context_statement Element.activate x;
++fun cert_locale_declaration x = prep_locale_declaration cert_full_context_statement Element.activate_i x;
++fun read_locale_declaration x = prep_locale_declaration read_full_context_statement Element.activate x;
++
++fun cert_declaration x = (#1 oooo cert_locale_declaration {light = false}) x;
++fun cert_read_declaration x =
++  (#1 oooo prep_locale_declaration cert_read_full_context_statement Element.activate {light = false}) x;
++fun read_declaration x = (#1 oooo read_locale_declaration {light = false}) x;
+ 
+ end;
+ 
+@@ -539,8 +724,8 @@
+   let
+     val thy = Proof_Context.theory_of ctxt;
+ 
+-    val ((fixed, deps, eqnss, _, _), _) =
+-      prep {strict = true, do_close = true, fixed_frees = true} expression I []
++    val ((fixed, deps, eqnss, _, _, _), _) =
++      prep {strict = true, do_close = true, fixed_frees = true, light = false} expression I []
+         (Element.Shows []) ctxt;
+     (* proof obligations *)
+     val propss = map (props_of thy) deps;
+@@ -571,8 +756,6 @@
+ 
+ (* extract specification text *)
+ 
+-val norm_term = Envir.beta_norm oo Term.subst_atomic;
+-
+ fun bind_def ctxt eq (env, eqs) =
+   let
+     val _ = Local_Defs.cert_def ctxt (K []) eq;
+@@ -618,7 +801,10 @@
+   | eval_text _ _ (Notes _) text = text
+   | eval_text _ _ (Lazy_Notes _) text = text;
+ 
+-fun eval_inst ctxt (loc, morph) text =
++(*the imports of a light locale contribute no defs: its header eliminated every defined
++  parameter, so the inherited equations are reflexive after the morphism (plan decision 1);
++  gen_add_locale proves them (def_witnesses)*)
++fun eval_inst light ctxt (loc, morph) text =
+   let
+     val thy = Proof_Context.theory_of ctxt;
+     val (asm, defs) = Locale.specification_of thy loc;
+@@ -629,7 +815,7 @@
+        (if is_some asm then
+           eval_text ctxt false (Assumes [(Binding.empty_atts, [(the asm', [])])])
+         else I) |>
+-       (if not (null defs) then
++       (if not light andalso not (null defs) then
+           eval_text ctxt false (Defines (map (fn def => (Binding.empty_atts, (def, []))) defs'))
+         else I)
+ (* FIXME clone from locale.ML *)
+@@ -638,9 +824,9 @@
+ fun eval_elem ctxt elem text =
+   eval_text ctxt true elem text;
+ 
+-fun eval ctxt deps elems =
++fun eval light ctxt deps elems =
+   let
+-    val text' = fold (eval_inst ctxt) deps ((([], []), ([], [])), ([], []));
++    val text' = fold (eval_inst light ctxt) deps ((([], []), ([], [])), ([], []));
+     val ((spec, (_, defs))) = fold (eval_elem ctxt) elems text';
+   in (spec, defs) end;
+ 
+@@ -799,21 +985,27 @@
+ 
+ val is_hyp = fn Assumes _ => true | Defines _ => true | _ => false;
+ 
+-fun gen_add_locale prep_include prep_decl
++fun gen_add_locale prep_include prep_decl light
+     binding raw_predicate_binding raw_includes raw_import raw_body thy =
+   let
+     val name = Sign.full_name thy binding;
+     val _ = Locale.defined thy name andalso
+       error ("Duplicate definition of locale " ^ quote name);
++    val _ =
++      if light then
++        List.app (fn Defines _ => error "A light locale does not support `defines` clauses"
++          | Notes _ => error "A light locale does not support `notes` clauses"
++          | _ => ()) raw_body
++      else ();
+ 
+     val ctxt = Proof_Context.init_global thy;
+     val includes = map (prep_include ctxt) raw_includes;
+ 
+-    val ((fixed, deps, body_elems, _), (parms, ctxt')) =
++    val (((fixed, deps, body_elems, _), (parms, ctxt')), kindss) =
+       ctxt
+       |> Bundle.includes includes
+-      |> prep_decl raw_import I raw_body;
+-    val text as (((_, exts'), _), defs) = eval ctxt' deps body_elems;
++      |> prep_decl {light = light} raw_import I raw_body;
++    val text as (((_, exts'), _), defs) = eval light ctxt' deps body_elems;
+ 
+     val type_tfrees = TFrees.build (fold (TFrees.add_tfreesT o #2) parms);
+     val extra_tfrees =
+@@ -833,7 +1025,14 @@
+     val pred_ctxt = Proof_Context.init_global thy';
+ 
+     val a_satisfy = Element.satisfy_morphism a_axioms;
+-    val b_satisfy = Element.satisfy_morphism b_axioms;
++    (*a light header drops its imports' defs (eval_inst); under the edge morphisms they are
++      reflexive, and their witnesses discharge the definition hyps, like the defs of props_of*)
++    fun def_witnesses (l, morph) =
++      #2 (Locale.specification_of thy' l) |> map (fn def =>
++        Element.prove_witness pred_ctxt (Morphism.term morph def)
++          (resolve_tac pred_ctxt [Drule.reflexive_thm] 1));
++    val b_satisfy =
++      Element.satisfy_morphism (if light then b_axioms @ maps def_witnesses deps else b_axioms);
+ 
+     val params = fixed @
+       maps (fn Fixes fixes =>
+@@ -846,7 +1045,11 @@
+       if is_some asm then
+         [("", [((Binding.suffix_name ("_" ^ axiomsN) binding, []),
+           [([Assumption.assume pred_ctxt (Thm.cterm_of pred_ctxt (the asm))],
+-            [Attrib.internal \<^here> (K Locale.witness_add)])])])]
++            Attrib.internal \<^here> (K Locale.witness_add) ::
++              (if light then
++                Attrib.internal \<^here> (K Light_Locale_Axiom_Facts.add_attribute) ::
++                  Locale.light_axioms_attributes_of thy
++               else []))])])]
+       else [];
+ 
+     val notes' =
+@@ -860,21 +1063,63 @@
+       |> map (Element.transform_ctxt b_satisfy)
+       |> map_filter (fn Notes notes => SOME notes | _ => NONE);
+ 
+-    val deps' = map (fn (l, morph) => (l, morph $> b_satisfy)) deps;
++    val deps' = map2 (fn (l, morph) => fn kinds => (l, morph $> b_satisfy, kinds)) deps kindss;
+     val axioms = map (Element.conclude_witness pred_ctxt) b_axioms;
+ 
++    (* the definitions this header unfolds, from the final edges: name, source locale, value
++       at the eliminated position; the first occurrence of a name wins (plan section 3.2 item 1) *)
++    val unfolded =
++      build (deps' |> fold (fn (l, m, kinds) =>
++        fold2 (fn ((n, T), _) => fn kind =>
++            kind = Locale.Eliminated ? cons (n, (l, Morphism.term m (Free (n, T)))))
++          (Locale.params_of thy' l) kinds))
++      |> rev |> distinct (eq_fst (op =));
++    val param_names = map (#1 o #1) params;
++    val not_bound = filter_out (member (op =) param_names o #1) unfolded;
++    val written =
++      map (Binding.name_of o #1) (#2 raw_import) @
++      maps (fn Fixes fixes => map (Binding.name_of o #1) fixes | _ => []) raw_body;
++
++    fun declare_unfolded lthy =
++      if null unfolded then lthy
++      else
++        let
++          fun def_line (n, (_, v)) =
++            "  " ^ Syntax.string_of_term lthy (Logic.mk_equals (Free (n, Term.fastype_of v), v));
++          val blocks = distinct (op =) (map (#1 o #2) unfolded) |> maps (fn l =>
++            ("The following definitions from `" ^ Locale.extern lthy l ^ "` are unfolded.") ::
++              map def_line (filter (fn (_, (l', _)) => l' = l) unfolded));
++          val last =
++            if null not_bound then []
++            else
++              ["The names " ^ commas (map (fn (n, _) => "`" ^ n ^ "`") not_bound) ^
++                " are not bound and shouldn't be used any more. Write their unfolded terms instead."];
++          val _ = warning (cat_lines (blocks @ last));
++          val _ = written |> List.app (fn x =>
++            (case AList.lookup (op =) unfolded x of
++              SOME (l, _) => Locale.eliminated_name_warning lthy (x, l)
++            | NONE => ()));
++        in
++          lthy |> not (null not_bound) ?
++            Local_Theory.declaration {syntax = true, pervasive = false, pos = Binding.pos_of binding}
++              (Locale.eliminated_names_declaration not_bound)
++        end;
++
+     val loc_ctxt = thy'
+-      |> Locale.register_locale binding (extra_tfrees, params)
++      |> Locale.register_locale' light binding (extra_tfrees, params)
+           (asm, rev defs) (a_intro, b_intro) axioms hyp_spec [] (rev notes) (rev deps')
+       |> Named_Target.init includes name
+-      |> fold (fn (kind, facts) => Local_Theory.notes_kind kind facts #> snd) notes';
++      |> fold (fn (kind, facts) => Local_Theory.notes_kind kind facts #> snd) notes'
++      |> declare_unfolded;
+ 
+   in (name, loc_ctxt) end;
+ 
+ in
+ 
+-val add_locale = gen_add_locale (K I) cert_declaration;
+-val add_locale_cmd = gen_add_locale Bundle.check_name read_declaration;
++val add_locale = gen_add_locale (K I) cert_locale_declaration false;
++val add_locale_cmd = gen_add_locale Bundle.check_name read_locale_declaration false;
++val add_light_locale = gen_add_locale (K I) cert_locale_declaration true;
++val add_light_locale_cmd = gen_add_locale Bundle.check_name read_locale_declaration true;
+ 
+ end;
+ 

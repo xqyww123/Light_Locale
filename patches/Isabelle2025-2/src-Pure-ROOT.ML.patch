@@ -1,0 +1,24 @@
+diff -ruN a/src/Pure/ROOT.ML b/src/Pure/ROOT.ML
+--- a/src/Pure/ROOT.ML
++++ b/src/Pure/ROOT.ML
+@@ -194,6 +194,7 @@
+ ML_file "drule.ML";
+ ML_file "morphism.ML";
+ ML_file "variable.ML";
++ML_file "exported_premises.ML";
+ ML_file "conv.ML";
+ ML_file "goal_display.ML";
+ ML_file "tactical.ML";
+@@ -267,10 +268,11 @@
+ ML_file "Isar/element.ML";
+ ML_file "Isar/obtain.ML";
+ ML_file "Isar/subgoal.ML";
+-ML_file "Isar/calculation.ML";
+ 
+ (*local theories and targets*)
+ ML_file "Isar/locale.ML";
++ML_file "Isar/light_locale_axiom_facts.ML";
++ML_file "Isar/calculation.ML";
+ ML_file "Isar/generic_target.ML";
+ ML_file "Isar/bundle.ML";
+ ML_file "Isar/overloading.ML";

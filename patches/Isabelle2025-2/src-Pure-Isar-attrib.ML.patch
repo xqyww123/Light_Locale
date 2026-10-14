@@ -1,0 +1,13 @@
+diff -ruN a/src/Pure/Isar/attrib.ML b/src/Pure/Isar/attrib.ML
+--- a/src/Pure/Isar/attrib.ML
++++ b/src/Pure/Isar/attrib.ML
+@@ -555,6 +555,9 @@
+   setup \<^binding>\<open>consumes\<close>
+     (Scan.lift (Scan.optional Parse.int 1) >> Rule_Cases.consumes)
+     "number of consumed facts" #>
++  setup \<^binding>\<open>exported_premises\<close>
++    (Scan.lift Parse.int >> Exported_Premises.exported_premises)
++    "number of leading premises that are exported contextual assumptions" #>
+   setup \<^binding>\<open>constraints\<close>
+     (Scan.lift Parse.nat >> Rule_Cases.constraints)
+     "number of equality constraints" #>

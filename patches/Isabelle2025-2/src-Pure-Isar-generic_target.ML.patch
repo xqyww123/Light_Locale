@@ -1,0 +1,250 @@
+diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
+--- a/src/Pure/Isar/generic_target.ML
++++ b/src/Pure/Isar/generic_target.ML
+@@ -27,6 +27,8 @@
+     local_theory -> local_theory
+   val standard_declaration: (int * int -> bool) -> Morphism.declaration_entity ->
+     local_theory -> local_theory
++  val light_standard_declaration: (int * int -> bool) -> Morphism.declaration_entity ->
++    local_theory -> local_theory
+   val standard_const: (int * int -> bool) -> Syntax.mode -> (binding * mixfix) * term ->
+     local_theory -> local_theory
+   val local_interpretation: Locale.registration ->
+@@ -40,6 +42,8 @@
+   val notes:
+     (string -> Attrib.fact list -> Attrib.fact list -> local_theory -> local_theory) ->
+     string -> Attrib.fact list -> local_theory -> (string * thm list) list * local_theory
++  val light_notes: string -> string -> Attrib.fact list -> local_theory ->
++    (string * thm list) list * local_theory
+   val abbrev: (Syntax.mode -> binding * mixfix -> term ->
+       term list * term list -> local_theory -> local_theory) ->
+     Syntax.mode -> (binding * mixfix) * term -> local_theory -> (term * term) * local_theory
+@@ -56,6 +60,7 @@
+   val theory_abbrev: Syntax.mode -> (binding * mixfix) * term ->
+     local_theory -> (term * term) * local_theory
+   val theory_declaration: Morphism.declaration_entity -> local_theory -> local_theory
++  val light_theory_declaration: Morphism.declaration_entity -> local_theory -> local_theory
+   val theory_registration: Locale.registration -> local_theory -> local_theory
+ 
+   (*locale target primitives*)
+@@ -77,6 +82,8 @@
+     local_theory -> local_theory
+   val locale_dependency: string -> Locale.registration ->
+     local_theory -> local_theory
++  val gen_locale_dependency: (Locale.registration -> Context.generic -> Context.generic) ->
++    string -> Locale.registration -> local_theory -> local_theory
+ end
+ 
+ structure Generic_Target: GENERIC_TARGET =
+@@ -204,13 +211,51 @@
+       ||> foundation_interpretation (b, (const, target_params));
+   in ((lhs, def), lthy3) end;
+ 
+-fun background_declaration decl lthy =
++(*wrap: the export morphism of a layer, as seen from the local theory*)
++fun gen_background_declaration wrap decl lthy =
+   let
+     fun theory_decl context =
+-      Local_Theory.standard_form lthy
+-        (Proof_Context.init_global (Context.theory_of context)) decl context;
++      let
++        val thy_ctxt = Proof_Context.init_global (Context.theory_of context);
++        val phi = wrap lthy (Local_Theory.standard_morphism lthy thy_ctxt);
++      in Morphism.form (Morphism.transform phi decl) context end;
+   in Local_Theory.background_theory (Context.theory_map theory_decl) lthy end;
+ 
++val background_declaration = gen_background_declaration (K I);
++
++
++(* light export morphisms *)
++
++(*block layers: theorems this export does not change stay as they are, tags included*)
++fun light_level_morphism lthy phi =
++  Light_Locale_Axiom_Facts.keep_unchanged phi |> Morphism.set_context' lthy;
++
++(*the note path: theorems in exported form are exported without adding assumptions*)
++fun light_standard_morphism lthy ctxt =
++  let val phi = Local_Theory.standard_morphism lthy ctxt in
++    Light_Locale_Axiom_Facts.replace_fact "Generic_Target.light_standard" (fn th =>
++      if Light_Locale_Axiom_Facts.is_exported_form_strict lthy th
++      then Light_Locale_Axiom_Facts.light_export lthy ctxt th
++      else Morphism.thm phi th) phi
++    |> Morphism.set_context' lthy
++  end;
++
++(*the declaration path to the background theory*)
++fun light_export_morphism lthy phi =
++  let
++    val thy_ctxt = Proof_Context.init_global (Proof_Context.theory_of lthy);
++    fun thm th =
++      if Light_Locale_Axiom_Facts.is_exported_form_strict lthy th
++      then Light_Locale_Axiom_Facts.light_export lthy thy_ctxt th
++      else if Light_Locale_Axiom_Facts.is_exported_form lthy phi th then th
++      else
++        th |> Morphism.thm phi
++        |> Exported_Premises.put (Light_Locale_Axiom_Facts.premise_count lthy);
++  in
++    Light_Locale_Axiom_Facts.replace_fact "Generic_Target.light_export" thm phi
++    |> Morphism.set_context' lthy
++  end;
++
+ fun background_abbrev (b, global_rhs) params =
+   Local_Theory.background_theory_result (Sign.add_abbrev Print_Mode.internal (b, global_rhs))
+   #>> apply2 (fn t => Term.list_comb (Logic.unvarify_global t, params))
+@@ -222,27 +267,36 @@
+ fun standard_facts lthy ctxt =
+   Attrib.transform_facts (Local_Theory.standard_morphism lthy ctxt);
+ 
+-fun standard_notes pred kind facts lthy =
++fun gen_standard_notes morph pred kind facts lthy =
+   Local_Theory.map_contexts (fn level => fn ctxt =>
+     if pred (Local_Theory.level lthy, level)
+-    then Attrib.local_notes kind (standard_facts lthy ctxt facts) ctxt |> snd
++    then Attrib.local_notes kind (Attrib.transform_facts (morph lthy ctxt) facts) ctxt |> snd
+     else ctxt) lthy;
+ 
+-fun standard_declaration pred decl lthy =
++val standard_notes = gen_standard_notes Local_Theory.standard_morphism;
++
++fun gen_standard_declaration wrap pred decl lthy =
+   Local_Theory.map_contexts (fn level => fn ctxt =>
+     if pred (Local_Theory.level lthy, level)
+-    then Context.proof_map (Local_Theory.standard_form lthy ctxt decl) ctxt
++    then
++      let val phi = wrap lthy (Local_Theory.standard_morphism lthy ctxt)
++      in Context.proof_map (Morphism.form (Morphism.transform phi decl)) ctxt end
+     else ctxt) lthy;
+ 
++val standard_declaration = gen_standard_declaration (K I);
++val light_standard_declaration = gen_standard_declaration light_level_morphism;
++
+ fun standard_const pred prmode ((b, mx), rhs) =
+   standard_declaration pred (const_decl (K true) prmode ((b, mx), rhs));
+ 
+-fun standard_registration pred registration lthy =
++fun gen_standard_registration add pred registration lthy =
+   Local_Theory.map_contexts (fn level =>
+     if pred (Local_Theory.level lthy, level)
+-    then Context.proof_map (Locale.add_registration registration)
++    then Context.proof_map (add registration)
+     else I) lthy;
+ 
++val standard_registration = gen_standard_registration Locale.add_registration;
++
+ val local_interpretation = standard_registration (fn (n, level) => level >= n - 1);
+ 
+ 
+@@ -356,27 +410,80 @@
+ 
+   in ((local_thm, global_thm), lthy') end;
+ 
+-in
+-
+-fun notes target_notes kind facts0 lthy =
++(*export: a named theorem to its (local, global) pair*)
++fun prepare_notes export facts lthy =
+   let
+-    val facts = Attrib.map_thms (Goal.norm_result lthy) facts0;
+     val (facts', lthy') =
+       (facts, lthy) |-> fold_map (fn (a, thms) => fn lthy1 =>
+         let
+           val thms1 = Thm_Name.expr (Local_Theory.full_name_pos lthy1 (fst a)) thms;
+           val (thms2, lthy2) =
+             (thms1, lthy1) |-> fold_map (fn (args, atts) =>
+-              fold_map thm_definition args #>> rpair atts);
++              fold_map export args #>> rpair atts);
+         in ((a, thms2), lthy2) end);
+-    val local_facts = Attrib.map_thms #1 facts';
+-    val global_facts = Attrib.map_thms #2 facts';
++  in ((Attrib.map_thms #1 facts', Attrib.map_thms #2 facts'), lthy') end;
++
++val unnamed = Binding.name "unnamed";
++
++(*one group of evaluated entries per input fact, in order: the declaration entry split off by
++  partial evaluation, if any, then the entry carrying the input's binding*)
++fun regroup facts evaluated =
++  let
++    fun close entry (pending, groups) =
++      if Binding.is_empty (#1 (#1 entry)) then (entry :: pending, groups)
++      else ([], rev (entry :: pending) :: groups);
++    val ([], groups) = fold close evaluated ([], []);
++    fun rebind ((b, _), _) group =
++      let val (decls, (_, fact)) = split_last group in decls @ [((b, []), fact)] end;
++  in map2 rebind facts (rev groups) end;
++
++in
++
++fun notes target_notes kind facts lthy =
++  let
++    val ((local_facts, global_facts), lthy') =
++      prepare_notes (fn (np, th) => thm_definition (np, Goal.norm_result lthy th)) facts lthy;
+   in
+     lthy'
+     |> target_notes kind global_facts (Attrib.partial_evaluation lthy' local_facts)
+     |> Attrib.local_notes kind local_facts
+   end;
+ 
++(*light target: theorems in exported form keep their statement, the others are exported as in
++  a theory target and tagged with the number of exported premises; attributes are evaluated
++  on the whole table once, in the block, the rest runs on the theory copies*)
++fun light_notes locale kind facts lthy =
++  let
++    (*as stock notes: attributes see the normal form*)
++    val groups =
++      facts
++      |> Attrib.map_thms (Light_Locale_Axiom_Facts.norm_result lthy)
++      |> map (apfst (apfst (fn b => if Binding.is_empty b then unnamed else b)))
++      |> Attrib.partial_evaluation lthy
++      |> regroup facts;
++    fun export (np, th) lthy1 =
++      if Light_Locale_Axiom_Facts.is_exported_form_strict lthy1 th then
++        let val thy_ctxt = Proof_Context.init_global (Proof_Context.theory_of lthy1) in
++          thm_def np (name_thm1 np (Light_Locale_Axiom_Facts.light_export lthy1 thy_ctxt th)) lthy1
++          |>> pair (name_thm2 np (Light_Locale_Axiom_Facts.light_export lthy1 lthy1 th))
++        end
++      else
++        thm_definition (np, Goal.norm_result lthy1 th) lthy1
++        |>> apsnd (Exported_Premises.put (Light_Locale_Axiom_Facts.premise_count lthy1));
++    val ((local_facts, global_facts), lthy') = prepare_notes export (flat groups) lthy;
++    val hook_facts =
++      unflat groups global_facts |> map (fn group => (#1 (List.last group), maps #2 group));
++    val (results, lthy'') =
++      lthy'
++      |> Local_Theory.background_theory (Attrib.global_notes kind global_facts #> snd)
++      |> tap (fn lthy2 =>
++          (case Locale.light_degeneracy_check_of (Proof_Context.theory_of lthy2) of
++            SOME check => check locale hook_facts lthy2
++          | NONE => ()))
++      |> gen_standard_notes light_standard_morphism (op <>) kind local_facts
++      |> Attrib.local_notes kind local_facts;
++  in (map List.last (unflat groups results), lthy'') end;
++
+ end;
+ 
+ 
+@@ -428,6 +535,10 @@
+ fun theory_declaration decl =
+   background_declaration decl #> standard_declaration (K true) decl;
+ 
++fun light_theory_declaration decl =
++  gen_background_declaration light_export_morphism decl #>
++  light_standard_declaration (K true) decl;
++
+ fun target_registration lthy {inst, mixin, export} =
+   {inst = inst, mixin = mixin,
+     export = export $> Proof_Context.export_morphism lthy (Local_Theory.target_of lthy)};
+@@ -471,10 +582,12 @@
+   locale_target_const locale (K true) prmode ((b, mx), rhs)
+   #> standard_const (fn (this, other) => other <> 0 andalso this <> other) prmode ((b, mx), rhs);
+ 
+-fun locale_dependency loc registration lthy =
++fun gen_locale_dependency add loc registration lthy =
+   lthy
+   |> Local_Theory.raw_theory (Locale.add_dependency loc registration)
+-  |> standard_registration (K true) registration;
++  |> gen_standard_registration add (K true) registration;
++
++val locale_dependency = gen_locale_dependency Locale.add_registration;
+ 
+ 
+ (** locale abbreviations **)

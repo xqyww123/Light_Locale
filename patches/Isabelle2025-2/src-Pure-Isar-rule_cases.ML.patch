@@ -1,0 +1,104 @@
+diff -ruN a/src/Pure/Isar/rule_cases.ML b/src/Pure/Isar/rule_cases.ML
+--- a/src/Pure/Isar/rule_cases.ML
++++ b/src/Pure/Isar/rule_cases.ML
+@@ -206,31 +206,24 @@
+ 
+ end;
+ 
+-val consumes_tagN = "consumes";
+-
+-fun lookup_consumes th =
+-  (case AList.lookup (op =) (Thm.get_tags th) consumes_tagN of
+-    NONE => NONE
+-  | SOME s =>
+-      (case Lexicon.read_nat s of
+-        SOME n => SOME n
+-      | _ => raise THM ("Malformed 'consumes' tag of theorem", 0, [th])));
+-
+-fun get_consumes th = the_default 0 (lookup_consumes th);
+-
+-fun put_consumes NONE th = th
+-  | put_consumes (SOME n) th = th
+-      |> Thm.untag_rule consumes_tagN
+-      |> Thm.tag_rule (consumes_tagN, string_of_int (if n < 0 then Thm.nprems_of th + n else n));
++val lookup_consumes = Exported_Premises.lookup_consumes;
++val get_consumes = Exported_Premises.get_consumes;
++val put_consumes = Exported_Premises.put_consumes;
+ 
+ fun add_consumes k th = put_consumes (SOME (k + get_consumes th)) th;
+ 
++(*the default is relative to the exported premises*)
+ fun default_consumes n th =
+-  if is_some (lookup_consumes th) then th else put_consumes (SOME n) th;
++  if is_some (lookup_consumes th) then th
++  else put_consumes (SOME (Exported_Premises.count_of th + n)) th;
+ 
+ val save_consumes = put_consumes o lookup_consumes;
++val save_exported_premises = Exported_Premises.put o Exported_Premises.count_of;
+ 
+-fun consumes n = Thm.mixed_attribute (apsnd (put_consumes (SOME n)));
++(*a non-negative count is relative to the exported premises, a negative one is absolute*)
++fun consumes n =
++  Thm.mixed_attribute (apsnd (fn th =>
++    put_consumes (SOME (if n < 0 then n else Exported_Premises.count_of th + n)) th));
+ 
+ 
+ (* equality constraints *)
+@@ -380,6 +373,7 @@
+ 
+ fun save th =
+   save_consumes th #>
++  save_exported_premises th #>
+   save_constraints th #>
+   save_case_names th #>
+   save_cases_hyp_names th #>
+@@ -405,9 +399,11 @@
+ (* params *)
+ 
+ fun rename_params xss th =
+-  th
+-  |> fold_index (fn (i, xs) => Thm.rename_params_rule (xs, i + 1)) xss
+-  |> save th;
++  let val k = Exported_Premises.count_of th in
++    th
++    |> fold_index (fn (i, xs) => Thm.rename_params_rule (xs, k + i + 1)) xss
++    |> save th
++  end;
+ 
+ fun params xss = Thm.rule_attribute [] (K (rename_params xss));
+ 
+@@ -420,9 +416,10 @@
+ fun equal_cterms ts us =
+   is_equal (list_ord Thm.fast_term_ord (ts, us));
+ 
+-fun prep_rule n th =
++(*the k exported premises stay in front, only the rule's own n consumed ones move*)
++fun prep_rule k n th =
+   let
+-    val th' = Thm.permute_prems 0 n th;
++    val th' = Thm.permute_prems k n th;
+     val prems = Thm.take_cprems_of (Thm.nprems_of th' - n) th';
+     val th'' = Drule.implies_elim_list th' (map Thm.assume prems);
+   in (prems, (n, th'')) end;
+@@ -433,8 +430,10 @@
+   | mutual_rule _ [th] = SOME ([0], th)
+   | mutual_rule ctxt (ths as th :: _) =
+       let
++        val k = Exported_Premises.count_of th;
++        val n = Exported_Premises.strong_consumes th;
+         val ((_, ths'), ctxt') = Variable.import true ths ctxt;
+-        val rules as (prems, _) :: _ = map (prep_rule (get_consumes th)) ths';
++        val rules as (prems, _) :: _ = map (prep_rule k n) ths';
+         val (ns, rls) = split_list (map #2 rules);
+       in
+         if not (forall (equal_cterms prems o #1) rules) then NONE
+@@ -445,7 +444,8 @@
+             |> Drule.implies_intr_list prems
+             |> singleton (Variable.export ctxt' ctxt)
+             |> save th
+-            |> put_consumes (SOME 0))
++            |> put_consumes (SOME k)
++            |> Exported_Premises.put k)
+       end;
+ 
+ end;

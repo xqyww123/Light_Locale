@@ -1,8 +1,9 @@
 (* Plan section 7 test 5 (external use and propagation), the inherited registration mixin that
    rewrites the key instance matched by inclusion against a Syntax_only mark (Light side): after
    interpretation I: HP c rewrites "k = e", interpretation J: LF y for y and interpretation J: HB c k,
-   definition (in HB) d succeeds with exactly one J.d and no Duplicate constant declaration.  The
-   qualified variant LF a + B: K succeeds as a control. *)
+   definition (in HB) d succeeds with exactly one J.d and no Duplicate constant declaration.  (The
+   qualified variant LF a + B: K is Test5_Inclusion_Pair_Q: here, after J, every arrival under
+   another qualifier would be pruned.) *)
 theory Test5_Mixin
   imports Test_Support
 begin
@@ -30,11 +31,5 @@ val _ = \<^assert> (facts_under \<^theory> "Test5_Mixin.J." =
 (*the guard: the inherited mixin rewrote k to e in the key instance HB c k*)
 val _ = \<^assert> (Thm.prop_of @{thm J.hz} aconv \<^prop>\<open>e + c = c + e\<close>);
 \<close>
-
-locale K = HB c k
-locale HQ = LF a + B: K for a
-interpretation Q: HQ y for y by unfold_locales simp_all
-
-ML \<open>val _ = \<^assert> (facts_under \<^theory> "Test5_Mixin.Q." = ["Test5_Mixin.Q.B.K_axioms", "Test5_Mixin.Q.HQ_axioms"])\<close>
 
 end

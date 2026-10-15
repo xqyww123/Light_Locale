@@ -1,4 +1,4 @@
-(* Plan section 7 test 6 (plan lines 4718-4719): lemma fooE' [elim?, consumes 1] in the declaration
+(* Plan section 7 test 6 (plan lines 4717-4719): lemma fooE' [elim?, consumes 1] in the declaration
    block, end, reopen, Context_Rules.declared_rule is true for LF.fooE', declare LF.fooE' [Pure.rule
    del] removes it (declared_rule false; Context_Rules never warns). *)
 theory Test6_Del_PureRule

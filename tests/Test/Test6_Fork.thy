@@ -1,4 +1,4 @@
-(* Plan section 7 test 6, the fork-shape leaf (plan lines 4294-4309): the rows whose stored shape
+(* Plan section 7 test 6, the fork-shape leaf (plan lines 4296-4311): the rows whose stored shape
    depends on whether the proof was forked.  This leaf runs twice -- in Light_Locale_Test (forked
    proofs: the result of a forked proof has every block assumption among its hyps, Goal.future_result)
    and, re-processed by the Serial_Wrapper of Light_Locale_Test_Serial, with parallel_proofs = 0

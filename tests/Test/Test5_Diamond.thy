@@ -69,13 +69,15 @@ val _ = \<^assert> (full_only \<^context> "B" \<^term>\<open>b::nat\<close>);
 \<close>
 end
 
-(* interpret I: LF 7 in a proof: syntax-only under I *)
+(* interpret I: LF 7 in a proof: syntax-only under I -- the syntax (I.ba) and the _axioms copies
+   present, the heavy theorem absent (plan lines 4092-4093) *)
 lemma True
 proof -
   interpret I: LF 7 by unfold_locales simp
   ML_val \<open>
     val _ = \<^assert> (filter (String.isPrefix "local.") (visible_fact_names \<^context>) =
       ["local.I.B_axioms", "local.I.LF_axioms"]);
+    val _ = \<^assert> (consts_named \<^context> "ba" = ["Test5_Diamond.B.ba", "local.I.ba"]);
     val _ = \<^assert> (marks_of \<^context> "B" [\<^term>\<open>7::nat\<close>] = [([\<^term>\<open>7::nat\<close>], Locale.Syntax_only, ["I.x"])]);
   \<close>
   show True ..

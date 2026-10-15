@@ -1,4 +1,4 @@
-(* Plan section 7 test 6, the declaration-block leaf (plan lines 4236-4293, 4310-4428, section 11
+(* Plan section 7 test 6, the declaration-block leaf (plan lines 4211-4295, 4311-4372, 4389-4396, section 11
    item (19)).  The same block text runs in the heavy twin D and in LF: packages (definition, fun,
    inductive with and without intro rules, datatype, typedef, abbreviation, the same-name pair bar),
    bad [elim] with no warning and the goal auto closes, the lemma rows fooP .. fa4 with their tags,
@@ -9,7 +9,7 @@
    fixture pair LFc/DFc (a header assumption fin and a block fact h), fa5 on LM/DM with the new
    variables named in "for"; the bare named form is rejected by stock's global-fact check, a declare
    row with the same loose variables goes through.  Then the reopened blocks: the lemmas and declare
-   rows of plan lines 4240-4293 and 4311-4335 against the premise-count oracle D.x and the twin's
+   rows of plan lines 4239-4295 and 4311-4338 against the premise-count oracle D.x and the twin's
    rows, the tag rows h5/h5'/h6/foo7/foo7', fr2/fr', r', trS, foo9/ip.cases/ipc, fa6/fa7, the simp
    row of milestone 1 and the theory-level negatives. *)
 theory Test6_Block
@@ -576,7 +576,7 @@ val H2 = the_single o the o Symtab.lookup heavy2;
 val LF_copy = the_single o LF_facts \<^context> and D_copy = the_single o D_facts \<^context>;
 fun one_light th = length (light_prems \<^context> th) = 1;
 
-(* the premise-count oracle of the redeclaration rows (plan line 4233), one row (name, delta, K):
+(* the premise-count oracle of the redeclaration rows (plan lines 4232-4233), one row (name, delta, K):
    the theory copy D.x of the twin's row; nprems LF.x = nprems D.x + delta, delta -1 where the row
    is stored unchanged (its exported form has the one light premise D.x gets on top of its own),
    0 where the block form carries the hyp LF S and goes the stock way (hS1, hq, hq') or the fact is

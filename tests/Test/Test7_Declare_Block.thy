@@ -65,12 +65,20 @@ context D begin
 ML_val \<open>\<^assert> (not (by_simp \<^context> \<^prop>\<open>k0 = 0\<close>))\<close>
 end
 
-declare (in LF) tsimp [simp del]
-lemma (in LF) lfsimp: "k0 = 0" by simp
-declare (in D) tsimp [simp del]
+(* the (in ...) pair on its own fact tsimp5 (tsimp is already deleted in D's record above, so it
+   could not show the heavy deletion): the positive control first, then the deletion *)
+definition k5 :: nat where "k5 = 0"
+lemma tsimp5 [simp]: "k5 = 0" by (simp add: k5_def)
+declare (in LF) tsimp5 [simp del]
+lemma (in LF) lfsimp: "k5 = 0" by simp
 ML_val \<open>
 val lthy = Named_Target.init [] (Locale.check_global \<^theory> ("D", Position.none)) \<^theory>;
-val _ = \<^assert> (not (by_simp lthy \<^prop>\<open>k0 = 0\<close>));
+val _ = \<^assert> (by_simp lthy \<^prop>\<open>k5 = 0\<close>);
+\<close>
+declare (in D) tsimp5 [simp del]
+ML_val \<open>
+val lthy = Named_Target.init [] (Locale.check_global \<^theory> ("D", Position.none)) \<^theory>;
+val _ = \<^assert> (not (by_simp lthy \<^prop>\<open>k5 = 0\<close>));
 \<close>
 
 end

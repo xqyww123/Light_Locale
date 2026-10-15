@@ -4,8 +4,8 @@ theory Test5_Merge_Mb
 begin
 
 ML \<open>
-val _ = \<^assert> (Test_Support.marks_of (Proof_Context.init_global \<^theory>) "HB" [\<^term>\<open>t\<close>] =
-  [([\<^term>\<open>t\<close>], Locale.Syntax_only, ["Q.x", "I.x"])]);
+val _ = \<^assert> (Test_Support.marks_are (Proof_Context.init_global \<^theory>) "HB" [\<^term>\<open>t\<close>]
+  [([\<^term>\<open>t\<close>], Locale.Syntax_only, ["I.x", "Q.x"])]);
 \<close>
 
 end

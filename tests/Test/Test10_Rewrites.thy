@@ -1,7 +1,9 @@
-(* Plan section 7 test 10 (sublocale from a light locale), with rewrites: inside context LF begin
-   the abbreviation b.ba and b.B_axioms are rewritten (the instance x + 1 becomes Suc x) and no
-   theorem of B is present; a reopened block agrees; after interpret ... rewrites ... in a proof the
-   theorem b.bl agrees with the heavy twin's. *)
+(* Plan section 7 test 10 (sublocale from a light locale), with rewrites (plan lines 5315-5316):
+   the edge sublocale b: B "x + 1" rewrites "x + 1 = Suc x" is declared inside LF's declaration
+   block, where it goes through light_dependency's registration for the current block; right after
+   it, in the rest of that block, the abbreviation b.ba and b.B_axioms are rewritten (the instance
+   x + 1 becomes Suc x) and no theorem of B is present; a reopened block (Locale.init) agrees; after
+   interpret ... rewrites ... in a proof the theorem b.bl agrees with the heavy twin's. *)
 theory Test10_Rewrites
   imports Test_Support
 begin
@@ -12,11 +14,6 @@ locale B = fixes u :: nat assumes bu: "u = u"
 abbreviation (in B) ba where "ba \<equiv> u + 1"
 lemma (in B) bl: "u + 0 = u" by simp
 
-light_locale LF = fixes x :: nat assumes "x = x"
-locale D = fixes x :: nat assumes "x = x"
-sublocale LF \<subseteq> b: B "x + 1" rewrites "x + 1 = Suc x" by unfold_locales simp_all
-sublocale D \<subseteq> b: B "x + 1" rewrites "x + 1 = Suc x" by unfold_locales simp_all
-
 ML \<open>
 fun check ctxt =
   let
@@ -26,9 +23,14 @@ fun check ctxt =
   in () end;
 \<close>
 
-context LF begin
+light_locale LF = fixes x :: nat assumes "x = x"
+begin
+sublocale b: B "x + 1" rewrites "x + 1 = Suc x" by unfold_locales simp_all
 ML_val \<open>check \<^context>\<close>
 end
+locale D = fixes x :: nat assumes "x = x"
+sublocale D \<subseteq> b: B "x + 1" rewrites "x + 1 = Suc x" by unfold_locales simp_all
+
 context LF begin
 ML_val \<open>check \<^context>\<close>
 lemma True

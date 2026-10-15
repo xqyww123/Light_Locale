@@ -21,9 +21,7 @@ val _ = \<^assert> (facts_under \<^theory> "Test5_Rewrites_Nonrestated.I." =
   ["Test5_Rewrites_Nonrestated.I.B_axioms", "Test5_Rewrites_Nonrestated.I.C_axioms", "Test5_Rewrites_Nonrestated.I.LF_axioms"]);
 val _ = \<^assert> (marks_of ctxt "C" [\<^term>\<open>s\<close>] = [([\<^term>\<open>s\<close>], Locale.Syntax_only, ["I.x"])]);
 val _ = \<^assert> (null (marks_of ctxt "C" [\<^term>\<open>f a\<close>]));
-val _ = \<^assert>
-  ((interpretation_cmd "I: B a" \<^theory>; false)
-    handle ERROR msg => String.isPrefix "Duplicate fact declaration" (XML.content_of (YXML.parse_body msg)));
+val _ = fails_prefix "Duplicate fact declaration" (fn () => interpretation_cmd "I: B a" \<^theory>);
 \<close>
 
 interpretation I: B a rewrites "f a = s" by unfold_locales (simp_all add: fa)

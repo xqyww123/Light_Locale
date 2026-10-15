@@ -24,7 +24,7 @@ val _ = \<^assert> (facts_under \<^theory> "Test5_Inclusion_Pair_F.I." =
    "Test5_Inclusion_Pair_F.I.LF_axioms", "Test5_Inclusion_Pair_F.I.hb"]);
 val _ = \<^assert> (Thm.prop_of @{thm I.HB_axioms} aconv Logic.varify_global \<^prop>\<open>HB x\<close>);
 val _ = \<^assert> (Thm.prop_of @{thm I.hb} aconv \<^prop>\<open>f c = f c\<close>);
-val _ = \<^assert> (marks_of ctxt "HB" [\<^term>\<open>f c\<close>] =
+val _ = \<^assert> (marks_are ctxt "HB" [\<^term>\<open>f c\<close>]
   [([\<^term>\<open>f c\<close>], Locale.Full, []), ([Var (("x", 0), \<^typ>\<open>nat\<close>)], Locale.Syntax_only, ["I.x"])]);
 \<close>
 

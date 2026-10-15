@@ -13,18 +13,16 @@ light_locale LF = T
 locale H = LF
 
 context H begin
-ML_val \<open>
-val _ = \<^assert> (can (fn () => Goal.prove \<^context> [] [] \<^prop>\<open>LF z\<close> (fn {context, ...} => safe_tac context)) ());
-\<close>
+ML_val \<open>\<^assert> (proves safe_tac \<^context> \<^prop>\<open>LF z\<close>)\<close>
 end
 
 interpretation I: H t by unfold_locales simp
 
 ML \<open>
 val ctxt = Proof_Context.init_global \<^theory>;
-val _ = \<^assert> (can (fn () => Goal.prove ctxt [] [] \<^prop>\<open>LF t\<close> (fn {context, ...} => safe_tac context)) ());
+val _ = \<^assert> (proves safe_tac ctxt \<^prop>\<open>LF t\<close>);
 (*negative control: a predicate nobody declared [intro!] is not closed by safe*)
-val _ = \<^assert> (not (can (fn () => Goal.prove ctxt [] [] \<^prop>\<open>T (t + 5)\<close> (fn {context, ...} => safe_tac context)) ()));
+val _ = \<^assert> (not (proves safe_tac ctxt \<^prop>\<open>T (t + 5)\<close>));
 \<close>
 
 end

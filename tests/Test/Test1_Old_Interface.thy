@@ -11,9 +11,8 @@ light_locale LFr = ring
 
 context ring begin
 ML_val \<open>
-fun proves tac prop = can (fn () => Goal.prove \<^context> [] [] prop (fn {context, ...} => tac context)) ();
-val _ = \<^assert> (not (proves (fn c => simp_tac c 1) \<^prop>\<open>ring R\<close>));
-val _ = \<^assert> (not (proves safe_tac \<^prop>\<open>ring R\<close>));
+val _ = \<^assert> (not (Test_Support.by_simp \<^context> \<^prop>\<open>ring R\<close>));
+val _ = \<^assert> (not (Test_Support.proves safe_tac \<^context> \<^prop>\<open>ring R\<close>));
 \<close>
 end
 

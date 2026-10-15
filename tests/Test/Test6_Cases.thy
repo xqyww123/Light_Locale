@@ -1,5 +1,5 @@
-(* Plan section 7 test 6, the Rule_Cases leaf (plan lines 4429-4463, 4472-4498, 4504-4515,
-   4554-4572; section 11 item (21)).  The same declaration block runs in the heavy twin D and in LF
+(* Plan section 7 test 6, the Rule_Cases leaf (plan lines 4432-4463, 4472-4498, 4504-4515,
+   4554-4575, and plan lines 4341-4342, 4349 for trS (b) and declare LF.ip.cases; section 11 item (21)).  The same declaration block runs in the heavy twin D and in LF
    (fun f, inductive ip / ev, the mutual evm and odm, fun fm and gm, datatypes tr and tr2, typedef
    T, trS, and a nested block with inductive ip2 and fun f2 and g2).  Every print_cases
    comparison drives "lemma goal using facts proof (method)" through Test_Support's proof_after and

@@ -1,4 +1,4 @@
-(* Plan section 7 test 6 (plan lines 4421-4427): downstream of a light block's bad4 [elim!] -- the
+(* Plan section 7 test 6 (plan lines 4424-4427): downstream of a light block's bad4 [elim!] -- the
    theory copy is a global safe elimination rule whose derived form puts the exported premise
    LF ?S second -- a goal that does not need the rule, has Rc a b among its assumptions and whose
    conclusion needs that assumption: apply safe eliminates Rc a b and leaves LF b as the first

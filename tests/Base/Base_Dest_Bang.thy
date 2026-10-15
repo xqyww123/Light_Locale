@@ -1,4 +1,4 @@
-(* Plan section 7 test 6 (plan lines 4421-4427), the fixture of the [dest!] downstream row; the
+(* Plan section 7 test 6 (plan lines 4424-4427), the fixture of the [dest!] downstream row; the
    in-block goal as in Base_Elim_Bang. *)
 theory Base_Dest_Bang
   imports Light_Locale_Base

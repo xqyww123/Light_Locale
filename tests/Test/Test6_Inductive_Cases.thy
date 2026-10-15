@@ -19,7 +19,7 @@ axiomatization where Pc_ax: "Pc x y"
 
 ML \<open>
 (*the thunk fails and its message (whatever the exception) starts with the prefix*)
-fun fails_with prefix f =
+fun fails_any_prefix prefix f =
   (case Exn.capture f () of
     Exn.Exn exn => String.isPrefix prefix (Protocol_Message.clean_output (Runtime.exn_message exn))
   | Exn.Res _ => false);
@@ -63,7 +63,7 @@ inductive_simps ipS2: "ip (Suc n)"
 ML \<open>val heavy_ind_cases_reopened = ind_cases_subgoals \<^context> "ip (Suc n)" "ip (Suc n) \<Longrightarrow> W";\<close>
 end
 ML \<open>
-val _ = \<^assert> (fails_with "Proposition not an inductive predicate"
+val _ = \<^assert> (fails_any_prefix "Proposition not an inductive predicate"
   (fn () => inductive_cases_cmd (Named_Target.theory_init \<^theory>) "ipE3h" "D.ip p (Suc n)"));
 \<close>
 
@@ -119,7 +119,7 @@ val _ = \<^assert> (ind_cases_subgoals \<^context> "LF.ip S (Suc n)" "LF.ip S (S
    unique" being its end *)
 val _ = \<^assert> ((inductive_simps_cmd \<^context> "ipS2" "LF.ip S (Suc n)"; false)
   handle ERROR msg => String.isPrefix "equations matching pattern" (Protocol_Message.clean_output msg));
-val _ = \<^assert> (fails_with "Proposition is not a function equation:" (fn () => fun_cases_cmd \<^context> "fC2" "LF.f n = m"));
+val _ = \<^assert> (fails_any_prefix "Proposition is not a function equation:" (fn () => fun_cases_cmd \<^context> "fC2" "LF.f n = m"));
 val _ = \<^assert> (not (can (Inductive.the_inductive_global \<^context>) \<^const_name>\<open>LF.ip\<close>));
 val _ = \<^assert> (code_pred_fails \<^context> "LF.ip");
 \<close>

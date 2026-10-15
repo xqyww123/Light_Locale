@@ -14,9 +14,7 @@ locale K = HB c
 locale H7 = LF a + K + HB a for a
 
 ML \<open>
-val _ = \<^assert>
-  ((interpretation_cmd "I: H7 x for x" \<^theory>; false)
-    handle ERROR msg => String.isPrefix "Duplicate fact declaration" (XML.content_of (YXML.parse_body msg)));
+val _ = fails_prefix "Duplicate fact declaration" (fn () => interpretation_cmd "I: H7 x for x" \<^theory>);
 \<close>
 
 locale H9 = LF a + B: K + HB a for a

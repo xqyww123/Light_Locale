@@ -18,6 +18,15 @@ val _ = \<^assert> (Thm.prop_of @{thm Setting.t} aconv Thm.prop_of @{thm thin_rl
 val _ = \<^assert> (Exported_Premises.count_of @{thm Setting.t} = 0);
 \<close>
 
+(* plan line 4873: the predicate-free Setting declared and has no Setting_axioms, where the gate
+   fixture's block has its LF_axioms (the control) *)
+context Setting begin
+ML_val \<open>\<^assert> (not (has_fact \<^context> "Setting_axioms"))\<close>
+end
+context LF begin
+ML_val \<open>\<^assert> (has_fact \<^context> "LF_axioms")\<close>
+end
+
 lemma v: "(a::nat) \<equiv> b \<Longrightarrow> a = b" by simp
 
 context LF begin

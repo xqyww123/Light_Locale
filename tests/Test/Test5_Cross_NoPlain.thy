@@ -16,13 +16,8 @@ interpretation I: HB x for x by unfold_locales simp_all
 ML \<open>
 val _ = \<^assert> (facts_under \<^theory> "Test5_Cross_NoPlain.I." =
   ["Test5_Cross_NoPlain.I.HB_axioms", "Test5_Cross_NoPlain.I.K_axioms", "Test5_Cross_NoPlain.I.LF_axioms"]);
-val _ = \<^assert>
-  ((Named_Target.init [] (Locale.check_global \<^theory> ("HB", Position.none)) \<^theory>
-  |> Specification.theorem_cmd true Thm.theoremK NONE (K I) (Binding.name "foo", []) [] []
-      (Element.Shows [(Binding.empty_atts, [("x + 0 = x", [])])]) false
-  |> Proof.global_terminal_proof
-      ((Method.Basic (fn ctxt => Method.SIMPLE_METHOD (ALLGOALS (simp_tac ctxt))), Position.no_range), NONE); false)
-    handle ERROR msg => String.isPrefix "Duplicate fact declaration" (XML.content_of (YXML.parse_body msg)));
+val _ = fails_prefix "Duplicate fact declaration"
+  (fn () => lemma_in "HB" (Binding.name "foo") "[]" "x + 0 = x" simp_tac \<^theory>);
 \<close>
 
 end

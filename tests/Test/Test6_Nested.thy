@@ -23,7 +23,6 @@ fun mentions c = exists_Const (fn (c', _) => c' = c);
 (*the leaf's own table for the block-layer guard group*)
 structure Thm_Data6 = Generic_Data (type T = thm list val empty = [] val merge = op @);
 fun table ctxt = Thm_Data6.get (Context.Proof ctxt);
-fun bundle_of ctxt name = Bundle.get ctxt (Bundle.check ctxt (name, Position.none));
 \<close>
 
 consts Rc :: 'a  Sc :: 'a  Pc :: 'a  Qc :: 'a

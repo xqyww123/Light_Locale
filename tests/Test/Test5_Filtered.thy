@@ -34,7 +34,7 @@ interpretation Q: K4 x for x by unfold_locales simp_all
 
 ML \<open>
 (*after step 4 the record of HB [?x, c] is still Syntax_only with effect I*)
-val _ = \<^assert> (marks_of (Proof_Context.init_global \<^theory>) "HB" xc =
+val _ = \<^assert> (marks_are (Proof_Context.init_global \<^theory>) "HB" xc
   [([Var (("x", 0), \<^typ>\<open>nat\<close>), Var (("z", 0), \<^typ>\<open>nat\<close>)], Locale.Full, []), (xc, Locale.Syntax_only, ["I.x"])]);
 val _ = \<^assert> (facts_under \<^theory> "Test5_Filtered.Q." = ["Test5_Filtered.Q.K4_axioms"]);
 val _ = \<^assert> (facts_under \<^theory> "Test5_Filtered.J." = ["Test5_Filtered.J.HB_axioms", "Test5_Filtered.J.hb", "Test5_Filtered.J.hbx"]);

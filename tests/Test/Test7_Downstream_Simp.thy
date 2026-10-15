@@ -7,7 +7,8 @@ begin
 
 ML \<open>
 val ctxt = Proof_Context.init_global \<^theory>;
-fun by_simp prop = can (fn () => Goal.prove ctxt [] [] prop (fn {context, ...} => asm_full_simp_tac context 1)) ();
+(*Test_Support.by_simp is asm_full_simp_tac: foo's condition LFds t is discharged from the goal's premise*)
+val by_simp = Test_Support.by_simp ctxt;
 val _ = \<^assert> (by_simp \<^prop>\<open>LFds t \<Longrightarrow> kd t = 0\<close>);
 val _ = \<^assert> (by_simp \<^prop>\<open>kd {n} = 0\<close>);
 val _ = \<^assert> (not (by_simp \<^prop>\<open>Dds t \<Longrightarrow> kd0 t = 0\<close>));

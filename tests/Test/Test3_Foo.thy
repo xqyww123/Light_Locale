@@ -7,9 +7,7 @@ begin
 axiomatization k :: "('a, 'b) ring_scheme \<Rightarrow> nat" and k2 :: "('a, 'b) ring_scheme \<Rightarrow> nat"
   where kS: "k R = 0" and k2S: "k2 R = 0"
 
-ML \<open>
-fun has_fact ctxt name = can (Proof_Context.get_fact ctxt) (Facts.named name);
-\<close>
+ML \<open>open Test_Support\<close>
 
 context D begin
 lemma foo: "k S = 0" by (rule kS)
@@ -38,10 +36,8 @@ end
 ML_val \<open>
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo} = 1);
 (*negative control: without the predicate fact the same goal is not closed by simp*)
-val ctxt = \<^context>;
-val _ = \<^assert> (not (can (fn () =>
-  Goal.prove ctxt ["T"] [] @{prop "k (T :: ('a, 'b) ring_scheme) + 1 = 1"}
-    (fn {context, ...} => simp_tac context 1)) ()));
+val ctxt = fix_in \<^context> [("T", \<^typ>\<open>('a, 'b) ring_scheme\<close>)];
+val _ = \<^assert> (not (by_simp ctxt @{prop "k (T :: ('a, 'b) ring_scheme) + 1 = 1"}));
 \<close>
 
 (* a block inductive: after a lemma (in LF) in the same block, "using h proof cases" no longer finds

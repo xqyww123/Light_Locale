@@ -13,9 +13,7 @@ interpretation I: LF x for x by unfold_locales simp_all
 interpretation I: K by unfold_locales simp_all
 
 ML \<open>
-val _ = \<^assert>
-  ((interpretation_cmd "I: HB x for x" \<^theory>; false)
-    handle ERROR msg => String.isPrefix "Duplicate fact declaration" (XML.content_of (YXML.parse_body msg)));
+val _ = fails_prefix "Duplicate fact declaration" (fn () => interpretation_cmd "I: HB x for x" \<^theory>);
 \<close>
 
 end

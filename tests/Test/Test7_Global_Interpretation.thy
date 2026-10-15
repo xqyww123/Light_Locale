@@ -9,7 +9,7 @@ light_locale LFx = fixes S :: "nat set" assumes fx: "finite S"
 consts c :: "nat set"
 
 ML \<open>
-fun has_fact ctxt name = can (Proof_Context.get_thms ctxt) name;
+val has_fact = Test_Support.has_fact;
 fun simps_named ctxt suffix =
   exists (fn ((n, _), _) => String.isSuffix suffix n) (Raw_Simplifier.dest_simps (simpset_of ctxt));
 fun retrieved_eq ctxt prop th =

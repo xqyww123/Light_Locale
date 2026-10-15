@@ -1,15 +1,12 @@
-(* Plan section 7 test 5 (external use and propagation): an edge added to the heavy importer after the registration: light_locale LF = T, locale H = LF, interpretation I: H t (T t syntax-only), then sublocale H <= T z -- T t becomes Full and I.tt is reachable. *)
+(* Plan section 7 test 5 (external use and propagation): an edge added to the heavy importer after
+   the registration (the fixture is Test5_Propagation_T0): locale H = LF, interpretation I: H t
+   (T t syntax-only), then sublocale H <= T z -- T t becomes Full and I.tt is reachable. *)
 theory Test5_Propagation_Edge_After
-  imports Test_Support
+  imports Test5_Propagation_T0
 begin
 
 ML \<open>open Test_Support\<close>
 
-locale T = fixes z :: nat assumes "z = z"
-lemma (in T) tt: "z + 0 = z" by simp
-abbreviation (in T) ta where "ta \<equiv> z + 1"
-consts t :: nat
-light_locale LF = T
 locale H = LF
 interpretation I: H t by unfold_locales simp
 

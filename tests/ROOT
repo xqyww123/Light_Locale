@@ -54,6 +54,13 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test5_Inclusion_Pair
     Test5_Inclusion_Pair_F
     Test5_Inclusion_Pair_Heavy
+    Test5_Inclusion_Pair_F_Heavy
+    Test5_Inclusion_Pair_Q
+    Test5_Inclusion_Pair_Q_Heavy
+    Test5_Incomparable
+    Test5_Incomparable_Heavy
+    Test5_Incomparable_H4_Heavy
+    Test5_Incomparable_F5
     Test5_Restock_H8
     Test5_Restock_H8_Heavy
     Test5_Restock_H5
@@ -64,6 +71,7 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test5_Filtered_Heavy
     Test5_Sib_M
     Test5_SibH_M
+    Test5_Mirror_T0
     Test5_Mirror_A
     Test5_Mirror_AC
     Test5_Mirror_ACB
@@ -71,6 +79,7 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test5_Mirror_B
     Test5_Mirror_BC
     Test5_Mirror_B_Heavy
+    Test5_Mirror_BC_Heavy
     Test5_H7
     Test5_H7_Heavy
     Test5_Cross_Cmd
@@ -90,15 +99,30 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test5_Merge_L2
     Test5_Merge_L3
     Test5_Backtrack
+    Test5_Backtrack_Rewrites_T0
     Test5_Backtrack_Rewrites
     Test5_Backtrack_Rewrites_Restated
     Test5_Propagation_Sublocale
+    Test5_Propagation_T0
     Test5_Propagation_Edge_After
     Test5_Propagation_Edge_Before
     Test5_Propagation_B2_Before
     Test5_Propagation_B2_After
     Test5_Propagation_X
     Test5_Safe
+    Test7_Elim_Dest
+    Test7_Elim_Dest_Heavy
+    Test7_Package_Rule
+    Test7_Bundle
+    Test7_Function_Block
+    Test7_Modifiers
+    Test7_Modifiers_Heavy
+    Test7_Iff
+    Test7_Iff_Heavy
+    Test7_Iff_Downstream
+    Test7_Niff
+    Test7_Niff_Heavy
+    Test7_Niff_Downstream
     Test6_Fork
     Test6_Block
     Test6_Nested

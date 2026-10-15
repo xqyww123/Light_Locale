@@ -18,9 +18,13 @@ val _ = \<^assert> (facts_under \<^theory> "Test5_Propagation_Sublocale.I." =
   ["Test5_Propagation_Sublocale.I.B_axioms", "Test5_Propagation_Sublocale.I.C_axioms", "Test5_Propagation_Sublocale.I.LF_axioms"]);
 \<close>
 
-class cb = fixes cx :: 'a assumes cbax: "cx = cx"
-class cc = assumes ccax: "\<forall>x::'a. x = x"
-lemma (in cc) ccl: "\<forall>x::'a. x = x" by (rule ccax)
+(* the subclass half: cc shares the parameter cx with cb through c0, so that the cc instance of the
+   subclass edge has a key ([cx]) that is not registered Full in advance (a parameter-free class
+   is registered Full by the class command itself, and the edge would be pruned before any level) *)
+class c0 = fixes cx :: 'a
+class cb = c0 + assumes cbax: "cx = cx"
+class cc = c0 + assumes ccax: "cx = cx"
+lemma (in cc) ccl: "cx = cx" by (rule ccax)
 light_locale LFc = cb
 interpretation Ic: LFc "0::nat" by unfold_locales simp
 
@@ -29,6 +33,8 @@ val _ = \<^assert> (ic = ["Test5_Propagation_Sublocale.Ic.LFc_axioms", "Test5_Pr
 
 subclass (in cb) cc by unfold_locales simp
 
-ML \<open>val _ = \<^assert> (facts_under \<^theory> "Test5_Propagation_Sublocale.Ic." = ic)\<close>
+ML \<open>val _ = \<^assert> (facts_under \<^theory> "Test5_Propagation_Sublocale.Ic." =
+  ["Test5_Propagation_Sublocale.Ic.LFc_axioms", "Test5_Propagation_Sublocale.Ic.cb_axioms",
+   "Test5_Propagation_Sublocale.Ic.cc_axioms"])\<close>
 
 end

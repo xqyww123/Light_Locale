@@ -28,7 +28,12 @@ val i_facts =
 val _ = \<^assert> (facts_under \<^theory> "Test5_Restock_H5.I." = i_facts);
 val _ = \<^assert> (Thm.prop_of @{thm I.hpl} aconv \<^prop>\<open>c + 0 = c\<close>);
 val ctxt = Proof_Context.init_global \<^theory>;
-val _ = \<^assert> (exists (fn (_, level, _) => level = Locale.Full) (marks_of ctxt "HP" [\<^term>\<open>c\<close>]));
+(*the record of HP c itself (aconv-equal, plan preface 3856-3858) is Full: the general HP [?a]
+  record also matches the query by inclusion and must not be counted*)
+val _ = \<^assert>
+  (case filter (fn (i, _, _) => eq_list (op aconv) (i, [\<^term>\<open>c\<close>])) (marks_of ctxt "HP" [\<^term>\<open>c\<close>]) of
+    [(_, level, _)] => level = Locale.Full
+  | _ => false);
 \<close>
 
 interpretation I: HP c by unfold_locales simp

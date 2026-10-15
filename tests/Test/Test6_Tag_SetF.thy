@@ -1,4 +1,4 @@
-(* Plan section 7 test 6 (plan lines 4663-4668): the stock rule of a nested assumption's predicate
+(* Plan section 7 test 6 (plan lines 4663-4667): the stock rule of a nested assumption's predicate
    comes first.  In the predicate-free SetF, inductive ipn in a nested context fixes A assumes hfin:
    "finite A" is stored as SetF.ipn.cases with K 1 (the nested assumption is its exported premise);
    in a reopened nested block of the same shape, with h: SetF.ipn n A a, "using hfin h proof (cases

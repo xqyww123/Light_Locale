@@ -19,11 +19,26 @@ sig
   val with_warnings: (unit -> 'a) -> 'a * string list
   val light_locale_cmd: string -> theory -> string * local_theory
   val locale_cmd: string -> theory -> string * local_theory
+  val light: theory -> string -> unit -> string * local_theory
+  val heavy: theory -> string -> unit -> string * local_theory
+  val fails_checked: string -> (string -> bool) -> (unit -> 'a) -> unit
+  val fails_with: string -> (unit -> 'a) -> unit
+  val fails_prefix: string -> (unit -> 'a) -> unit
+  val defined_as: string -> string -> string -> string -> string
+  val not_bound: string -> string -> string -> string
+  val loc: theory -> string -> string
+  val params: theory -> string -> (string * typ * bool) list
+  val edge: theory -> string -> string -> morphism
+  val instances: theory -> string -> string -> term list
+  val tfrees: term list -> (string * sort) list
   val extra_hyps: Proof.context -> string -> term list
   val facts_under: theory -> string -> string list
   val visible_fact_names: Proof.context -> string list
+  val has_fact: Proof.context -> string -> bool
+  val bundle_of: Proof.context -> string -> (thm list * Token.src list) list
   val consts_named: Proof.context -> string -> string list
   val marks_of: Proof.context -> string -> term list -> (term list * Locale.level * string list) list
+  val marks_are: Proof.context -> string -> term list -> (term list * Locale.level * string list) list -> bool
   val registration_prefixes: Proof.context -> string -> (string * bool) list list
   val rhs_of: Proof.context -> string -> term
   val interpretation_cmd: string -> theory -> theory
@@ -61,6 +76,7 @@ sig
   val run_goals: Proof.context -> thm list -> string -> string list -> Proof.state
   val run: Proof.context -> thm list -> string -> string -> Proof.state
   val run_apply: Proof.context -> thm list -> string -> string -> Proof.state
+  val by_method: Proof.context -> thm list -> string -> string -> bool
   val canonical_text: string -> string
   val cases_text: Proof.state -> string list
   val case_names: Proof.state -> string list
@@ -75,6 +91,10 @@ sig
   val induct_entry: (Proof.context -> 'a -> thm list) -> Proof.context -> 'a -> thm -> thm option
   val claset_entries: Proof.context -> thm -> (thm * thm * Bires.kind) list
   val claset_rule: Proof.context -> Bires.kind -> thm -> thm * thm
+  val tokens: theory -> string -> Token.T list
+  val declares: theory -> string -> string list
+  val blast_warns: Proof.context -> string -> bool * bool
+  val cla_modified: Proof.context -> string -> Proof.context
 end;
 
 structure Test_Support: TEST_SUPPORT =
@@ -98,10 +118,13 @@ fun with_warnings f =
     val result = Thread_Data.setmp buffer (SOME buf) f ();
   in (result, rev (! buf)) end;
 
+(*the proper tokens of a text, by the theory's keywords*)
+fun tokens thy text = filter Token.is_proper (Token.explode (Thy_Header.get_keywords thy) Position.none text);
+
 (*the text after the command word: "name = expression + elements"*)
 fun gen_locale_cmd add text thy =
   let
-    val toks = filter Token.is_proper (Token.explode (Thy_Header.get_keywords thy) Position.none text);
+    val toks = tokens thy text;
     val parser =
       Parse.binding --
         Scan.optional (Parse.$$$ "=" |-- Parse.!!! Parse_Spec.locale_val) ((([], []), []), []);
@@ -111,6 +134,36 @@ fun gen_locale_cmd add text thy =
 
 val light_locale_cmd = gen_locale_cmd Expression.add_light_locale_cmd;
 val locale_cmd = gen_locale_cmd Expression.add_locale_cmd;
+fun light thy text = fn () => light_locale_cmd text thy;
+fun heavy thy text = fn () => locale_cmd text thy;
+
+(*the declaration must fail with exactly this message / a message with this prefix (plan section 7
+  preface: a checker that compares the text cannot pass on an accepted declaration -- the
+  "accepted" sentinel is raised outside the handler)*)
+fun fails_checked describe check f =
+  (case (f (); NONE) handle ERROR msg => SOME (Protocol_Message.clean_output msg) of
+    NONE => error "accepted"
+  | SOME got => if check got then () else error ("got:\n" ^ got ^ "\nexpected " ^ describe));
+fun fails_with expected = fails_checked (":\n" ^ expected) (fn got => got = expected);
+fun fails_prefix expected = fails_checked ("prefix:\n" ^ expected) (String.isPrefix expected);
+
+(*the section 6 messages of the declaration shapes (test 8)*)
+fun defined_as ord y loc shown =
+  "The " ^ ord ^ " parameter `" ^ y ^ "` of locale `" ^ loc ^ "` is defined as `" ^ shown ^
+    "` and cannot be instantiated. You must write `_`.";
+fun not_bound x t loc =
+  "A light locale does not support definitions. `" ^ x ^ " \<equiv> " ^ t ^ "` from locale `" ^ loc ^
+    "` is unfolded and `" ^ x ^ "` is not bound here. Write `" ^ t ^ "` instead.";
+
+(*locales by name: the parameter table (name, type, whether the mixfix is NoSyn), the morphism of
+  the edge from parent p to l (plan line 4966) and the instances of p's parameters under it*)
+fun loc thy n = Locale.check_global thy (n, Position.none);
+fun params thy l = map (fn ((x, T), mx) => (x, T, Mixfix.equal (mx, NoSyn))) (Locale.params_of thy l);
+fun edge thy p l =
+  the (find_first (fn {source, target, ...} => source = loc thy p andalso target = loc thy l)
+    (Locale.dest_dependencies [] thy)) |> #morphism;
+fun instances thy p l = Locale.instance_of thy (loc thy p) (edge thy p l);
+fun tfrees ts = fold Term.add_tfrees ts [];
 
 
 (*the full names of the theory facts with the given prefix*)
@@ -124,6 +177,12 @@ fun visible_fact_names ctxt =
     (Proof_Context.facts_of ctxt)
   |> map #1 |> sort_strings;
 
+(*whether the fact name resolves in the context*)
+fun has_fact ctxt name = can (Proof_Context.get_fact ctxt) (Facts.named name);
+
+(*the entries of a bundle, by its name (bundle.ML: get takes the internal name check returns)*)
+fun bundle_of ctxt name = Bundle.get ctxt (Bundle.check ctxt (name, Position.none));
+
 (*the constants of the context (global and local) with the given base name*)
 fun consts_named ctxt base =
   #constants (Consts.dest (Proof_Context.consts_of ctxt))
@@ -132,6 +191,15 @@ fun consts_named ctxt base =
 (*the recorded marks matching an instance of the locale (plan section 7, preface)*)
 fun marks_of ctxt loc insts =
   Locale.matching_marks_of (Context.Proof ctxt) (Locale.check ctxt (loc, Position.none), insts);
+
+(*the recorded marks are exactly the expected ones, as a multiset: the plan fixes neither the order
+  of the records (table insertion) nor the order of an effect list (a union)*)
+fun marks_are ctxt loc insts expected =
+  let
+    fun norm recs =
+      map (fn (ts, level, effects) => (ts, level, sort_strings effects)) recs
+      |> sort (list_ord Term_Ord.term_ord o apply2 #1);
+  in norm (marks_of ctxt loc insts) = norm expected end;
 
 (*the binding prefixes of the registrations of the locale, in table order*)
 fun registration_prefixes ctxt loc =
@@ -145,7 +213,7 @@ fun rhs_of ctxt c =
 (*the text after the command word; the obligations are closed by unfold_locales and simp*)
 fun interpretation_cmd text thy =
   let
-    val toks = filter Token.is_proper (Token.explode (Thy_Header.get_keywords thy) Position.none text);
+    val toks = tokens thy text;
     val expr =
       #1 (Scan.finite Token.stopper (Parse.!!! (Parse_Spec.locale_expression --| Scan.ahead Parse.eof)) toks);
     fun meth ctxt =
@@ -160,7 +228,7 @@ fun interpretation_cmd text thy =
 
 (*"[simp, symmetric]" and the like*)
 fun parse_text p thy text =
-  let val toks = filter Token.is_proper (Token.explode (Thy_Header.get_keywords thy) Position.none text)
+  let val toks = tokens thy text
   in #1 (Scan.finite Token.stopper (Parse.!!! (p --| Scan.ahead Parse.eof)) toks) end;
 
 fun attribs_of thy text = parse_text Parse.attribs thy text;
@@ -391,6 +459,16 @@ fun run_goals ctxt facts method goals =
 fun run ctxt facts method goal = run_goals ctxt facts method [goal];
 fun run_apply ctxt facts method goal = proof_after {apply = true} ctxt facts method (Syntax.read_prop ctxt goal);
 
+(*whether `from <facts> show <goal> by <method>` succeeds: the terminal proof backtracks over the
+  method's results until one finishes (".." is by standard)*)
+fun by_method ctxt facts method goal =
+  let val (text, _) = Method.read_closure_input ctxt (Input.string method) in
+    can (fn () =>
+      Proof.theorem NONE (K I) [[(Syntax.read_prop ctxt goal, [])]] ctxt
+      |> Proof.using [[(facts, [])]]
+      |> Proof.global_terminal_proof ((text, Position.no_range), NONE)) ()
+  end;
+
 (*what print_cases prints, without markup or line layout, the schematic variables renamed by
   order of first occurrence: the heavy twin D fixes P, so its rules say ?Pa where the light ones
   say ?P*)
@@ -462,6 +540,21 @@ fun claset_entries ctxt th =
 fun claset_rule ctxt kind th =
   the_single (map_filter (fn (key, plain, k) => if k = kind then SOME (key, plain) else NONE)
     (claset_entries ctxt th));
+
+(*the warnings a light_locale declaration emits*)
+fun declares thy text = #2 (with_warnings (fn () => light_locale_cmd text thy));
+
+(*whether blast closes the goal, and whether it warned "Ignoring weak elimination rule"*)
+fun blast_warns ctxt goal =
+  let val (ok, ws) = with_warnings (fn () => by_blast ctxt (Syntax.read_prop ctxt goal))
+  in (ok, exists (String.isPrefix "Ignoring weak elimination rule") ws) end;
+
+(*the proof context after the classical modifiers intro:/elim:/dest:/del: of a method call, read
+  through the method's own argument parser (method.ML method_syntax); a modifier's effect lasts for
+  the call, so this is how a leaf reads it*)
+fun cla_modified ctxt text =
+  #2 (Token.syntax (Method.sections Classical.cla_modifiers)
+    (Token.make_src ("cla_modified", Position.none) (tokens (Proof_Context.theory_of ctxt) text)) ctxt);
 
 end;
 \<close>

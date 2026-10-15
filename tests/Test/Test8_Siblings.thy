@@ -1,42 +1,22 @@
 (* Plan section 7 test 8 (declaration shapes), the sibling-import rows: the same parameter name in
    two imports (Heavy_Def with q == f x, Heavy_Par with a plain q) in both orders against their
    heavy controls, the explicit "f x", the D20 table and parameters (H with for a b t, interpret in a
-   proof, the H0/LF2 controls), out-of-order defines (X1 + X2 through Y) and the cycle, the D20 table
-   written twice in one proof, Nat_Par and H0', the sibling position recording f q, the applied-lhs
-   defines in two spellings with eta-modulo acceptance and the stored values, the N fixture
-   (abbreviations unfolded in the check) and the UPm sibling-position rows. *)
+   proof, the H0/LF2 controls), out-of-order defines (X1 + X2 through Y) and the cyclic defines
+   (plan lines 5036 and 5080: the cycle across two imports, Yc = X1 + X2c, which stock accepts, is
+   rejected by the light declaration with the section-6 definition error, with and without a
+   same-named sibling parameter; the single-locale cycle is rejected by stock itself, recorded), the
+   D20 table written twice in one proof and the same inside LF0's block, a theory-level
+   global_interpretation after which the use warning does not appear, Nat_Par and H0', the sibling
+   position recording f q, the applied-lhs defines in two spellings with eta-modulo acceptance and
+   the stored values (the shown fourth slot prints with the (+) notation, section 11 (31)), the N
+   fixture (abbreviations unfolded in the check) and the UPm sibling-position rows; the rows where
+   the plan asks for stock's type error assert its "Type unification failed" prefix. *)
 theory Test8_Siblings
   imports Test_Support
 begin
 
 ML \<open>
 open Test_Support;
-val strip = XML.content_of o YXML.parse_body;
-(*the declaration must fail with exactly this message*)
-fun fails_with expected f =
-  ((f (); error "accepted") handle ERROR msg =>
-    if strip msg = expected then () else error ("got:\n" ^ strip msg ^ "\nexpected:\n" ^ expected));
-fun fails_prefix expected f =
-  ((f (); error "accepted") handle ERROR msg =>
-    if String.isPrefix expected (strip msg) then () else error ("got:\n" ^ strip msg));
-fun defined_as ord y loc shown =
-  "The " ^ ord ^ " parameter `" ^ y ^ "` of locale `" ^ loc ^ "` is defined as `" ^ shown ^
-    "` and cannot be instantiated. You must write `_`.";
-fun not_bound x t loc =
-  "A light locale does not support definitions. `" ^ x ^ " \<equiv> " ^ t ^ "` from locale `" ^ loc ^
-    "` is unfolded and `" ^ x ^ "` is not bound here. Write `" ^ t ^ "` instead.";
-fun light thy text = fn () => light_locale_cmd text thy;
-fun heavy thy text = fn () => locale_cmd text thy;
-fun params thy l = map (fn ((x, T), mx) => (x, T, Mixfix.equal (mx, NoSyn))) (Locale.params_of thy l);
-fun loc thy n = Locale.check_global thy (n, Position.none);
-(*the morphism of the edge from parent p to l, and the instances of p's parameters under it*)
-fun edge thy p l =
-  the (find_first (fn {source, target, ...} => source = loc thy p andalso target = loc thy l)
-    (Locale.dest_dependencies [] thy)) |> #morphism;
-fun instances thy p l = Locale.instance_of thy (loc thy p) (edge thy p l);
-fun tfrees ts = fold Term.add_tfrees ts [];
-
-fun declares thy text = #2 (with_warnings (fn () => light_locale_cmd text thy));
 \<close>
 
 consts Rq :: "nat \<Rightarrow> bool"  Pq :: "nat \<Rightarrow> bool"  Sq :: "nat \<Rightarrow> bool"
@@ -89,22 +69,33 @@ val _ = fails_with (not_bound "q" "a b" "Heavy_Def") (heavy thy "H0 = LF0 a b fo
 val _ = fails_with (not_bound "q" "f x" "Heavy_Def") (light thy "LF2 = Heavy_Def + M2 q");
 \<close>
 
-(* out-of-order defines through Y; the cycle *)
+(* out-of-order defines through Y; the cyclic defines *)
 locale X1 = fixes f :: "nat \<Rightarrow> nat" and a b :: nat defines "a \<equiv> f b"
 locale X2 = fixes g :: "nat \<Rightarrow> nat" and b c :: nat defines "b \<equiv> g c"
 locale Y = X1 + X2
 light_locale LFY = Y
 light_locale LFX = X1 + X2
+locale X2c = fixes g :: "nat \<Rightarrow> nat" and b a :: nat defines "b \<equiv> g a"
+locale Yc = X1 + X2c
+locale Pb0 = fixes b :: nat
 ML \<open>
 val thy = \<^theory>;
 val _ = \<^assert> (nth (instances thy "Y" (loc thy "LFY")) 1 aconv \<^term>\<open>(f :: nat \<Rightarrow> nat) ((g :: nat \<Rightarrow> nat) c)\<close>);
 (*the control without Y: a's instance is f b, b being the shared parameter name*)
 val _ = \<^assert> (nth (instances thy "X1" (loc thy "LFX")) 1 aconv \<^term>\<open>(f :: nat \<Rightarrow> nat) (b :: nat)\<close>);
-(*the cyclic defines are rejected by stock itself (a THM exception in the heavy declaration)*)
-val _ = \<^assert> (not (can (heavy thy "Xc = fixes f g :: \"nat \<Rightarrow> nat\" and a b :: nat defines \"a \<equiv> f b\" and \"b \<equiv> g a\"") ()));
+(*the cycle across the two imports: stock accepts Yc (two definitions), the light declaration
+  reports the section-6 definition error, also with the same-named sibling parameter of Pb0*)
+val _ = \<^assert> (length (#2 (Locale.specification_of thy (loc thy "Yc"))) = 2);
+val _ = fails_prefix "A light locale does not support definitions. `" (light thy "LFc = Yc");
+val _ = fails_prefix "A light locale does not support definitions. `" (light thy "LFc' = Yc + Pb0");
+(*recorded (section 11 (31)): the single-locale cycle is rejected by stock itself, with a THM
+  exception from the notes export*)
+val _ = \<^assert> ((heavy thy "Xc = fixes f g :: \"nat \<Rightarrow> nat\" and a b :: nat defines \"a \<equiv> f b\" and \"b \<equiv> g a\"" (); false)
+  handle THM _ => true);
 \<close>
 
-(* the D20 table written twice in one proof; two instances in one header *)
+(* the D20 table written twice in one proof; the same inside LF0's block; two instances in one
+   header *)
 lemma True
 proof -
   interpret I: LF0 h 5 by unfold_locales (rule Rq_ax)
@@ -113,6 +104,16 @@ proof -
     ["The parameter `q` from locale `Heavy_Def` is not bound any more and treated as a fresh variable here."])\<close>
   show True ..
 qed
+context LF0 begin
+lemma True
+proof -
+  interpret I: LF0 h 5 by unfold_locales (rule Rq_ax)
+  interpret J: LF0 h 7 by unfold_locales (rule Rq_ax)
+  ML_val \<open>\<^assert> (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q")) =
+    ["The parameter `q` from locale `Heavy_Def` is not bound any more and treated as a fresh variable here."])\<close>
+  show True ..
+qed
+end
 light_locale LF2i = A: LF0 s u + B: LF0 t v for s t u v
 
 (* Nat_Par, H0', and the sibling position recording f q *)
@@ -126,6 +127,9 @@ light_locale LFsib = Heavy_Par + Heavy_Def _ q
 ML \<open>
 val thy = \<^theory>;
 val _ = \<^assert> (List.last (instances thy "Heavy_Def" (loc thy "LFsib")) aconv \<^term>\<open>(f :: nat \<Rightarrow> nat) (q :: nat)\<close>);
+(*stock rejects the same-parent heavy twin: the missing position becomes Heavy_Par's q and the
+  defines reads q == f q (primitive_defs.ML:69-70), so there is no twin to project*)
+val _ = fails_prefix "Entity to be defined occurs on rhs" (heavy thy "Hsib = Heavy_Par + Heavy_Def _ q");
 \<close>
 
 (* applied-lhs defines *)
@@ -145,7 +149,8 @@ val _ = \<^assert> (instances thy "AL" (loc thy "LAL1") = instances thy "AL" (lo
 val _ = \<^assert> (List.last (instances thy "AL2" (loc thy "LA2")) aconv \<^term>\<open>\<lambda>a b. plus ((wrap :: nat \<Rightarrow> nat) a) b\<close>);
 val _ = \<^assert> (List.last (instances thy "AL2" (loc thy "LA2e")) aconv \<^term>\<open>\<lambda>a. plus ((wrap :: nat \<Rightarrow> nat) a)\<close>);
 val _ = \<^assert> (List.last (instances thy "AL2" (loc thy "LA2f")) aconv \<^term>\<open>\<lambda>a b. plus ((wrap :: nat \<Rightarrow> nat) a) b\<close>);
-(*the shown term is the eta-contracted form, printed with the (+) notation of plus*)
+(*the shown term is the eta-contracted form, printed with the (+) notation of plus (plan line 5042
+  writes plus; the same term, section 11 (31))*)
 val _ = fails_with (defined_as "2nd" "add" "AL2" "\<lambda>a. (+) (wrap a)") (light thy "LX = AL2 wrap \"\<lambda>a b. plus (wrap b) a\" for wrap");
 \<close>
 locale ALp = fixes g :: "'a \<Rightarrow> nat \<Rightarrow> nat" and x :: nat and y :: "'a \<Rightarrow> nat" defines "y a \<equiv> g a x"
@@ -153,8 +158,7 @@ light_locale LALp = ALp where y = "\<lambda>(a::'a). g a x"
 locale ALb = fixes g :: "bool \<Rightarrow> 'b" and x :: nat and y :: "bool \<Rightarrow> 'b" defines "y a \<equiv> g a"
 ML \<open>
 val thy = \<^theory>;
-val _ = ((light thy "LX = ALb where y = \"\<lambda>(a::nat). g a\"" (); error "accepted")
-  handle ERROR m => \<^assert> (not (String.isPrefix "The " (strip m))));
+val _ = fails_prefix "Type unification failed" (light thy "LX = ALb where y = \"\<lambda>(a::nat). g a\"");
 \<close>
 
 (* abbreviations are unfolded in the check: the N fixture; sibling positions with syntax: UPm *)
@@ -169,8 +173,12 @@ light_locale LU3 = UPm "{x. case x of 0 \<Rightarrow> True | _ \<Rightarrow> Fal
 ML \<open>
 val thy = \<^theory>;
 val _ = fails_with (defined_as "1st" "N" "NL" "{x. x \<noteq> 0}") (light thy "LX = NL \"{x. x \<noteq> 1}\"");
-val _ = ((light thy "LX = NL \"{x. x}\"" (); error "accepted") handle ERROR m => \<^assert> (not (String.isPrefix "The " (strip m))));
+val _ = fails_prefix "Type unification failed" (light thy "LX = NL \"{x. x}\"");
 val _ = fails_with (defined_as "2nd" "B" "UPm" "fs {x. x \<noteq> 0}") (light thy "LX = UPm \"{x. x \<noteq> 0}\" \"fs {x. x = 0}\"");
 \<close>
+
+(* a theory-level global_interpretation: no use warning afterwards (plan line 5005) *)
+global_interpretation G: LF0 Suc 5 by unfold_locales (rule Rq_ax)
+ML \<open>\<^assert> (null (#2 (with_warnings (fn () => Syntax.read_term (Proof_Context.init_global \<^theory>) "Sq q"))))\<close>
 
 end

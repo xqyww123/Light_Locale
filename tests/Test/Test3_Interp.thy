@@ -24,7 +24,7 @@ interpretation I: LF t by (simp add: LF_def UP_cring_def t)
 interpretation J: D "UP t" t by (rule D.intro) (simp add: UP_cring_def t)
 
 ML_val \<open>
-fun has_fact name = can (Proof_Context.get_fact \<^context>) (Facts.named name);
+val has_fact = Test_Support.has_fact \<^context>;
 val _ = \<^assert> (has_fact "I.LF_axioms");
 val _ = \<^assert> (not (exists has_fact ["I.foo", "I.R.m_comm", "I.R.is_cring"]));
 val _ = \<^assert> (forall has_fact ["J.foo", "J.R.m_comm", "J.R.is_cring"]);

@@ -1,4 +1,4 @@
-(* Plan section 7 test 6 (plan lines 4421-4427): the [dest!] twin of Test6_Elim_Bang. *)
+(* Plan section 7 test 6 (plan lines 4424-4427): the [dest!] twin of Test6_Elim_Bang. *)
 theory Test6_Dest_Bang
   imports Test_Support "Light_Locale_Base.Base_Dest_Bang"
 begin

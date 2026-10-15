@@ -4,8 +4,8 @@
    ends; ring_axioms carries neither [simp] nor [intro] (simp and safe do not close ring R in
    context ring); the mutual-recursion regression on a local copy of HOL/Induct/Common_Patterns'
    Evn/Odd fixture, asserted against the stock values measured on the stock copy 2026-10-13;
-   context monoid rows (a bare \<otimes> lemma, a nested context assumes with the heavy parameter name), a
-   class without (structure), and the vector_space block with sublocale module scale rewrites. *)
+   context monoid rows (a bare \<otimes> lemma, a nested context assumes with the heavy parameter name) and
+   a class without (structure).  The vector_space block is covered by the HOL build itself (below). *)
 theory Test1_Identity
   imports Test_Support
     "HOL-Algebra.Galois_Connection" "HOL-Algebra.FiniteProduct" "HOL-Algebra.Sylow"
@@ -24,7 +24,9 @@ val _ = \<^assert> (exists (String.isPrefix "UnivPoly." o #1) facts);
 val prems = maps (fn (_, ths) => maps Thm.prems_of ths) facts;
 val _ = \<^assert> (length prems > 1000);
 val _ = \<^assert> (not (exists (Light_Locale_Axiom_Facts.is_light_prop ctxt) prems));
-val _ = \<^assert> (null (Light_Locale_Axiom_Facts.retrieve ctxt \<^prop>\<open>cring R\<close>));
+(*the predicate fact table is empty: a schematic query lists the whole table (a query led by a heavy
+  head constant could only come back empty because of its key, plan line 4787)*)
+val _ = \<^assert> (null (Light_Locale_Axiom_Facts.retrieve ctxt (Var (("P", 0), propT))));
 val deps = Locale.dest_dependencies [] thy;
 val _ = \<^assert> (length deps > 100);
 val _ = \<^assert> (forall (fn {source, target, ...} => not (Locale.is_light thy source) andalso not (Locale.is_light thy target)) deps);
@@ -32,9 +34,8 @@ val _ = \<^assert> (forall (fn {source, target, ...} => not (Locale.is_light thy
 
 context ring begin
 ML_val \<open>
-fun proves tac prop = can (fn () => Goal.prove \<^context> [] [] prop (fn {context, ...} => tac context)) ();
-val _ = \<^assert> (not (proves (fn c => simp_tac c 1) \<^prop>\<open>ring R\<close>));
-val _ = \<^assert> (not (proves safe_tac \<^prop>\<open>ring R\<close>));
+val _ = \<^assert> (not (Test_Support.by_simp \<^context> \<^prop>\<open>ring R\<close>));
+val _ = \<^assert> (not (Test_Support.proves safe_tac \<^context> \<^prop>\<open>ring R\<close>));
 \<close>
 end
 
@@ -75,8 +76,11 @@ val _ = \<^assert> (can (Proof_Context.get_thm (Proof_Context.init_global \<^the
 val _ = \<^assert> (not (Locale.is_light \<^theory> (Locale.check_global \<^theory> ("C2", Position.none))));
 \<close>
 
-(* the vector_space block with sublocale Modules.module scale rewrites "module_hom = linear" is not
-   repeated here: after Real_Vector_Spaces is loaded, `linear` resolves to the global constant and
-   stock itself cannot re-run that rewrites clause (a stock limitation, noted in the handoff) *)
+(* the vector_space block with sublocale Modules.module scale rewrites "module_hom = linear" (plan
+   lines 3950, 3954 and 3977-3979) is HOL's own Vector_Spaces.thy:66-73: the HOL build processes it under this tree's
+   Pure (:886 `rule vs1.linear_id` trips if the rewrite is lost), heavy `sublocale ... rewrites`
+   statements are pinned by hol_algebra_facts.golden (Ring.thy:121-137) and by Test10_Rewrites; it
+   cannot be repeated here, because after Real_Vector_Spaces `linear` resolves to the global constant
+   and stock itself cannot re-run that rewrites clause (section 11 (31)) *)
 
 end

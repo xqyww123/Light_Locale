@@ -16,11 +16,13 @@ codatatype strd = SConsD nat strd
 end
 
 ML \<open>
+(*the type names are compile-checked antiquotations: a misspelt name would make has_instance
+  false for the wrong reason*)
 fun has_equal tyco = Sorts.has_instance (Sign.classes_of \<^theory>) tyco [\<^class>\<open>equal\<close>];
-val _ = \<^assert> (not (has_equal "Test7_Datatype_Block.LF.tr"));
-val _ = \<^assert> (not (has_equal "Test7_Datatype_Block.LF.str"));
-val _ = \<^assert> (not (has_equal "Test7_Datatype_Block.D.trd"));
-val _ = \<^assert> (not (has_equal "Test7_Datatype_Block.D.strd"));
+val _ = \<^assert> (not (has_equal \<^type_name>\<open>LF.tr\<close>));
+val _ = \<^assert> (not (has_equal \<^type_name>\<open>LF.str\<close>));
+val _ = \<^assert> (not (has_equal \<^type_name>\<open>D.trd\<close>));
+val _ = \<^assert> (not (has_equal \<^type_name>\<open>D.strd\<close>));
 \<close>
 
 light_locale LFt = fixes S :: "nat set" assumes "finite S"

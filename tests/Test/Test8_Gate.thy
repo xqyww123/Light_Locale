@@ -11,34 +11,9 @@ begin
 
 ML \<open>
 open Test_Support;
-val strip = XML.content_of o YXML.parse_body;
-(*the declaration must fail with exactly this message*)
-fun fails_with expected f =
-  ((f (); error "accepted") handle ERROR msg =>
-    if strip msg = expected then () else error ("got:\n" ^ strip msg ^ "\nexpected:\n" ^ expected));
-fun fails_prefix expected f =
-  ((f (); error "accepted") handle ERROR msg =>
-    if String.isPrefix expected (strip msg) then () else error ("got:\n" ^ strip msg));
-fun defined_as ord y loc shown =
-  "The " ^ ord ^ " parameter `" ^ y ^ "` of locale `" ^ loc ^ "` is defined as `" ^ shown ^
-    "` and cannot be instantiated. You must write `_`.";
-fun not_bound x t loc =
-  "A light locale does not support definitions. `" ^ x ^ " \<equiv> " ^ t ^ "` from locale `" ^ loc ^
-    "` is unfolded and `" ^ x ^ "` is not bound here. Write `" ^ t ^ "` instead.";
-fun light thy text = fn () => light_locale_cmd text thy;
-fun heavy thy text = fn () => locale_cmd text thy;
-fun params thy l = map (fn ((x, T), mx) => (x, T, Mixfix.equal (mx, NoSyn))) (Locale.params_of thy l);
-fun loc thy n = Locale.check_global thy (n, Position.none);
-(*the morphism of the edge from parent p to l, and the instances of p's parameters under it*)
-fun edge thy p l =
-  the (find_first (fn {source, target, ...} => source = loc thy p andalso target = loc thy l)
-    (Locale.dest_dependencies [] thy)) |> #morphism;
-fun instances thy p l = Locale.instance_of thy (loc thy p) (edge thy p l);
-fun tfrees ts = fold Term.add_tfrees ts [];
 
 val use_warning = "The parameter `P` from locale `UP_cring` is not bound any more and treated as a fresh variable here.";
 val decl_warning = "The following definitions from `UP_cring` are unfolded.\n  P \<equiv> UP S";
-fun declares thy text = #2 (with_warnings (fn () => light_locale_cmd text thy));
 \<close>
 
 (* the eliminated name written again in the for clause: P is a fresh parameter, last *)
@@ -47,9 +22,11 @@ ML \<open>
 val thy = \<^theory>;
 val ps = Locale.params_of thy (loc thy "LFP");
 val _ = \<^assert> (map (#1 o #1) ps = ["S", "P"]);
-val _ = \<^assert> (null (#2 (Locale.specification_of thy (loc thy "LFP"))));
-val _ = \<^assert> (not (exists (fn Element.Assumes asms => exists (fn (_, ps) => exists (fn (t, _) => Term.exists_subterm (fn Free ("P", _) => true | _ => false) t) ps) asms | _ => false)
-  (Locale.hyp_spec_of thy (loc thy "LFP"))));
+(*P is not in the assumptions (own and inherited: the predicate statement, plan line 5018) and
+  nothing is defined*)
+val (asm, defs) = Locale.specification_of thy (loc thy "LFP");
+val _ = \<^assert> (null defs);
+val _ = \<^assert> (not (member (op =) (map #1 (Term.add_frees (the asm) [])) "P"));
 val _ = \<^assert> (sort_strings (declares thy "LFP1 = UP_cring S for S and P") = [decl_warning, use_warning]);
 val _ = \<^assert> (sort_strings (declares thy "LFP2 = UP_cring S \"UP S\" for S and P") = [decl_warning, use_warning]);
 val _ = \<^assert> (sort_strings (declares thy "LFP3 = UP_cring where P = _ for P") =
@@ -57,8 +34,11 @@ val _ = \<^assert> (sort_strings (declares thy "LFP3 = UP_cring where P = _ for 
 val _ = \<^assert> (sort_strings (declares thy "LFP4 = UP_cring where R = S and P = \"UP S\" for S and P") = [decl_warning, use_warning]);
 val _ = fails_with (defined_as "2nd" "P" "UP_cring" "UP R") (light thy "LX = UP_cring where P = \"UP S\" for S and P");
 (*the gate fixture itself: no use warning, the declaration warning with its last sentence*)
-val _ = \<^assert> (declares thy "LFe = UP_cring S for S" =
-  [decl_warning ^ "\nThe names `P` are not bound and shouldn't be used any more. Write their unfolded terms instead."]);
+val lfe_warning = decl_warning ^ "\nThe names `P` are not bound and shouldn't be used any more. Write their unfolded terms instead.";
+val _ = \<^assert> (declares thy "LFe = UP_cring S for S" = [lfe_warning]);
+(*the third layout (plan line 5004): two UP_cring instances in one header, one unfolded term each,
+  the last sentence naming P once -- the same text as for LFe*)
+val _ = \<^assert> (declares thy "LF2i = A: UP_cring S + B: UP_cring T for S T" = [lfe_warning]);
 \<close>
 
 light_locale LFe = UP_cring S for S
@@ -114,6 +94,11 @@ local_setup \<open>fn lthy =>
     val _ = \<^assert> (w2 = [use_warning]);
   in lthy2 end\<close>
 end
+(*the same statement through lemma (in LF) (plan line 5004)*)
+ML \<open>
+val _ = \<^assert> (#2 (with_warnings (fn () =>
+  lemma_in "LF" (Binding.name "u3") "[]" "coeff P f n = coeff P f n" (fn c => resolve_tac c @{thms refl}) \<^theory>)) = [use_warning]);
+\<close>
 
 (* the header guard on the test-internal Pdef *)
 consts pint :: "nat \<Rightarrow> nat set"  Q :: "nat set \<Rightarrow> bool"
@@ -123,27 +108,30 @@ light_locale LFP' = Pdef
 ML \<open>
 val thy = \<^theory>;
 val guard = not_bound "Zp" "pint p" "Pdef";
-val _ = fails_with guard (light thy "LX = Pdef + assumes ax: \"Q Zp\"");
-val _ = fails_with guard (light thy "LX = Pdef + M2 Zp");
+(*the warnings a declaration emits before it fails with the guard error*)
+fun guard_warnings f = #2 (with_warnings (fn () => fails_with guard f));
+(*the rows whose eliminated name comes from their own header (plan line 5013): no warning*)
+val _ = \<^assert> (null (guard_warnings (light thy "LX = Pdef + assumes ax: \"Q Zp\"")));
+val _ = \<^assert> (null (guard_warnings (light thy "LX = Pdef + M2 Zp")));
 (*the rows whose eliminated name comes from a light ancestor (LFP'): the D20 use warning, verbatim,
   at least once before the header error; the count is recorded in plan section 11 (30), not asserted*)
 val use_warning_zp = "The parameter `Zp` from locale `Pdef` is not bound any more and treated as a fresh variable here.";
-fun light_ancestor_row f =
-  let val ((), ws) = with_warnings (fn () => fails_with guard f)
-  in \<^assert> (member (op =) ws use_warning_zp) end;
-val _ = light_ancestor_row (light thy "LX = LFP' + assumes ax: \"Q Zp\"");
-val _ = light_ancestor_row (heavy thy "HX = LFP' + assumes ax: \"Q Zp\"");
-val _ = light_ancestor_row (heavy thy "HX = LFP' + M2 Zp");
-(*the own-header rows emit no warning before the error*)
-val _ = \<^assert> (null (#2 (with_warnings (fn () => (light thy "LX = Pdef + assumes ax: \"Q Zp\"" (); ()) handle ERROR _ => ()))));
+val _ = \<^assert> (member (op =) (guard_warnings (light thy "LX = LFP' + assumes ax: \"Q Zp\"")) use_warning_zp);
+val _ = \<^assert> (member (op =) (guard_warnings (heavy thy "HX = LFP' + assumes ax: \"Q Zp\"")) use_warning_zp);
+val _ = \<^assert> (member (op =) (guard_warnings (heavy thy "HX = LFP' + M2 Zp")) use_warning_zp);
 (*positive and negative controls*)
 val _ = \<^assert> (can (light thy "LY1 = Pdef + assumes ax: \"Q (pint p)\"") ());
 val _ = \<^assert> (can (light thy "LY2 = Pdef + assumes ax: \"\<And>Zp. Q Zp\"") ());
 \<close>
+(*the two-hop variant (plan line 5010): the printed value is the one transformed by the morphism*)
+light_locale LFPq = LFP' q for q
+ML \<open>
+val _ = fails_with (not_bound "Zp" "pint q" "Pdef") (heavy \<^theory> "HX2 = LFPq + assumes ax: \"Q Zp\"");
+\<close>
 context LFP' begin
 ML_val \<open>
-val _ = light_ancestor_row (fn () =>
-  Target_Context.context_begin_nested_cmd [] [Element.Assumes [((Binding.name "hy", []), [("Q Zp", [])])]] (Context.Proof \<^context>));
+val _ = \<^assert> (member (op =) (guard_warnings (fn () =>
+  Target_Context.context_begin_nested_cmd [] [Element.Assumes [((Binding.name "hy", []), [("Q Zp", [])])]] (Context.Proof \<^context>))) use_warning_zp);
 val _ = \<^assert> (can (Target_Context.context_begin_nested_cmd [] [Element.Fixes [(Binding.name "Zp", NONE, NoSyn)], Element.Assumes [((Binding.name "hy", []), [("Q Zp", [])])]]) (Context.Proof \<^context>));
 \<close>
 end

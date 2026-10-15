@@ -6,8 +6,8 @@ theory Test5_Merge_M21
 begin
 
 ML \<open>
-val regs = Locale.registrations_of (Context.Theory \<^theory>) (Locale.check_global \<^theory> ("HB", Position.none));
-val _ = \<^assert> (map (fn (_, m) => Binding.long_name_of (Morphism.binding m (Binding.name "x"))) regs = ["Q.x"]);
+(*exactly one registration, the full branch's qualifier Q (mandatory)*)
+val _ = \<^assert> (Test_Support.registration_prefixes (Proof_Context.init_global \<^theory>) "HB" = [[("Q", true)]]);
 val _ = \<^assert> (Test_Support.marks_of (Proof_Context.init_global \<^theory>) "HB" [\<^term>\<open>t\<close>] = [([\<^term>\<open>t\<close>], Locale.Full, [])]);
 val _ = \<^assert> (Thm.prop_of @{thm Q.hb} aconv \<^prop>\<open>t = t\<close>);
 \<close>

@@ -39,15 +39,21 @@ fun lines show_facts loc =
 val _ = \<^assert> (hd (lines false lf) = "light_locale LF" andalso hd (lines false d) = "locale D");
 val _ = \<^assert> (tl (lines false lf) = map (space_implode "LF" o space_explode "D") (tl (lines false d)));
 
-(*the fact names print_locale! shows: the quoted name on the line after each "notes"*)
+(*the fact names print_locale! shows: after each "notes" token (and a kind word, if any) the next
+  token -- on the same line or, when the line ends there, first on the next line -- is the quoted
+  name; an unquoted token there means an unnamed note (element.ML:197-198)*)
 fun printed_fact_names loc =
   let
-    val ls = map (String.concat o space_explode " ") (lines true loc);
-    fun quoted line =
-      (case raw_explode line of
-        "\"" :: cs => implode (take_prefix (fn c => c <> "\"") cs)
-      | _ => error ("printed_fact_names: " ^ line));
-  in map (quoted o #2) (filter (fn (l, _) => l = "notes") (ls ~~ tl (ls @ [""]))) end;
+    val toks = map (filter (fn s => s <> "") o space_explode " ") (lines true loc);
+    fun quoted tok =
+      (case raw_explode tok of
+        "\"" :: cs => SOME (implode (take_prefix (fn c => c <> "\"") cs))
+      | _ => NONE);
+    fun name_of ("notes" :: rest, next) =
+          let val rest' = (case rest of k :: r => if is_some (quoted k) then rest else r | [] => [])
+          in (case rest' @ next of tok :: _ => quoted tok | [] => NONE) end
+      | name_of _ = NONE;
+  in map_filter name_of (toks ~~ map (take 1) (tl (toks @ [[]]))) end;
 val lf_printed_facts = printed_fact_names lf;
 val _ = \<^assert> (lf_printed_facts = ["HB_axioms", "LF_axioms"]);
 \<close>
@@ -95,14 +101,12 @@ context LF begin
 ML_val \<open>
 val ctxt = \<^context>;
 val _ = \<^assert> (not (T2_Flag.get (Context.Proof ctxt)));
-fun has_fact name = can (Proof_Context.get_fact ctxt) (Facts.named name);
-val _ = \<^assert> (not (has_fact "ax"));
-val _ = \<^assert> (has_fact "LF_axioms" andalso has_fact "LF.ax");
+(*the short name ax is undefined here (plan lines 4018-4019 give the message), LF.ax resolves*)
+val _ = Test_Support.fails_prefix "Undefined fact" (fn () => Proof_Context.get_fact ctxt (Facts.named "ax"));
+val _ = \<^assert> (Test_Support.has_fact ctxt "LF_axioms" andalso Test_Support.has_fact ctxt "LF.ax");
 (*the fact names here equal those print_locale! LF shows*)
 val _ = \<^assert>
-  (map (Long_Name.base_name o #1)
-    (Facts.dest_static false [Global_Theory.facts_of (Proof_Context.theory_of ctxt)]
-      (Proof_Context.facts_of ctxt)) |> sort_strings |> equal lf_printed_facts);
+  (map Long_Name.base_name (Test_Support.visible_fact_names ctxt) |> sort_strings |> equal lf_printed_facts);
 \<close>
 end
 
@@ -112,10 +116,14 @@ begin
 ML_val \<open>\<^assert> (not (can (Proof_Context.get_fact \<^context>) (Facts.named "ax")))\<close>
 end
 
-(* header elements cannot refer to the light parent's head assumption by the short name *)
+(* header elements cannot refer to the light parent's head assumption by the short name (plan line
+   4016): a light header accepts no notes, so its element is an assumes whose attribute names the
+   fact (the shape of the decision-10 pair below); the heavy header's element is a notes *)
 ML \<open>
-val _ = \<^assert> (not (can (Test_Support.light_locale_cmd "LF3 = LF + notes h = ax") thy));
-val _ = \<^assert> (not (can (Test_Support.locale_cmd "H3 = LF + notes h = ax") thy));
+fun lf3 n = "LF3 = LF + fixes c :: nat assumes h [simplified " ^ n ^ "]: \"c = b\"";
+val _ = Test_Support.fails_prefix "Undefined fact" (Test_Support.light thy (lf3 "ax"));
+val _ = \<^assert> (can (Test_Support.light_locale_cmd (lf3 "LF.ax")) thy);
+val _ = Test_Support.fails_prefix "Undefined fact" (Test_Support.heavy thy "H3 = LF + notes h = ax");
 val _ = \<^assert> (can (Test_Support.locale_cmd "H3 = LF + notes h = LF.ax") thy);
 \<close>
 
@@ -125,11 +133,8 @@ val _ = \<^assert> (can (Test_Support.locale_cmd "H3 = LF + notes h = LF.ax") th
 locale H10 = HB + fixes b :: nat assumes ax [simplified hthm]: "b = a"
 
 ML \<open>
-val _ =
-  (Test_Support.light_locale_cmd "LF10 = HB + fixes b :: nat assumes ax [simplified hthm]: \"b = a\"" thy;
-   error "LF10 accepted")
-  handle ERROR msg =>
-    \<^assert> (XML.content_of (YXML.parse_body msg) = "Undefined fact: \"hthm\"");
+val _ = Test_Support.fails_with "Undefined fact: \"hthm\""
+  (Test_Support.light thy "LF10 = HB + fixes b :: nat assumes ax [simplified hthm]: \"b = a\"");
 \<close>
 
 (* part (b): a heavy fixture with defines; the light twin eliminates the defined position y *)

@@ -1,15 +1,12 @@
-(* Plan section 7 test 5 (external use and propagation): sublocale LF <= B2 s and an interpretation of LF, the edge before the interpretation: both orders give the same result -- B2 (t + 1) syntax-only under J, no theorem of B2 under J. *)
+(* Plan section 7 test 5 (external use and propagation): sublocale LF <= B2 s and an interpretation
+   of LF, the edge before the interpretation (the fixture is Test5_Propagation_T0): both orders
+   give the same result -- B2 (t + 1) syntax-only under J, no theorem of B2 under J. *)
 theory Test5_Propagation_B2_Before
-  imports Test_Support
+  imports Test5_Propagation_T0
 begin
 
 ML \<open>open Test_Support\<close>
 
-locale T = fixes z :: nat assumes "z = z"
-lemma (in T) tt: "z + 0 = z" by simp
-abbreviation (in T) ta where "ta \<equiv> z + 1"
-consts t :: nat
-light_locale LF = T
 locale H = LF
 
 locale B2 = fixes w :: nat assumes "w = w"

@@ -1,40 +1,15 @@
 (* Plan section 7 test 8 (declaration shapes): the beta-normal-form rows LB/LB'/LBy, the batch-mode
-   annotation row LZy on Hz, the joint per-position check fixture Two (LT1/LT3), the specialised
+   annotation rows LZ/LZy on Hz, the joint per-position check fixture Two (LT1/LT3), the specialised
    annotation LP against the twin LPh over the defines-free parent Parent0 (LPh0 fails with "Bad
    arguments on lhs"), the Fin/LFn rows, the LK/LK2/LK3/LK3h/LK3d/LKe rows read through
-   Locale.dest_dependencies and Locale.instance_of, the conflict row LC, the defines/notes rows and
-   the D20 declaration warning in its single-source and two-source layouts. *)
+   Locale.dest_dependencies and Locale.instance_of, the conflict row LC (stock's type error), the
+   four defines/notes rows with the section-6 texts verbatim, and the D20 declaration warning in
+   its single-source and two-source layouts. *)
 theory Test8_Eliminated
   imports Test_Support
 begin
 
-ML \<open>
-open Test_Support;
-val strip = XML.content_of o YXML.parse_body;
-(*the declaration must fail with exactly this message*)
-fun fails_with expected f =
-  ((f (); error "accepted") handle ERROR msg =>
-    if strip msg = expected then () else error ("got:\n" ^ strip msg ^ "\nexpected:\n" ^ expected));
-fun fails_prefix expected f =
-  ((f (); error "accepted") handle ERROR msg =>
-    if String.isPrefix expected (strip msg) then () else error ("got:\n" ^ strip msg));
-fun defined_as ord y loc shown =
-  "The " ^ ord ^ " parameter `" ^ y ^ "` of locale `" ^ loc ^ "` is defined as `" ^ shown ^
-    "` and cannot be instantiated. You must write `_`.";
-fun not_bound x t loc =
-  "A light locale does not support definitions. `" ^ x ^ " \<equiv> " ^ t ^ "` from locale `" ^ loc ^
-    "` is unfolded and `" ^ x ^ "` is not bound here. Write `" ^ t ^ "` instead.";
-fun light thy text = fn () => light_locale_cmd text thy;
-fun heavy thy text = fn () => locale_cmd text thy;
-fun params thy l = map (fn ((x, T), mx) => (x, T, Mixfix.equal (mx, NoSyn))) (Locale.params_of thy l);
-fun loc thy n = Locale.check_global thy (n, Position.none);
-(*the morphism of the edge from parent p to l, and the instances of p's parameters under it*)
-fun edge thy p l =
-  the (find_first (fn {source, target, ...} => source = loc thy p andalso target = loc thy l)
-    (Locale.dest_dependencies [] thy)) |> #morphism;
-fun instances thy p l = Locale.instance_of thy (loc thy p) (edge thy p l);
-fun tfrees ts = fold Term.add_tfrees ts [];
-\<close>
+ML \<open>open Test_Support\<close>
 
 locale Parent = fixes g :: "'a \<Rightarrow> 'b" and x :: 'a and y :: 'b defines "y \<equiv> g x"
 locale Parent0 = fixes g :: "'a \<Rightarrow> 'b" and x :: 'a and y :: 'b
@@ -46,15 +21,17 @@ val _ = fails_with (defined_as "3rd" "y" "Parent" "3 + 1") (light \<^theory> "LB
 val _ = fails_with (not_bound "y" "3 + 1" "Parent") (light \<^theory> "LBy = Parent \"\<lambda>n::nat. n + 1\" 3 _ + assumes \"y = y\"");
 \<close>
 
-(* the annotation printed in batch mode *)
+(* the annotation printed in batch mode (plan lines 5088-5092): the fourth slot carries `::` and no
+   schematic type variable, in the header guard (LZy) and in the defined-position message (LZ) *)
 locale Hz = fixes g :: "'a::numeral \<Rightarrow> 'a" and d :: 'a defines "d \<equiv> g 2"
 light_locale LHz = Hz h "h 2" for h
 ML \<open>
-val _ = ((light \<^theory> "LZy = Hz h _ for h + assumes \"d = d\"" (); error "accepted") handle ERROR m =>
-  let val s = strip m in
-    \<^assert> (String.isPrefix "A light locale does not support definitions. `d \<equiv> h (2::" s
-      andalso not (exists_string (fn c => c = "?") s))
-  end);
+(*the prefix, and no ? anywhere in the message: a check neither fails_with nor fails_prefix expresses*)
+fun annotated prefix =
+  fails_checked ("prefix without ?:\n" ^ prefix)
+    (fn s => String.isPrefix prefix s andalso not (exists_string (fn c => c = "?") s));
+val _ = annotated "A light locale does not support definitions. `d \<equiv> h (2::" (light \<^theory> "LZy = Hz h _ for h + assumes \"d = d\"");
+val _ = annotated "The 2nd parameter `d` of locale `Hz` is defined as `h (2::" (light \<^theory> "LZ = Hz h \"h 3\" for h");
 \<close>
 
 (* the joint per-position check *)
@@ -77,6 +54,9 @@ val _ = \<^assert> (ran = \<^typ>\<open>nat\<close> andalso dom = vT);
 val [("f", Type ("fun", [_, ran0]), _), _] = params thy (loc thy "LP0");
 val _ = \<^assert> (is_TFree ran0);
 val _ = fails_prefix "Bad arguments on lhs" (heavy \<^theory> "LPh0 = Parent f v \"(f v :: nat)\" for f v");
+(*the type variables fixed in for and then nat at the defined position (plan line 4991): stock's
+  type error, not a section-6 message*)
+val _ = fails_prefix "Type unification failed" (light \<^theory> "LX = Parent f v \"(f v :: nat)\" for f :: \"'a \<Rightarrow> 'b\" and v");
 \<close>
 
 (* a copied-back term of another type fills the unfolded term *)
@@ -137,31 +117,34 @@ fun check l =
 val _ = check (loc thy "LK3"); val _ = check (loc thy "LK3d");
 \<close>
 
-(* a conflict from a parameter shared through for *)
+(* a conflict from a parameter shared through for: stock's type error, not a section-6 message *)
 locale Nat_Fun = fixes f :: "'a \<Rightarrow> nat"
 ML \<open>
-val _ = ((light \<^theory> "LC = Nat_Fun f + Parent f v \"(f v :: bool)\" for f v" (); error "accepted")
-  handle ERROR m => \<^assert> (not (String.isPrefix "The " (strip m))));
+val _ = fails_prefix "Type unification failed" (light \<^theory> "LC = Nat_Fun f + Parent f v \"(f v :: bool)\" for f v");
 \<close>
 
-(* defines and notes in a light header *)
+(* defines and notes in a light header (plan lines 4999-5002): the four cases pin where the check
+   runs, each with the section-6 text verbatim -- (a) the right-hand side mentions the eliminated
+   name, (b) the left-hand side's head is not a parameter, (c) a short-name notes, (d) the benign
+   forms that would reach eval *)
 locale HB = fixes a :: nat assumes hb: "a = a"
 lemma (in HB) hthm: "a + 0 = a" by simp
 ML \<open>
-val _ = fails_prefix "A light locale does not support" (light \<^theory> "LX = Parent f v _ for f v + fixes q :: 'b defines \"q \<equiv> y\"");
-val _ = fails_prefix "A light locale does not support" (light \<^theory> "LX = Parent f v _ for f v + fixes q :: 'b defines \"q \<equiv> f v\"");
-val _ = fails_prefix "A light locale does not support" (light \<^theory> "LX = HB + notes h = hthm");
-val _ = fails_prefix "A light locale does not support" (light \<^theory> "LX = HB + assumes ax: \"a = a\" notes h = conjI [OF ax]");
+val defines_text = "A light locale does not support `defines` clauses";
+val notes_text = "A light locale does not support `notes` clauses";
+val _ = fails_with defines_text (light \<^theory> "LX = Parent f v _ for f v + fixes q :: 'b defines \"q \<equiv> y\"");
+val _ = fails_with defines_text (light \<^theory> "LX = Parent f v _ for f v + defines \"q \<equiv> f v\"");
+val _ = fails_with notes_text (light \<^theory> "LX = HB + notes h = hthm");
+val _ = fails_with defines_text (light \<^theory> "LX = Parent f v _ for f v + fixes q :: 'b defines \"q \<equiv> f v\"");
+val _ = fails_with notes_text (light \<^theory> "LX = HB + assumes ax: \"a = a\" notes h = conjI [OF ax]");
 \<close>
 
 (* the D20 declaration warning: single source, two sources *)
 locale X1 = fixes f :: "nat \<Rightarrow> nat" and a b :: nat defines "a \<equiv> f b"
 locale X2 = fixes g :: "nat \<Rightarrow> nat" and b c :: nat defines "b \<equiv> g c"
 ML \<open>
-val (_, w1) = with_warnings (light \<^theory> "LD1 = Parent f v _ for f v");
-val _ = \<^assert> (w1 = ["The following definitions from `Parent` are unfolded.\n  y \<equiv> f v\nThe names `y` are not bound and shouldn't be used any more. Write their unfolded terms instead."]);
-val (_, w2) = with_warnings (light \<^theory> "LD2 = X1 + X2");
-val _ = \<^assert> (w2 = ["The following definitions from `X1` are unfolded.\n  a \<equiv> f b\nThe following definitions from `X2` are unfolded.\n  b \<equiv> g c\nThe names `a` are not bound and shouldn't be used any more. Write their unfolded terms instead."]);
+val _ = \<^assert> (declares \<^theory> "LD1 = Parent f v _ for f v" =["The following definitions from `Parent` are unfolded.\n  y \<equiv> f v\nThe names `y` are not bound and shouldn't be used any more. Write their unfolded terms instead."]);
+val _ = \<^assert> (declares \<^theory> "LD2 = X1 + X2" =["The following definitions from `X1` are unfolded.\n  a \<equiv> f b\nThe following definitions from `X2` are unfolded.\n  b \<equiv> g c\nThe names `a` are not bound and shouldn't be used any more. Write their unfolded terms instead."]);
 \<close>
 
 end

@@ -1,8 +1,7 @@
-(* Plan section 7 test 5 (external use and propagation), a filtered arrival absorbs no mark (Heavy side).
-   Five commands: I: LF x for x (HB [?x, c] syntax-only under I), I: K (HB [d, c] full, selection Rest,
-   installs I.hb), J: HB x z for x z ([?x, ?z] full), Q: K4 x for x (HB [?x, c] arrives Full and is
-   filtered by the [?x, ?z] record: not registered, not activated), definition (in HB) dd -- exactly
-   one I.dd, J.dd present; after step 4 the record of HB [?x, c] is still Syntax_only with effect I. *)
+(* The heavy twin of Test5_Filtered (plan lines 4128-4129): the same five commands succeed on
+   locale LF = HB x c for x.  Step 1 (I: LF x for x) registers HB [?x, c] Full and installs I.hb;
+   step 2 (I: K) is pruned; step 3 (J: HB x z for x z) registers [?x, ?z] Full; step 4 (Q: K4 x for x)
+   is filtered by the [?x, ?z] record; step 5 (definition (in HB) dd) gives exactly I.dd and J.dd. *)
 theory Test5_Filtered_Heavy
   imports Test_Support
 begin

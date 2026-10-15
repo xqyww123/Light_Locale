@@ -1,5 +1,5 @@
-(* Plan section 7 test 6, the Exported_Premises unit rows (plan lines 4576-4600, 4604-4610,
-   4615-4625, 4629-4645): count_of, get_consumes and the K-offset consumes/default_consumes on
+(* Plan section 7 test 6, the Exported_Premises unit rows (plan lines 4576-4601, 4604-4625,
+   4629-4645): count_of, get_consumes and the K-offset consumes/default_consumes on
    untagged and tagged theorems, which attributes keep the tag, put, tag-string sharing, discharge,
    put_major_prem_first, own_major_prem, kind_make_elim, [dest] on a rule without own premises
    (fails in the block, accepted on the theory copy and read back as LF ?S ==> ...), the n = K

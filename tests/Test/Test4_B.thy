@@ -24,11 +24,12 @@ ML \<open>
 val added = subtract (op =) after2 (Test_Support.facts_under \<^theory> "Test4_B.");
 val _ = \<^assert> (added = ["Test4_B.J.hb", "Test4_B.J.hb2"]);
 val j2 = filter (String.isPrefix "Test4_B.J.") after2;
-val _ = \<^assert> (null (inter (op =) j2 added));
 val _ = \<^assert>
   (map (unprefix "Test4_B.J.") (remove (op =) "Test4_B.J.LF_axioms" (j2 @ added)) = hb_installed);
 \<close>
 
-lemma "HB t" by simp
+(* J.HB_axioms still carries [simp] (plan 4077): the general I.HB_axioms (HB ?x) would close the
+   goal by itself, so it is taken out; Test4_D is the negative control *)
+lemma "HB t" by (simp del: I.HB_axioms)
 
 end

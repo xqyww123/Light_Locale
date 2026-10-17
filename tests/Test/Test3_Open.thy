@@ -29,7 +29,11 @@ val D_ctxt = Locale.init (Locale.check_global \<^theory> ("D", Position.none)) \
 context LF begin
 ML_val \<open>
 val ctxt = \<^context>;
-val _ = \<^assert> (Variable.dest_fixes ctxt = [("S", "S")]);
+(*S and, since milestone 2, the placeholder of the implicit structure under its literal name --
+  nothing else; the second layer is UP S (plan 4022)*)
+val _ = \<^assert> (Variable.dest_fixes ctxt =
+  [("S", "S"), (Syntax_Trans.implicit_structure_, Syntax_Trans.implicit_structure_)]);
+val _ = \<^assert> (implicit_is ctxt (reads ctxt "UP S"));
 val _ = \<^assert> (map Thm.prop_of (Assumption.all_prems_of ctxt) = [@{prop "LF S"}]);
 (*first layer: S is re-fixed without a mark*)
 val _ = \<^assert> (is_none (Syntax_Trans.default_struct ctxt));

@@ -24,8 +24,10 @@ sig
   val fails_checked: string -> (string -> bool) -> (unit -> 'a) -> unit
   val fails_with: string -> (unit -> 'a) -> unit
   val fails_prefix: string -> (unit -> 'a) -> unit
+  val accepted: (unit -> string * local_theory) -> (string * theory) * string list
+  val rejected: string -> (unit -> 'a) -> string list
+  val eliminated_name_warning: string -> string -> string
   val defined_as: string -> string -> string -> string -> string
-  val not_bound: string -> string -> string -> string
   val loc: theory -> string -> string
   val params: theory -> string -> (string * typ * bool) list
   val edge: theory -> string -> string -> morphism
@@ -95,6 +97,26 @@ sig
   val declares: theory -> string -> string list
   val blast_warns: Proof.context -> string -> bool * bool
   val cla_modified: Proof.context -> string -> Proof.context
+  val clean: string -> string
+  val layers: Proof.context -> string option * term option
+  val implicit_is: Proof.context -> term -> bool
+  val shows: Proof.context -> term -> string
+  val reads: Proof.context -> string -> term
+  val prints_as: Proof.context -> string -> string -> unit
+  val round_trips: Proof.context -> term -> bool
+  val golden_line: theory -> string -> string -> string
+  val parse_text: 'a parser -> theory -> string -> 'a
+  val assumes_of: theory -> string -> (string * term list) list
+  val attribute_terms: theory -> string -> (string * term list) list
+  val after_elimination: theory -> string -> string list -> term -> term
+  val assumes_equal: (theory -> string -> (string * term list) list) ->
+    theory -> string * string -> string list -> bool
+  val params_equal: theory -> string * string -> string list -> bool
+  val has_placeholder: term -> bool
+  val placeholder_fixed: Proof.context -> bool
+  val bare_denotes: Proof.context -> string -> bool
+  val has_bad_markup: Proof.context -> term -> bool
+  val locale_expression: theory -> string -> Expression.expression
 end;
 
 structure Test_Support: TEST_SUPPORT =
@@ -140,20 +162,28 @@ fun heavy thy text = fn () => locale_cmd text thy;
 (*the declaration must fail with exactly this message / a message with this prefix (plan section 7
   preface: a checker that compares the text cannot pass on an accepted declaration -- the
   "accepted" sentinel is raised outside the handler)*)
+(*the ERROR, also when a parallel evaluation (Syntax.read_terms of a header's instances) wrapped
+  it into EXCEPTIONS*)
+fun error_message (ERROR msg) = SOME msg
+  | error_message (Exn.EXCEPTIONS exns) = get_first error_message exns
+  | error_message exn =
+      (case Par_Exn.dest exn of SOME exns => get_first error_message exns | NONE => NONE);
 fun fails_checked describe check f =
-  (case (f (); NONE) handle ERROR msg => SOME (Protocol_Message.clean_output msg) of
-    NONE => error "accepted"
-  | SOME got => if check got then () else error ("got:\n" ^ got ^ "\nexpected " ^ describe));
+  (case Exn.capture f () of
+    Exn.Res _ => error "accepted"
+  | Exn.Exn exn =>
+      (case error_message exn of
+        SOME msg =>
+          let val got = Protocol_Message.clean_output msg
+          in if check got then () else error ("got:\n" ^ got ^ "\nexpected " ^ describe) end
+      | NONE => Exn.reraise exn));
 fun fails_with expected = fails_checked (":\n" ^ expected) (fn got => got = expected);
 fun fails_prefix expected = fails_checked ("prefix:\n" ^ expected) (String.isPrefix expected);
 
-(*the section 6 messages of the declaration shapes (test 8)*)
+(*the section 6 message of the defined position (test 8)*)
 fun defined_as ord y loc shown =
   "The " ^ ord ^ " parameter `" ^ y ^ "` of locale `" ^ loc ^ "` is defined as `" ^ shown ^
     "` and cannot be instantiated. You must write `_`.";
-fun not_bound x t loc =
-  "A light locale does not support definitions. `" ^ x ^ " \<equiv> " ^ t ^ "` from locale `" ^ loc ^
-    "` is unfolded and `" ^ x ^ "` is not bound here. Write `" ^ t ^ "` instead.";
 
 (*locales by name: the parameter table (name, type, whether the mixfix is NoSyn), the morphism of
   the edge from parent p to l (plan line 4966) and the instances of p's parameters under it*)
@@ -210,12 +240,17 @@ fun registration_prefixes ctxt loc =
 fun rhs_of ctxt c =
   the (#2 (the (AList.lookup (op =) (#constants (Consts.dest (Proof_Context.consts_of ctxt))) c)));
 
+(*the whole text through a parser: "[simp, symmetric]", a locale expression, and the like*)
+fun parse_text p thy text =
+  let val toks = tokens thy text
+  in #1 (Scan.finite Token.stopper (Parse.!!! (p --| Scan.ahead Parse.eof)) toks) end;
+
+val locale_expression = parse_text Parse_Spec.locale_expression;
+
 (*the text after the command word; the obligations are closed by unfold_locales and simp*)
 fun interpretation_cmd text thy =
   let
-    val toks = tokens thy text;
-    val expr =
-      #1 (Scan.finite Token.stopper (Parse.!!! (Parse_Spec.locale_expression --| Scan.ahead Parse.eof)) toks);
+    val expr = locale_expression thy text;
     fun meth ctxt =
       Method.SIMPLE_METHOD
         (Locale.intro_locales_tac {strict = false, eager = true} ctxt [] THEN ALLGOALS (asm_full_simp_tac ctxt));
@@ -225,11 +260,6 @@ fun interpretation_cmd text thy =
     |> Proof.global_terminal_proof ((Method.Basic meth, Position.no_range), NONE)
     |> Local_Theory.exit_global
   end;
-
-(*"[simp, symmetric]" and the like*)
-fun parse_text p thy text =
-  let val toks = tokens thy text
-  in #1 (Scan.finite Token.stopper (Parse.!!! (p --| Scan.ahead Parse.eof)) toks) end;
 
 fun attribs_of thy text = parse_text Parse.attribs thy text;
 
@@ -287,6 +317,37 @@ fun twin_rename (l, h) =
       (fn Const (c, T) => Const (the_default c (AList.lookup (op =) renaming c), T) | t => t)
   end;
 
+(*the assumptions a locale records, by binding name: every proposition (assumes_of), or the terms
+  their attributes read once and keep in their tokens, as Args.term does (attribute_terms); a
+  heavy twin's term after elimination -- the parameters the twin's block defines (its x_def
+  facts) replaced by their definitions, the elimination step of the twin projection (plan section
+  7 preface; none defined = the ordinary twin); the projections test 9's header rows and
+  assert_twin share: the assumptions (names and one of the two term lists, the light side
+  renamed) and the parameters (name, type, mixfix) without the twin's defined ones*)
+fun assumes_elements thy name =
+  maps (fn Element.Assumes asms => asms | _ => []) (Locale.hyp_spec_of thy name);
+fun assumes_of thy name =
+  map (fn ((b, _), props) => (Binding.name_of b, map #1 props)) (assumes_elements thy name);
+fun attribute_terms thy name =
+  let
+    fun term_value tok = (case Token.get_value tok of SOME (Token.Term t) => SOME t | _ => NONE);
+    val terms = maps (map_filter term_value o Token.args_of_src);
+  in map (fn ((b, srcs), _) => (Binding.name_of b, terms srcs)) (assumes_elements thy name) end;
+fun after_elimination thy twin defined =
+  if null defined then I
+  else
+    let
+      val ctxt = Locale.init (loc thy twin) thy;
+      val env =
+        map (fn x => Logic.dest_equals (Thm.prop_of (Proof_Context.get_thm ctxt (x ^ "_def")))) defined;
+    in Term.subst_atomic env end;
+fun assumes_equal project thy (l, h) defined =
+  eq_list (fn ((n, ps), (n', ps')) => n = n' andalso eq_list (op aconv) (map (twin_rename (l, h)) ps, ps'))
+    (project thy l, map (apsnd (map (after_elimination thy h defined))) (project thy h));
+fun params_equal thy (l, h) defined =
+  eq_list (fn (((x, T), mx), ((x', T'), mx')) => x = x' andalso T = T' andalso Mixfix.equal (mx, mx'))
+    (Locale.params_of thy l, filter_out (member (op =) defined o #1 o #1) (Locale.params_of thy h));
+
 fun assert_twin thy (l, h) =
   let
     fun check what b = if b then () else error ("Twin projection fails: " ^ what);
@@ -294,9 +355,7 @@ fun assert_twin thy (l, h) =
     fun thms_equal (thl, thh) =
       prems_equal (map (twin_rename (l, h)) (Thm.prems_of thl), Thm.prems_of thh);
 
-    val pl = Locale.params_of thy l and ph = Locale.params_of thy h;
-    val _ = check "params_of"
-      (map #1 pl = map #1 ph andalso eq_list Mixfix.equal (map #2 pl, map #2 ph));
+    val _ = check "params_of" (params_equal thy (l, h) []);
 
     val (al, bl) = Locale.specification_of thy l and (ah, bh) = Locale.specification_of thy h;
     val _ = check "specification_of, #2" (bl = bh);
@@ -321,12 +380,7 @@ fun assert_twin thy (l, h) =
           thms_equal (thl, thh) andalso twin_rename (l, h) (Thm.prop_of thl) = Thm.prop_of thh)
         (xl, xh));
 
-    fun assumes loc =
-      maps (fn Element.Assumes asms => map (fn ((b, _), props) => (Binding.name_of b, map #1 props)) asms
-             | _ => []) (Locale.hyp_spec_of thy loc);
-    val _ = check "hyp_spec_of"
-      (eq_list (fn ((bl, tsl), (bh, tsh)) => bl = bh andalso prems_equal (tsl, tsh))
-        (assumes l, assumes h));
+    val _ = check "hyp_spec_of" (assumes_equal assumes_of thy (l, h) []);
   in () end;
 
 
@@ -544,6 +598,15 @@ fun claset_rule ctxt kind th =
 (*the warnings a light_locale declaration emits*)
 fun declares thy text = #2 (with_warnings (fn () => light_locale_cmd text thy));
 
+(*a declaration that succeeds: its name in the theory holding it, with its warnings; one that
+  fails with the given error: its warnings*)
+fun accepted f = let val ((name, lthy), ws) = with_warnings f in ((name, Proof_Context.theory_of lthy), ws) end;
+fun rejected msg f = #2 (with_warnings (fn () => fails_with msg f));
+
+(*the D20 use warning as Locale.eliminated_name_warning prints it*)
+fun eliminated_name_warning x loc =
+  "The parameter `" ^ x ^ "` from locale `" ^ loc ^ "` is not bound any more and treated as a fresh variable here.";
+
 (*whether blast closes the goal, and whether it warned "Ignoring weak elimination rule"*)
 fun blast_warns ctxt goal =
   let val (ok, ws) = with_warnings (fn () => by_blast ctxt (Syntax.read_prop ctxt goal))
@@ -555,6 +618,50 @@ fun blast_warns ctxt goal =
 fun cla_modified ctxt text =
   #2 (Token.syntax (Method.sections Classical.cla_modifiers)
     (Token.make_src ("cla_modified", Position.none) (tokens (Proof_Context.theory_of ctxt) text)) ctxt);
+
+(*test 9: text without markup; the two structure layers of a context (the head of the variable
+  structures, the implicit structure); the implicit structure up to types; what the printer
+  prints in no print mode; a term read in a context; a text that reads and prints back as the
+  expected text; the line of a golden file that follows a label and a tab*)
+val clean = XML.content_of o YXML.parse_body;
+fun layers ctxt = (Syntax_Trans.default_struct ctxt, Syntax_Trans.implicit_structure ctxt);
+fun implicit_is ctxt t =
+  (case Syntax_Trans.implicit_structure ctxt of SOME u => Term.aconv_untyped (u, t) | NONE => false);
+fun shows ctxt t =
+  clean (Print_Mode.setmp []
+    (Pretty.string_of_ops (Pretty.output_ops (SOME 1000)) o Syntax.pretty_term ctxt) t);
+fun reads ctxt text = Syntax.read_term ctxt text;
+fun prints_as ctxt text expected =
+  let val got = shows ctxt (reads ctxt text)
+  in if got = expected then () else error ("printed:\n" ^ got ^ "\nexpected:\n" ^ expected) end;
+(*the printed text of a term reads back as the term (in no print mode, at width 1000)*)
+fun round_trips ctxt t = reads ctxt (shows ctxt t) aconv t;
+fun golden_line thy name label =
+  let
+    val path = Path.appends [Resources.master_directory thy, Path.explode "../golden", Path.basic name];
+    val prefix = label ^ "\t";
+  in
+    (case find_first (String.isPrefix prefix) (split_lines (File.read path)) of
+      SOME line => unprefix prefix line
+    | NONE => error ("no line " ^ quote label ^ " in golden " ^ name))
+  end;
+
+(*test 9: whether the placeholder of the implicit structure is left in a term; whether it is
+  fixed exactly once under its literal name (no skolem variant); whether the bare operator, read
+  with fresh names, is the operator of this structure; whether the printer marks anything bad in
+  a term (symbolic output keeps the markup)*)
+val has_placeholder =
+  Term.exists_subterm (fn Free (x, _) => x = Syntax_Trans.implicit_structure_ | _ => false);
+fun placeholder_fixed ctxt =
+  filter (fn (x, _) => x = Syntax_Trans.implicit_structure_) (Variable.dest_fixes ctxt) =
+    [(Syntax_Trans.implicit_structure_, Syntax_Trans.implicit_structure_)];
+fun bare_denotes ctxt text =
+  reads ctxt "a \<otimes> b" aconv reads ctxt ("a \<otimes>\<^bsub>" ^ text ^ "\<^esub> b");
+fun has_bad_markup ctxt t =
+  let
+    fun bad (XML.Elem ((name, _), body)) = name = Markup.badN orelse exists bad body
+      | bad (XML.Text _) = false;
+  in exists bad (YXML.parse_body (Pretty.symbolic_string_of (Syntax.pretty_term ctxt t))) end;
 
 end;
 \<close>

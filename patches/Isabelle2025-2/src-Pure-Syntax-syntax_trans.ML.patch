@@ -1,0 +1,56 @@
+diff -ruN a/src/Pure/Syntax/syntax_trans.ML b/src/Pure/Syntax/syntax_trans.ML
+--- a/src/Pure/Syntax/syntax_trans.ML
++++ b/src/Pure/Syntax/syntax_trans.ML
+@@ -50,6 +50,9 @@
+   val get_idents: Proof.context -> {structs: string list, fixes: string list}
+   val put_idents: {structs: string list, fixes: string list} -> Proof.context -> Proof.context
+   val default_struct: Proof.context -> string option
++  val implicit_structure_: string
++  val implicit_structure: Proof.context -> term option
++  val put_implicit_structure: term option -> Proof.context -> Proof.context
+   val pure_parse_ast_translation: (string * (Proof.context -> Ast.ast list -> Ast.ast)) list
+   val pure_parse_translation: (string * (Proof.context -> term list -> term)) list
+   val pure_print_ast_translation: (string * (Proof.context -> Ast.ast list -> Ast.ast)) list
+@@ -228,6 +231,28 @@
+ 
+ val default_struct = try hd o #structs o get_idents;
+ 
++(*the implicit structure of light locales: one term, or none; a bare index position denotes it
++  through the placeholder, a fixed variable of this internal name (fixed by the writer,
++  Proof_Context.declare_implicit_structure); a value that contains the placeholder without
++  being it would make the replacement step (term check 1000) loop, so the setter rejects it*)
++val implicit_structure_ = Name.internal "implicit_structure";
++
++structure Implicit_Structure = Proof_Data
++(
++  type T = term option;
++  fun init _ : T = NONE;
++);
++
++val implicit_structure = Implicit_Structure.get;
++
++fun put_implicit_structure (SOME t) =
++      let fun is_placeholder (Free (x, _)) = x = implicit_structure_ | is_placeholder _ = false in
++        if Term.exists_subterm is_placeholder t andalso not (is_placeholder t)
++        then raise Fail "put_implicit_structure: placeholder inside the value"
++        else Implicit_Structure.put (SOME t)
++      end
++  | put_implicit_structure NONE = Implicit_Structure.put NONE;
++
+ fun indexdefault_ast_tr [] =
+       Ast.Appl [Ast.Constant "_index",
+         Ast.Appl [Ast.Constant "_struct", Ast.Constant "_indexdefault"]]
+@@ -243,9 +268,10 @@
+   | index_tr ts = raise TERM ("index_tr", ts);
+ 
+ fun struct_tr ctxt [Const ("_indexdefault", _)] =
+-      (case default_struct ctxt of
+-        SOME x => Syntax.const (Lexicon.mark_fixed x)
+-      | NONE => error "Illegal reference to implicit structure")
++      (case (implicit_structure ctxt, default_struct ctxt) of
++        (SOME _, _) => Syntax.const (Lexicon.mark_fixed implicit_structure_)
++      | (NONE, SOME x) => Syntax.const (Lexicon.mark_fixed x)
++      | (NONE, NONE) => error "Illegal reference to implicit structure")
+   | struct_tr _ ts = raise TERM ("struct_tr", ts);
+ 
+ 

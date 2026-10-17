@@ -1,10 +1,12 @@
 (* Plan section 7 test 8 (declaration shapes), the sibling-import rows: the same parameter name in
    two imports (Heavy_Def with q == f x, Heavy_Par with a plain q) in both orders against their
    heavy controls, the explicit "f x", the D20 table and parameters (H with for a b t, interpret in a
-   proof, the H0/LF2 controls), out-of-order defines (X1 + X2 through Y) and the cyclic defines
+   proof, the H0/LF2 rows writing the eliminated q: the use warning, then stock's closure or
+   stock's free-variable error), out-of-order defines (X1 + X2 through Y) and the cyclic defines
    (plan lines 5036 and 5080: the cycle across two imports, Yc = X1 + X2c, which stock accepts, is
    rejected by the light declaration with the section-6 definition error, with and without a
-   same-named sibling parameter; the single-locale cycle is rejected by stock itself, recorded), the
+   same-named sibling parameter; a cycle of three with a definition hanging off it (Y3) and two
+   separate cycles (Yc2); the single-locale cycle is rejected by stock itself, recorded), the
    D20 table written twice in one proof and the same inside LF0's block, a theory-level
    global_interpretation after which the use warning does not appear, Nat_Par and H0', the sibling
    position recording f q, the applied-lhs defines in two spellings with eta-modulo acceptance and
@@ -17,6 +19,8 @@ begin
 
 ML \<open>
 open Test_Support;
+val use_warning_q = eliminated_name_warning "q" "Heavy_Def";
+val illegal_q = "Illegal free variables in expression: \"q\"";
 \<close>
 
 consts Rq :: "nat \<Rightarrow> bool"  Pq :: "nat \<Rightarrow> bool"  Sq :: "nat \<Rightarrow> bool"
@@ -63,11 +67,14 @@ proof -
   show True ..
 qed
 light_locale LF0 = Heavy_Def
-ML \<open>
-val thy = \<^theory>;
-val _ = fails_with (not_bound "q" "a b" "Heavy_Def") (heavy thy "H0 = LF0 a b for a b + assumes \"Sq q\"");
-val _ = fails_with (not_bound "q" "f x" "Heavy_Def") (light thy "LF2 = Heavy_Def + M2 q");
+ML \<open>val thy = \<^theory>\<close>
+(*the eliminated q in a heavy child's element: the use warning, q closed (user 2026-10-16 (a));
+  at a light child's instance position: the warning, then stock's free-variable error*)
+ML_val \<open>
+val ((h0, thy'), ws) = accepted (heavy thy "H0 = LF0 a b for a b + assumes \"Sq q\"");
+val _ = \<^assert> (ws = [use_warning_q] andalso maps #2 (assumes_of thy' h0) = [\<^prop>\<open>\<And>q. Sq q\<close>]);
 \<close>
+ML_val \<open>\<^assert> (member (op =) (rejected illegal_q (light thy "LF2 = Heavy_Def + M2 q")) use_warning_q)\<close>
 
 (* out-of-order defines through Y; the cyclic defines *)
 locale X1 = fixes f :: "nat \<Rightarrow> nat" and a b :: nat defines "a \<equiv> f b"
@@ -78,20 +85,45 @@ light_locale LFX = X1 + X2
 locale X2c = fixes g :: "nat \<Rightarrow> nat" and b a :: nat defines "b \<equiv> g a"
 locale Yc = X1 + X2c
 locale Pb0 = fixes b :: nat
-ML \<open>
+locale X3 = fixes k :: "nat \<Rightarrow> nat" and c a :: nat defines "c \<equiv> k a"
+locale X4 = fixes h :: "nat \<Rightarrow> nat" and d a :: nat defines "d \<equiv> h a"
+locale Y3 = X1 + X2 + X3 + X4
+locale X5 = fixes p :: "nat \<Rightarrow> nat" and u v :: nat defines "u \<equiv> p v"
+locale X6 = fixes r :: "nat \<Rightarrow> nat" and v u :: nat defines "v \<equiv> r u"
+locale Yc2 = X1 + X2c + X5 + X6
+ML_val \<open>
 val thy = \<^theory>;
 val _ = \<^assert> (nth (instances thy "Y" (loc thy "LFY")) 1 aconv \<^term>\<open>(f :: nat \<Rightarrow> nat) ((g :: nat \<Rightarrow> nat) c)\<close>);
 (*the control without Y: a's instance is f b, b being the shared parameter name*)
 val _ = \<^assert> (nth (instances thy "X1" (loc thy "LFX")) 1 aconv \<^term>\<open>(f :: nat \<Rightarrow> nat) (b :: nat)\<close>);
 (*the cycle across the two imports: stock accepts Yc (two definitions), the light declaration
-  reports the section-6 definition error, also with the same-named sibling parameter of Pb0*)
+  reports the section-6 definition error (the full-text row pins the template, the locale slot
+  and the definition slots, printed from the parent's original bodies in their parameter order),
+  also with the same-named sibling parameter of Pb0*)
 val _ = \<^assert> (length (#2 (Locale.specification_of thy (loc thy "Yc"))) = 2);
-val _ = fails_prefix "A light locale does not support definitions. `" (light thy "LFc = Yc");
-val _ = fails_prefix "A light locale does not support definitions. `" (light thy "LFc' = Yc + Pb0");
+val _ = fails_with ("A light locale does not support definitions. The definitions `a \<equiv> f b` and " ^
+  "`b \<equiv> g a` from locale `Yc` refer to each other in a cycle and cannot be unfolded.") (light thy "LFc = Yc");
+val _ = fails_prefix "A light locale does not support definitions. The definitions `" (light thy "LFc' = Yc + Pb0");
 (*recorded (section 11 (31)): the single-locale cycle is rejected by stock itself, with a THM
   exception from the notes export*)
 val _ = \<^assert> ((heavy thy "Xc = fixes f g :: \"nat \<Rightarrow> nat\" and a b :: nat defines \"a \<equiv> f b\" and \"b \<equiv> g a\"" (); false)
   handle THM _ => true);
+\<close>
+(*a cycle of three, a -> b -> c -> a, and d, which depends on the cycle without being on it:
+  only the cycle is listed, joined "x, y and z"*)
+ML_val \<open>
+val thy = \<^theory>;
+val _ = \<^assert> (length (#2 (Locale.specification_of thy (loc thy "Y3"))) = 4);
+val _ = fails_with ("A light locale does not support definitions. The definitions `a \<equiv> f b`, " ^
+  "`b \<equiv> g c` and `c \<equiv> k a` from locale `Y3` refer to each other in a cycle and cannot be unfolded.")
+  (light thy "LFc3 = Y3");
+\<close>
+(*two separate cycles: only the first in parameter order is listed (user 2026-10-17, U3 (A))*)
+ML_val \<open>
+val thy = \<^theory>;
+val _ = \<^assert> (length (#2 (Locale.specification_of thy (loc thy "Yc2"))) = 4);
+val _ = fails_with ("A light locale does not support definitions. The definitions `a \<equiv> f b` and " ^
+  "`b \<equiv> g a` from locale `Yc2` refer to each other in a cycle and cannot be unfolded.") (light thy "LFc2 = Yc2");
 \<close>
 
 (* the D20 table written twice in one proof; the same inside LF0's block; two instances in one
@@ -100,8 +132,7 @@ lemma True
 proof -
   interpret I: LF0 h 5 by unfold_locales (rule Rq_ax)
   interpret J: LF0 h 7 by unfold_locales (rule Rq_ax)
-  ML_val \<open>\<^assert> (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q")) =
-    ["The parameter `q` from locale `Heavy_Def` is not bound any more and treated as a fresh variable here."])\<close>
+  ML_val \<open>\<^assert> (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q")) = [use_warning_q])\<close>
   show True ..
 qed
 context LF0 begin
@@ -109,19 +140,20 @@ lemma True
 proof -
   interpret I: LF0 h 5 by unfold_locales (rule Rq_ax)
   interpret J: LF0 h 7 by unfold_locales (rule Rq_ax)
-  ML_val \<open>\<^assert> (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q")) =
-    ["The parameter `q` from locale `Heavy_Def` is not bound any more and treated as a fresh variable here."])\<close>
+  ML_val \<open>\<^assert> (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q")) = [use_warning_q])\<close>
   show True ..
 qed
 end
 light_locale LF2i = A: LF0 s u + B: LF0 t v for s t u v
 
-(* Nat_Par, H0', and the sibling position recording f q *)
+(* Nat_Par, H0' (the table entry two hops away: the same warning), and the sibling position
+   recording f q *)
 locale Nat_Par = fixes x :: nat assumes "x = x"
 light_locale LF0n = Heavy_Def + Nat_Par x
-ML \<open>
-val thy = \<^theory>;
-val _ = fails_with (not_bound "q" "g 5" "Heavy_Def") (heavy thy "H0' = LF0n g 5 for g + assumes \"Sq q\"");
+ML \<open>val thy = \<^theory>\<close>
+ML_val \<open>
+val ((h0', thy'), ws) = accepted (heavy thy "H0' = LF0n g 5 for g + assumes \"Sq q\"");
+val _ = \<^assert> (ws = [use_warning_q] andalso maps #2 (assumes_of thy' h0') = [\<^prop>\<open>\<And>q. Sq q\<close>]);
 \<close>
 light_locale LFsib = Heavy_Par + Heavy_Def _ q
 ML \<open>

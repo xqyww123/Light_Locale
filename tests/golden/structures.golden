@@ -1,0 +1,12 @@
+structures_A	structures: G
+structures_A_markup	<line><block indent="2">structures:<break width="1"> </break>G</block></line>
+Child_assumption	Term.$ (Term.Const ("HOL.Trueprop", Term.Type ("fun", [Term.Type ("HOL.bool", []), Term.Type ("prop", [])])), Term.$ (Term.$ (Term.Const ("HOL.eq", Term.Type ("fun", [Term.TFree ("'a", ["HOL.type"]), Term.Type ("fun", [Term.TFree ("'a", ["HOL.type"]), Term.Type ("HOL.bool", [])])])), Term.$ (Term.$ (Term.$ (Term.Const ("Group.monoid.mult", Term.Type ("fun", [Term.Type ("Congruence.partial_object.partial_object_ext", [Term.TFree ("'a", ["HOL.type"]), Term.Type ("Group.monoid.monoid_ext", [Term.TFree ("'a", ["HOL.type"]), Term.TFree ("'b", ["HOL.type"])])]), Term.Type ("fun", [Term.TFree ("'a", ["HOL.type"]), Term.Type ("fun", [Term.TFree ("'a", ["HOL.type"]), Term.TFree ("'a", ["HOL.type"])])])])), Term.Free ("G", Term.Type ("Congruence.partial_object.partial_object_ext", [Term.TFree ("'a", ["HOL.type"]), Term.Type ("Group.monoid.monoid_ext", [Term.TFree ("'a", ["HOL.type"]), Term.TFree ("'b", ["HOL.type"])])]))), Term.Free ("x", Term.TFree ("'a", ["HOL.type"]))), Term.Free ("y", Term.TFree ("'a", ["HOL.type"])))), Term.$ (Term.$ (Term.$ (Term.Const ("Group.monoid.mult", Term.Type ("fun", [Term.Type ("Congruence.partial_object.partial_object_ext", [Term.TFree ("'a", ["HOL.type"]), Term.Type ("Group.monoid.monoid_ext", [Term.TFree ("'a", ["HOL.type"]), Term.TFree ("'b", ["HOL.type"])])]), Term.Type ("fun", [Term.TFree ("'a", ["HOL.type"]), Term.Type ("fun", [Term.TFree ("'a", ["HOL.type"]), Term.TFree ("'a", ["HOL.type"])])])])), Term.Free ("G", Term.Type ("Congruence.partial_object.partial_object_ext", [Term.TFree ("'a", ["HOL.type"]), Term.Type ("Group.monoid.monoid_ext", [Term.TFree ("'a", ["HOL.type"]), Term.TFree ("'b", ["HOL.type"])])]))), Term.Free ("y", Term.TFree ("'a", ["HOL.type"]))), Term.Free ("x", Term.TFree ("'a", ["HOL.type"])))))
+otimes_G	x \<otimes>\<^bsub>G\<^esub> y
+otimes_S	x \<otimes>\<^bsub>S\<^esub> y
+otimes_T	x \<otimes>\<^bsub>T\<^esub> y
+otimes_UP_S	x \<otimes>\<^bsub>UP S\<^esub> y
+otimes_UP_R	x \<otimes>\<^bsub>UP R\<^esub> y
+otimes_f_S	x \<otimes>\<^bsub>f S\<^esub> y
+finsum_G	\<Oplus>\<^bsub>G\<^esub>i\<in>A. u i \<otimes>\<^bsub>G\<^esub> v i
+one_int_monoid	\<one>\<^bsub>\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr>\<^esub> = k
+UP_S	UP S

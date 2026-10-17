@@ -4,6 +4,11 @@
 # the patch tool's status is recorded as the baseline.  Without `--before`: every file that differs
 # between the two trees must be listed in tools/patched_files.txt, and the patch tool's status must
 # still equal the baseline (someone unapplying a dev patch meanwhile would leak into our patches).
+# The baseline was re-recorded once (2026-10-15, plan §11 (6) D1 and (32)): milestone 2 edits
+# term_to_ast in syntax_phases.ML, where the dev patch show_types_nv has its hunks, so the tool
+# reports that patch as CONFLICT although its lines are all still there (attrib.ML, the other
+# dev-patched file, still reads applied); make_patches.sh proves the lines are there at the end
+# (plan §8 step 5).
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 shared=$root/../Isabelle2025-2

@@ -5,6 +5,7 @@ src/Pure/Isar/locale.ML
 src/Pure/Isar/expression.ML
 src/Pure/Isar/named_target.ML
 src/Pure/Isar/generic_target.ML
+src/Pure/Isar/element.ML
 src/Pure/Isar/parse_spec.ML
 src/Pure/Pure.thy
 src/Pure/Syntax/syntax_trans.ML

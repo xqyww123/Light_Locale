@@ -12,6 +12,7 @@ session Light_Locale_Golden in "Golden" = "HOL-Algebra" +
   theories
     Golden_Facts
     Golden_Transfer
+    Golden_Structures
 
 session Light_Locale_Base in "Base" = Light_Locale_Golden +
   description "
@@ -30,8 +31,10 @@ session Light_Locale_Base in "Base" = Light_Locale_Golden +
 session Light_Locale_Test in "Test" = Light_Locale_Base +
   description "
     Plan section 7: the gate tests (one leaf theory per scenario that changes persistent theory
-    state) and the test support theory.
+    state) and the test support theory.  The timeout is test 9's memo-table row (Test9_Memo):
+    the session takes about a minute; a walk without the memo table does not finish.
   "
+  options [timeout = 300]
   theories
     Test_Support
     Test2_Declaration
@@ -190,6 +193,37 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test10_Rewrites
     Test10_Differential
     Test10_Diamond
+    Test9_Fixtures
+    Test9_Rules
+    Test9_Print
+    Test9_Abbrev
+    Test9_Abbrev_Input
+    Test9_Class
+    Test9_Class_Attribute
+    Test9_Header
+    Test9_Header_Attribute
+    Test9_XO
+    Test9_XO_Heavy
+    Test9_XO_Sub
+    Test9_XO_Sub_Heavy
+    Test9_Set
+    Test9_Guards
+    Test9_Guards_Positive
+    Test9_Slot_Monoid
+    Test9_Slot_Gm
+    Test9_Slot_Comm_Monoid
+    Test9_Slot_Lambda
+    Test9_Sib_A
+    Test9_Sib_B
+    Test9_Sib_A0
+    Test9_Sib_AB
+    Test9_Sib_BA
+    Test9_Sib_A_A0
+    Test9_Sib_A0_A
+    Test9_With
+    Test9_Memo
+    Test9_Annotation
+    Test9_Print_Context
     Test1_Identity
     Test1_Old_Interface
 

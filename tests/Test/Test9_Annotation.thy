@@ -5,7 +5,8 @@
    empty subscript inside S.  Printing with show_implicit_structure: the decision on the printed
    ast -- the outermost index occurrences of every kind of index syntax (a constant's own mixfix,
    a translation, also one whose index variable is nested, a fixed variable) all the same S, S not
-   the default structure in any of its three shapes, S closed -- dispatch by type, three print
+   the default structure (the empty subscript: Pure has elided the second layer's value and the
+   placeholder at every index position), S closed -- dispatch by type, three print
    modes round trip, the forced line break, the two print differences of the annotation
    (show_types, binder names), a notation that hides a binder, what the uncheck stages expose.
    The helpers and the rows wrapped in both_modes run in batch and as PIDE prints (show_markup
@@ -460,26 +461,29 @@ end
 
 (* a second layer whose value holds an eta-redex: Pure's own elision compares the terms before
    the printer eta-contracts, so the subscript is already the empty subscript when the decision
-   is made -- the default structure, no annotation (the value holds no abbreviation: an
-   abbreviation is contracted in the printed term and not in the stored one, so Pure does not
-   elide it -- the next row) *)
+   is made -- the default structure, no annotation *)
 context
 begin
 set_implicit_structure "\<lparr>carrier = {x. True}, mult = \<lambda>a b. a + b, one = 0\<rparr> :: int monoid"
 ML_val \<open>both_modes (fn ctxt => (prints_as ctxt "x \<otimes> y" "x \<otimes> y"; left_alone ctxt "x \<otimes> y")) (on \<^context>)\<close>
 end
 
-(* a second-layer value holding an abbreviation (UNIV for top): Pure's elision does not hide the
-   subscript yet (decision 16 (a)); the index occurrence is then the value's own printed form,
-   which the comparison with v -- the stored value put through the uncheck stages -- recognises
-   as the default structure, so no annotation; only the absence of an annotation is asserted *)
+(* a second-layer value holding an abbreviation (UNIV for top): Pure's elision compares the
+   stored value put through the uncheck stages, where the abbreviation folds as it does in the
+   printed term, so the subscript is the empty subscript as well -- the default structure, no
+   annotation (section 11 (39)) *)
 context
 begin
 set_implicit_structure "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr> :: int monoid"
+ML_val \<open>both_modes (fn ctxt => (prints_as ctxt "x \<otimes> y" "x \<otimes> y"; left_alone ctxt "x \<otimes> y")) (on \<^context>)\<close>
+context fixes k :: nat begin
+(*an index differing from the second layer only in its type is another structure: annotated,
+  read back on nat*)
 ML_val \<open>
-both_modes (fn ctxt => \<^assert> (not (String.isSubstring "structure:" (shows ctxt (reads ctxt "x \<otimes> y")))))
-  (on \<^context>)
+annotated (on \<^context>) "\<one>\<^bsub>\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr>\<^esub> = k"
+  "\<one> = k \<lbrakk>structure: \<lparr>carrier = UNIV, mult = (+), one = 0\<rparr>\<rbrakk>"
 \<close>
+end
 end
 
 (* both layers empty: an under-applied inverse with the option on leaks nothing *)
@@ -501,11 +505,10 @@ ML_val \<open>left_alone (on \<^context>) "x \<otimes>\<^bsub>R\<^esub> y = x \<
 end
 
 (* the second layer as the default (UP S): S is another structure and gets the annotation, a
-   translation-defined \<Oplus> on S elided with the rest; the default itself is not annotated -- the
-   empty subscript where Pure omits it, its own value where Pure leaves it (the \<Oplus>, decision 16
-   (a)), the placeholder by name -- and mixed with S no annotation; the under-applied inverse on S
-   reads back; with show_types the annotation's S keeps its type, although v (after the body)
-   holds the same variable *)
+   translation-defined \<Oplus> on S elided with the rest; the default itself is not annotated -- Pure
+   elides v at every index position, the \<Oplus> included, and the placeholder by name, so the
+   decision sees only the empty subscript -- and mixed with S no annotation; the under-applied
+   inverse on S reads back; with show_types the annotation's S keeps its type *)
 context LF
 begin
 ML_val \<open>both_modes (fn ctxt => prints_as ctxt "x \<otimes>\<^bsub>UP S\<^esub> y" "x \<otimes> y") (on \<^context>)\<close>
@@ -522,7 +525,7 @@ val ctxt = Config.put show_types true (on \<^context>);
 val _ = \<^assert> (String.isSubstring "\<lbrakk>structure: (S::" (shows ctxt (reads ctxt "x \<otimes>\<^bsub>S\<^esub> y")));
 \<close>
 (* the placeholder at the \<Oplus>'s index, as a term printed before the check stage replaces it (a type
-   error message): the default structure by name *)
+   error message): Pure elides the placeholder by name, so the decision sees the empty subscript *)
 ML_val \<open>
 val ctxt = on \<^context>;
 val value = reads ctxt "UP S";

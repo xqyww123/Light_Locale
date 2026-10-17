@@ -1,0 +1,54 @@
+diff -ruN a/src/Pure/Isar/proof_context.ML b/src/Pure/Isar/proof_context.ML
+--- a/src/Pure/Isar/proof_context.ML
++++ b/src/Pure/Isar/proof_context.ML
+@@ -150,6 +150,7 @@
+     string list * Proof.context
+   val add_fixes_cmd: (binding * string option * mixfix) list -> Proof.context ->
+     string list * Proof.context
++  val declare_implicit_structure: term -> Proof.context -> Proof.context
+   val add_assms: Assumption.export ->
+     (Thm.binding * (term * term list) list) list ->
+     Proof.context -> (string * thm list) list * Proof.context
+@@ -1345,6 +1346,25 @@
+ 
+ end;
+ 
++(*the writer of the implicit structure (light locales, plan decision 16 (a)): the placeholder
++  is fixed once, outside body mode so that its internal name is the literal one that struct_tr
++  inserts; its declared type follows the value*)
++fun declare_implicit_structure t ctxt =
++  let
++    val x = Syntax_Trans.implicit_structure_;
++    val ctxt' =
++      if Variable.is_fixed ctxt x then ctxt
++      else
++        ctxt
++        |> Variable.set_body false
++        |> add_fixes [(Binding.name x, NONE, NoSyn)] |> #2
++        |> Variable.restore_body ctxt;
++  in
++    ctxt'
++    |> Variable.declare_constraints (Free (x, Term.fastype_of t))
++    |> Syntax_Trans.put_implicit_structure (SOME t)
++  end;
++
+ 
+ 
+ (** assumptions **)
+@@ -1703,12 +1723,13 @@
+     let
+       val prt_term = Syntax.pretty_term ctxt;
+ 
+-      (*structures*)
++      (*structures: the implicit structure, when there is one, before the variable structures*)
+       val {structs, ...} = Syntax_Trans.get_idents ctxt;
++      val implicit = Syntax_Trans.implicit_structure ctxt;
+       val prt_structs =
+-        if null structs then []
++        if null structs andalso is_none implicit then []
+         else [Pretty.block (Pretty.str "structures:" :: Pretty.brk 1 ::
+-          Pretty.commas (map Pretty.str structs))];
++          Pretty.commas (map prt_term (the_list implicit) @ map Pretty.str structs))];
+ 
+       (*fixes*)
+       fun prt_fix (x, x') =

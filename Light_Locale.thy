@@ -189,8 +189,8 @@ syntax
     (\<open>_ \<lbrakk>structure: _\<rbrakk>\<close> [0, 10] 0)
   "_implicit_structure'" :: "logic \<Rightarrow> prop \<Rightarrow> prop"
     (\<open>(2\<lbrakk>structure: _\<rbrakk>/./  _)\<close> [10, 0] 0)
-  (*the candidate node takes the body and, when there is a second layer, its value as a second
-    argument (wrap below); the types here only place the node at the body's nonterminal*)
+  (*the candidate node takes the body (wrap below); the types here only place the node at the
+    body's nonterminal*)
   "_implicit_structure_candidate" :: "logic \<Rightarrow> logic"
   "_implicit_structure_candidate'" :: "prop \<Rightarrow> prop"
 
@@ -225,21 +225,12 @@ fun is_candidate t =
   (case Term.head_of t of Const (c, _) => c = candidate orelse c = candidate' | _ => false);
 
 (*the candidate node around the whole term, at the last uncheck stage, so that no other uncheck
-  function sees it; the second layer's value, put through the uncheck stages itself (the
-  annotation off), rides along for the comparison at print time -- after the body, so that
-  prune_types gives a type to the body's occurrence of a variable, not to v, which is never
-  printed; a term already wrapped stays, since the stage iterates to a fixed point*)
+  function sees it; a term already wrapped stays, since the stage iterates to a fixed point*)
 fun wrap ctxt t =
   if not (Config.get ctxt show_implicit_structure) orelse Config.get ctxt show_structs orelse
     is_candidate t
   then t
-  else
-    let
-      val c = if (fastype_of t = propT handle TERM _ => false) then candidate' else candidate;
-      val v =
-        Syntax_Trans.implicit_structure ctxt
-        |> Option.map (singleton (Syntax.uncheck_terms (Config.put show_implicit_structure false ctxt)));
-    in Term.list_comb (Syntax.const c, t :: the_list v) end;
+  else Syntax.const (if (fastype_of t = propT handle TERM _ => false) then candidate' else candidate) $ t;
 
 (*the outermost index occurrences of an ast, in ast order, and the ast with each of them
   replaced by the empty subscript; fill s undoes it*)
@@ -273,15 +264,11 @@ fun constraints (Ast.Appl [Ast.Constant \<^syntax_const>\<open>_constrain\<close
 
 val most_constrained = foldl1 (fn (a, b) => if constraints b > constraints a then b else a);
 
-(*the default structure, in the three shapes it takes: the empty subscript (the first layer's
-  head when there is no second layer, or the second layer's value where Pure omits it), the
-  second layer's value itself (at a position a translation defines, or holding an abbreviation,
-  Pure leaves it), the placeholder*)
-fun is_default v s =
-  s = empty_subscript orelse v = SOME s orelse
-  (case s of
-    Ast.Appl [Ast.Constant \<^syntax_const>\<open>_free\<close>, Ast.Variable x] => x = Syntax_Trans.implicit_structure_
-  | _ => false);
+(*the default structure: the empty subscript -- the first layer's head when there is no second
+  layer, or the second layer's value, which Pure's elision has replaced wherever it stands at an
+  index position (also one a translation defines, also when it holds an abbreviation, also the
+  placeholder; plan section 11 (39))*)
+fun is_default s = s = empty_subscript;
 
 fun has_loose (Ast.Appl [Ast.Constant \<^syntax_const>\<open>_loose\<close>, _]) = true
   | has_loose (Ast.Appl asts) = exists has_loose asts
@@ -298,21 +285,15 @@ fun bound_names (Ast.Appl [Ast.Constant \<^syntax_const>\<open>_bound\<close>, A
 fun closed body' s =
   not (has_loose s) andalso null (inter (op =) (bound_names body' []) (bound_names s []));
 
-fun candidate_ast_tr' annotation ctxt asts =
-  let
-    val (body, v) =
-      (case asts of
-        [body] => (body, NONE)
-      | [body, v] => (body, SOME v)
-      | _ => raise Ast.AST ("candidate_ast_tr'", asts));
-    val (body', occurrences) = elide body;
-  in
-    (case distinct (op =) (map (unconstrain ctxt) occurrences) of
-      [s] =>
-        if is_default (Option.map (unconstrain ctxt) v) s orelse not (closed body' s) then body
-        else annotation (most_constrained occurrences, body')
-    | _ => body)
-  end;
+fun candidate_ast_tr' annotation ctxt [body] =
+      let val (body', occurrences) = elide body in
+        (case distinct (op =) (map (unconstrain ctxt) occurrences) of
+          [s] =>
+            if is_default s orelse not (closed body' s) then body
+            else annotation (most_constrained occurrences, body')
+        | _ => body)
+      end
+  | candidate_ast_tr' _ _ asts = raise Ast.AST ("candidate_ast_tr'", asts);
 
 in
 

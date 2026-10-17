@@ -1,0 +1,12 @@
+diff -ruN a/src/Pure/Isar/element.ML b/src/Pure/Isar/element.ML
+--- a/src/Pure/Isar/element.ML
++++ b/src/Pure/Isar/element.ML
+@@ -120,7 +120,7 @@
+   typ = Morphism.typ phi,
+   term = Morphism.term phi,
+   pattern = Morphism.term phi,
+-  fact = Morphism.fact phi,
++  fact = Exported_Premises.keep_counts (Morphism.fact phi),
+   attrib = map (Token.transform phi)};
+ 
+ 

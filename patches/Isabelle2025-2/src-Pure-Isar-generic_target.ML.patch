@@ -134,7 +134,7 @@ diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
  val local_interpretation = standard_registration (fn (n, level) => level >= n - 1);
  
  
-@@ -356,27 +410,80 @@
+@@ -356,27 +410,85 @@
  
    in ((local_thm, global_thm), lthy') end;
  
@@ -174,10 +174,15 @@ diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
 +
 +in
 +
++(*thm_definition's inference rules clear every tag; keep_count puts K back on the local copy,
++  whose proposition is that of the normal form th' (Local_Defs.contract), so th' is the
++  reference -- the raw th may have a different number of premises*)
 +fun notes target_notes kind facts lthy =
 +  let
 +    val ((local_facts, global_facts), lthy') =
-+      prepare_notes (fn (np, th) => thm_definition (np, Goal.norm_result lthy th)) facts lthy;
++      prepare_notes (fn (np, th) =>
++        let val th' = Light_Locale_Axiom_Facts.norm_result lthy th
++        in thm_definition (np, th') #>> apfst (Exported_Premises.keep_count th') end) facts lthy;
    in
      lthy'
      |> target_notes kind global_facts (Attrib.partial_evaluation lthy' local_facts)
@@ -222,7 +227,7 @@ diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
  end;
  
  
-@@ -428,6 +535,10 @@
+@@ -428,6 +540,10 @@
  fun theory_declaration decl =
    background_declaration decl #> standard_declaration (K true) decl;
  
@@ -233,7 +238,7 @@ diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
  fun target_registration lthy {inst, mixin, export} =
    {inst = inst, mixin = mixin,
      export = export $> Proof_Context.export_morphism lthy (Local_Theory.target_of lthy)};
-@@ -471,10 +582,12 @@
+@@ -471,10 +587,12 @@
    locale_target_const locale (K true) prmode ((b, mx), rhs)
    #> standard_const (fn (this, other) => other <> 0 andalso this <> other) prmode ((b, mx), rhs);
  

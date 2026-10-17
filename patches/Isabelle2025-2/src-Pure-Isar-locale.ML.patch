@@ -12,7 +12,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
    (* Locale specification *)
    val register_locale: binding ->
      (string * sort) list * ((string * typ) * mixfix) list ->
-@@ -42,6 +46,17 @@
+@@ -42,6 +46,19 @@
      Morphism.declaration_entity list ->
      (string * Attrib.fact list) list ->
      (string * morphism) list -> theory -> theory
@@ -27,10 +27,12 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
 +  val is_light: theory -> string -> bool
 +  val is_light_predicate: theory -> string -> bool
 +  val set_implicit_structure: string -> term -> theory -> theory
++  val implicit_structure_of_imports: theory -> (string * position_kind list) list ->
++    (int * term) option
    val locale_space: theory -> Name_Space.T
    val intern: theory -> xstring -> string
    val check_global: theory -> xstring * Position.T -> string
-@@ -65,8 +80,23 @@
+@@ -65,8 +82,23 @@
  
    (* Activation *)
    val activate_facts: morphism option -> string * morphism -> Context.generic -> Context.generic
@@ -54,7 +56,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
  
    (* Reasoning about locales *)
    val get_witnesses: Proof.context -> thm list
-@@ -81,6 +111,7 @@
+@@ -81,6 +113,7 @@
    type registration = {inst: string * morphism, mixin: (morphism * bool) option, export: morphism}
    val amend_registration: registration -> Context.generic -> Context.generic
    val add_registration: registration -> Context.generic -> Context.generic
@@ -62,7 +64,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
    val registrations_of: Context.generic -> string -> (string * morphism) list
    val add_dependency: string -> registration -> theory -> theory
  
-@@ -106,15 +137,49 @@
+@@ -106,15 +139,49 @@
  
  (*** Locales ***)
  
@@ -116,7 +118,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
    pos = Position.thread_data (),
    serial = serial ()};
  
-@@ -150,39 +215,49 @@
+@@ -150,39 +217,49 @@
    axioms: thm list,
    (*diagnostic device: theorem part of hypothetical body as specified by the user*)
    hyp_spec: Element.context_i list,
@@ -148,16 +150,16 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
 -    syntax_decls = syntax_decls, notes = notes, dependencies = dependencies, mixins = mixins};
 +    light = light, syntax_decls = syntax_decls, notes = notes, dependencies = dependencies,
 +    mixins = mixins, implicit_structure = implicit_structure};
++
++fun map_locale f (Loc {parameters, spec, intros, axioms, hyp_spec, light,
++    syntax_decls, notes, dependencies, mixins, implicit_structure}) =
++  mk_locale (f ((parameters, spec, intros, axioms, hyp_spec, light),
++    (((syntax_decls, notes), (dependencies, mixins)), implicit_structure)));
  
 -fun map_locale f (Loc {parameters, spec, intros, axioms, hyp_spec,
 -    syntax_decls, notes, dependencies, mixins}) =
 -  mk_locale (f ((parameters, spec, intros, axioms, hyp_spec),
 -    ((syntax_decls, notes), (dependencies, mixins))));
-+fun map_locale f (Loc {parameters, spec, intros, axioms, hyp_spec, light,
-+    syntax_decls, notes, dependencies, mixins, implicit_structure}) =
-+  mk_locale (f ((parameters, spec, intros, axioms, hyp_spec, light),
-+    (((syntax_decls, notes), (dependencies, mixins)), implicit_structure)));
-+
 +val eq_note = op = o apply2 #2;
  
  fun merge_locale
@@ -182,7 +184,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
  
  structure Locales = Theory_Data
  (
-@@ -222,22 +297,39 @@
+@@ -222,22 +299,39 @@
      SOME (Loc loc) => loc
    | NONE => error ("Unknown locale " ^ quote name));
  
@@ -228,7 +230,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
  
  
  (** Primitive operations **)
-@@ -294,14 +386,63 @@
+@@ -294,14 +388,63 @@
  
  (*** Identifiers: activated locales in theory or proof context ***)
  
@@ -297,7 +299,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
  
  structure Idents = Generic_Data
  (
-@@ -310,6 +451,10 @@
+@@ -310,6 +453,10 @@
    val merge = merge_idents;
  );
  
@@ -308,7 +310,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
  
  (** Resolve locale dependencies in a depth-first fashion **)
  
-@@ -317,44 +462,98 @@
+@@ -317,44 +464,98 @@
  
  val roundup_bound = 120;
  
@@ -429,7 +431,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
  
  end;
  
-@@ -364,7 +563,7 @@
+@@ -364,7 +565,7 @@
  val total_ident_ord = prod_ord fast_string_ord (list_ord Term_Ord.fast_term_ord);
  structure Idtab = Table(type key = string * term list val ord = total_ident_ord);
  
@@ -438,7 +440,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
  val eq_reg: reg * reg -> bool = op = o apply2 #serial;
  
  (* FIXME consolidate with locale dependencies, consider one data slot only *)
-@@ -380,21 +579,34 @@
+@@ -380,21 +581,34 @@
        fun recursive_merge ((regs1, mixins1), (regs2, mixins2)) : T =
          (Idtab.merge eq_reg (regs1, regs2), merge_mixins (mixins1, mixins2))
          handle Idtab.DUP id =>
@@ -485,7 +487,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
      in Library.foldl1 recursive_merge (map #2 args) end;
  );
  
-@@ -412,14 +624,25 @@
+@@ -412,14 +626,25 @@
  
  (* Primitive operations *)
  
@@ -513,7 +515,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
  
  fun add_mixin serial' mixin =
    (* registration to be amended identified by its serial id *)
-@@ -441,9 +664,10 @@
+@@ -441,9 +666,10 @@
    let
      val thy = Context.theory_of context;
    in
@@ -526,7 +528,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
      |> snd |> filter (snd o fst)  (* only inheritable mixins *)
      |> (fn x => merge (eq_snd op =) (x, get_mixins context (name, morph)))
      |> compose_mixins
-@@ -473,12 +697,65 @@
+@@ -473,12 +699,65 @@
    then Lazy_Notes (kind, (b, Lazy.value (maps #1 facts)))
    else Notes (kind, [((b, atts), facts)]));
  
@@ -597,7 +599,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
  
  fun consolidate_notes elems =
    elems
-@@ -514,7 +791,7 @@
+@@ -514,7 +793,7 @@
        handle ERROR msg => activate_err msg "syntax" (name, morph) context
    end;
  
@@ -606,7 +608,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
    let
      val thy = Context.theory_of context;
      val mixin =
-@@ -522,17 +799,17 @@
+@@ -522,17 +801,17 @@
          NONE => Morphism.identity
        | SOME export => collect_mixins context (name, morph $> export) $> export);
      val morph' = Morphism.set_context thy (morph $> mixin);
@@ -627,7 +629,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
    end;
  
  fun activate_all name thy activ_elem (marked, input) =
-@@ -547,27 +824,31 @@
+@@ -547,30 +826,100 @@
          activ_elem (Defines (map (fn def => (Binding.empty_atts, (def, []))) defs)));
      val activate = activate_notes activ_elem (Context.Theory thy) NONE;
    in
@@ -664,7 +666,86 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
    |-> Idents.put
    |> Context_Position.restore_visible_generic context);
  
-@@ -613,7 +894,7 @@
++(* implicit structure of a locale (plan decision 16 (c), section 3.1 item 5) *)
++
++(*the header edges in header order: the import, the morphism, the kind of every position*)
++fun header_edges thy name =
++  dependencies_of thy name
++  |> map_filter (fn ({name, morphisms = (m, e), header, ...}: dep) =>
++      Option.map (fn kinds => (name, m $> e, kinds)) header)
++  |> rev;
++
++fun structure_names thy name =
++  map_filter (fn ((x, _), Mixfix.Structure _) => SOME x | _ => NONE) (params_of thy name);
++
++(*the summary of a locale: the surviving (structure) names in order of first occurrence, and the
++  cut -- the first eliminated (structure) position of a header edge, or an import's own cut --
++  in the locale's own vocabulary; its slot overrides everything.  imports_summary walks the
++  imports of a header and reports the cut untransported: the import's index and the term in the
++  import's vocabulary.  The memo table carries the summaries of the locales visited.*)
++fun imports_summary thy imports memo =
++  let
++    fun scan_block (i, (loc, kinds)) (names, memo) =
++      let
++        val ((ns, cut_loc), memo') = structure_summary thy loc memo;
++        val params = params_of thy loc;
++        fun position n = find_index (fn ((x, _), _) => x = n) params;
++        fun walk [] names = (names, NONE)
++          | walk (n :: ns) names =
++              (case nth kinds (position n) of
++                Written => walk ns names
++              | Inherited => walk ns (if member (op =) names n then names else names @ [n])
++              | Eliminated => (names, SOME (Free (#1 (nth params (position n))))));
++        val (names', cut) = walk ns names;
++      in ((names', Option.map (pair i) (if is_some cut then cut else cut_loc)), memo') end;
++    fun scan [] (names, memo) = ((names, NONE), memo)
++      | scan (block :: blocks) (names, memo) =
++          (case scan_block block (names, memo) of
++            ((names', NONE), memo') => scan blocks (names', memo')
++          | result => result);
++  in scan (map_index I imports) ([], memo) end
++and structure_summary thy name memo =
++  (case Symtab.lookup memo name of
++    SOME summary => (summary, memo)
++  | NONE =>
++      let
++        val (summary, memo') =
++          (case #implicit_structure (the_locale thy name) of
++            SOME t => (([], SOME t), memo)
++          | NONE =>
++              let
++                val edges = header_edges thy name;
++                val ((names, cut), memo') =
++                  imports_summary thy (map (fn (l, _, kinds) => (l, kinds)) edges) memo;
++              in
++                ((case cut of
++                  SOME (i, t_src) => (names, SOME (Morphism.term (#2 (nth edges i)) t_src))
++                | NONE => (structure_names thy name, NONE)), memo')
++              end);
++      in (summary, Symtab.update (name, summary) memo') end);
++
++(*a cut counts only while no (structure) name survives before it*)
++fun project (names, cut) = if null names then cut else NONE;
++
++fun implicit_structure_of thy name = project (#1 (structure_summary thy name Symtab.empty));
++
++fun implicit_structure_of_imports thy imports =
++  project (#1 (imports_summary thy imports Symtab.empty));
++
+ fun init name thy =
+   let
+     val context = Context.Proof (Proof_Context.init_global thy);
+@@ -583,6 +932,9 @@
+     |-> (fn marked' => Idents.put (merge_idents (marked, marked')))
+     |> Context_Position.restore_visible_generic context
+     |> Context.proof_of
++    |> (case implicit_structure_of thy name of
++          SOME t => Proof_Context.declare_implicit_structure t
++        | NONE => I)
+   end;
+ 
+ 
+@@ -613,7 +965,7 @@
  (* Note that a registration that would be subsumed by an existing one will not be
     generated, and it will not be possible to amend it. *)
  
@@ -673,7 +754,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
    let
      val thy = Context.theory_of context;
      val pos_morph = Morphism.binding_morphism "position" (Binding.set_pos (Position.thread_data ()));
-@@ -621,72 +902,95 @@
+@@ -621,72 +973,95 @@
      val inst = instance_of thy name mix_morph;
      val idents = Idents.get context;
    in
@@ -789,7 +870,7 @@ diff -ruN a/src/Pure/Isar/locale.ML b/src/Pure/Isar/locale.ML
    end;
  
  
-@@ -761,11 +1065,16 @@
+@@ -761,11 +1136,16 @@
        |> snd |> rev
        |> tap consolidate_notes
        |> map force_notes;

@@ -1,0 +1,118 @@
+diff -ruN a/src/Pure/Syntax/syntax_phases.ML b/src/Pure/Syntax/syntax_phases.ML
+--- a/src/Pure/Syntax/syntax_phases.ML
++++ b/src/Pure/Syntax/syntax_phases.ML
+@@ -631,6 +631,8 @@
+   let
+     val {structs, fixes} = Syntax_Trans.get_idents ctxt;
+     val show_structs = Config.get ctxt show_structs;
++    (*with an implicit structure a bare index position denotes that, not the variable structure*)
++    val implicit = is_some (Syntax_Trans.implicit_structure ctxt);
+ 
+     fun mark ((t as Const (c, _)) $ u) =
+           if member (op =) Pure_Thy.token_markers c
+@@ -644,7 +646,7 @@
+           let val i = find_index (fn s => s = x) structs + 1 in
+             if i = 0 andalso member (op =) fixes x then
+               Const (Lexicon.mark_fixed x, T)
+-            else if i = 1 andalso not show_structs then
++            else if i = 1 andalso not show_structs andalso not implicit then
+               Syntax.const "_struct" $ Syntax.const "_indexdefault"
+             else Syntax.const "_free" $ t
+           end
+@@ -666,6 +668,39 @@
+     val show_var_types = show_types orelse show_markup;
+     val clean_var_types = show_markup andalso not show_types;
+ 
++    (*the implicit structure and the placeholder as this pipeline marks them; the structure put
++      through the uncheck stages first (show_structs on, so that no annotation candidate rides
++      along), where it folds its abbreviations as the printed term did -- computed when a
++      comparison first needs it and kept for this print only, since it depends on the print
++      options and the print mode (a private cell, like the caches of unparse_t); nothing is
++      computed when there is no implicit structure*)
++    val implicit_marked =
++      if Config.get ctxt show_structs then NONE
++      else
++        Syntax_Trans.implicit_structure ctxt |> Option.map (fn t =>
++          let
++            val cell = Unsynchronized.ref NONE;
++            fun marked () =
++              (case ! cell of
++                SOME t' => t'
++              | NONE =>
++                  let
++                    val ctxt' = Config.put show_structs true ctxt;
++                    val t' = mark_atoms ctxt (singleton (Syntax.uncheck_terms ctxt') t);
++                  in cell := SOME t'; t' end);
++          in (marked, mark_atoms ctxt (Free (Syntax_Trans.implicit_structure_, dummyT))) end);
++    (*an argument equal to the structure, types included, or to the placeholder (by name); the
++      untyped comparison first, as a cheap filter*)
++    fun is_implicit arg =
++      (case implicit_marked of
++        NONE => false
++      | SOME (marked, placeholder) =>
++          Term.aconv_untyped (arg, placeholder) orelse
++          let val t' = marked () in
++            Term.aconv_untyped (arg, t') andalso
++            Term.map_types Type_Annotation.clean arg aconv t'
++          end);
++
+     fun constrain clean T ast =
+       let val U = Type_Annotation.print clean T in
+         if U = dummyT then ast
+@@ -694,8 +729,15 @@
+       (case SOME (trf a ctxt (Type_Annotation.smash T) args) handle Match => NONE of
+         SOME t => main t
+       | NONE =>
+-          let val c = Ast.Constant a |> show_const_types ? constrain {clean = true} T
+-          in Ast.mk_appl c (map main args) end)
++          let
++            val c = Ast.Constant a |> show_const_types ? constrain {clean = true} T;
++            (*an argument that is the implicit structure is marked; unparse_t resolves the mark
++              once the print rules have placed it: under _index the empty subscript, as a variable
++              structure's, elsewhere the argument itself*)
++            fun mark_arg arg =
++              if is_implicit arg then Ast.Appl [Ast.Constant "_implicit_default", main arg]
++              else main arg;
++          in Ast.mk_appl c (map mark_arg args) end)
+ 
+     and variable v T =
+       simple_ast_of ctxt v
+@@ -820,8 +862,17 @@
+               val block = {markup = (bg, en), open_block = false, consistent = false, indent = 0};
+             in Unsynchronized.change cache (Ast.Table.update (A, block)); block end)
+       end;
++
++    (*the marks of term_to_ast on the arguments that are the implicit structure, after the print
++      rules: at an index position the empty subscript, elsewhere removed*)
++    fun resolve_marks (Ast.Appl [Ast.Constant "_index", Ast.Appl [Ast.Constant "_implicit_default", _]]) =
++          Ast.Appl [Ast.Constant "_index", Ast.Appl [Ast.Constant "_struct", Ast.Constant "_indexdefault"]]
++      | resolve_marks (Ast.Appl [Ast.Constant "_implicit_default", ast]) = resolve_marks ast
++      | resolve_marks (Ast.Appl asts) = Ast.Appl (map resolve_marks asts)
++      | resolve_marks ast = ast;
+   in
+     Ast.normalize ctxt {permissive_constraints = true} (Syntax.print_rules syn) ast
++    |> is_some (Syntax_Trans.implicit_structure ctxt) ? resolve_marks
+     |> pretty_ast pretty_flags language_markup
+   end;
+ 
+@@ -1042,4 +1093,20 @@
+   Syntax_Phases.term_check 0 "standard"
+     (fn ctxt => Type_Infer_Context.infer_types ctxt #> map (Proof_Context.expand_abbrevs ctxt)) #>
+   Syntax_Phases.term_check 100 "standard_finish" Proof_Context.standard_term_check_finish #>
++  (*the implicit structure replaces its placeholder once the types are fixed; the header route
++    stores the placeholder itself and leaves the terms alone (light locales); the setter
++    Syntax_Trans.put_implicit_structure admits no other value containing the placeholder, so one
++    round of replacement is final*)
++  Syntax_Phases.term_check 1000 "implicit_structure"
++    (fn ctxt =>
++      let
++        fun is_placeholder (Free (x, _)) = x = Syntax_Trans.implicit_structure_
++          | is_placeholder _ = false;
++      in
++        (case Syntax_Trans.implicit_structure ctxt of
++          SOME t =>
++            if is_placeholder t then I
++            else map (Term.map_aterms (fn a => if is_placeholder a then t else a))
++        | NONE => I)
++      end) #>
+   Syntax_Phases.term_uncheck 0 "standard" Proof_Context.standard_term_uncheck);

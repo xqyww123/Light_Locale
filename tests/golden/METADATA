@@ -1,7 +1,7 @@
-recorded: 2026-10-10T17:27:56-07:00
+recorded: 2026-10-15T22:06:15+08:00
 tree: /home/qiyuan/Current/MLML/contrib/light_locale/Isabelle2025-2-stock (ISABELLE_IDENTIFIER=Isabelle2025-2-stock)
 isabelle: Isabelle2025-2-stock
-patch status of the shared tree (identical sources at recording time):
+patch status of the shared tree at recording time (the stock copy carries the same dev patches; a dev patch reads CONFLICT once light's edits share its lines):
   Isabelle Isabelle2025-2 at /home/qiyuan/Current/MLML/contrib/Isabelle2025-2
   Patch status for Isabelle2025-2:
     [not-applied]  user  expose_foreign/ml_name_space.ML.patch  (src/Pure/ML/ml_name_space.ML)
@@ -11,10 +11,11 @@ patch status of the shared tree (identical sources at recording time):
     [    applied]  dev   show_types_nv/attrib.ML.patch  (src/Pure/Isar/attrib.ML)
     [    applied]  dev   show_types_nv/etc-options.patch  (etc/options)
     [    applied]  dev   show_types_nv/printer.ML.patch  (src/Pure/Syntax/printer.ML)
-    [    applied]  dev   show_types_nv/syntax_phases.ML.patch  (src/Pure/Syntax/syntax_phases.ML)
-    dev: 6/6 applied · user: 0/2 applied
+    [   CONFLICT]  dev   show_types_nv/syntax_phases.ML.patch  (src/Pure/Syntax/syntax_phases.ML)
+    dev: 5/6 applied · user: 0/2 applied
 sha256:
   46bb75e2178cdde5df20470bc0561d481f38911dfdf4e0740c209ecd7d0f4308  ./corec_examples_facts.golden
   e0116cc29efbedc6785e0c2a7ec394741d8e1d37e8a9885019f233dcca35989f  ./hol_algebra_facts.golden
   6dc7f5265dab683990ee947c4c493bd754da2c6f81b6cd169096378c9fb231a6  ./locales.golden
+  93699fdee3d613681b28b289171ad9bfc93dd076c72f3a21fe5687b39001f63a  ./structures.golden
   b1594909a2ec007a9ae5a43bb0db6a6c6c30fcf26cf89640ef4b8dcc3f666284  ./transfer_table.golden

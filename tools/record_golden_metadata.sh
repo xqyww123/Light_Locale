@@ -9,7 +9,7 @@ golden=$root/tests/golden
   echo "recorded: $(date -Is)"
   echo "tree: $root/Isabelle2025-2-stock (ISABELLE_IDENTIFIER=$(cat "$root/Isabelle2025-2-stock/etc/ISABELLE_IDENTIFIER"))"
   echo "isabelle: $("$root/tools/stock-isabelle" version)"
-  echo "patch status of the shared tree (identical sources at recording time):"
+  echo "patch status of the shared tree at recording time (the stock copy carries the same dev patches; a dev patch reads CONFLICT once light's edits share its lines):"
   (cd "$root/../Isabelle2025-2" && my-better-isabelle status 2>&1 || true) | sed 's/^/  /'
   echo "sha256:"
   (cd "$golden" && sha256sum ./*.golden) | sed 's/^/  /'

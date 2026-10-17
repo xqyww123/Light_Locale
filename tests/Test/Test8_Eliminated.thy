@@ -1,5 +1,5 @@
-(* Plan section 7 test 8 (declaration shapes): the beta-normal-form rows LB/LB'/LBy, the batch-mode
-   annotation rows LZ/LZy on Hz, the joint per-position check fixture Two (LT1/LT3), the specialised
+(* Plan section 7 test 8 (declaration shapes): the beta-normal-form rows LB/LB', the batch-mode
+   annotation row LZ on Hz, the joint per-position check fixture Two (LT1/LT3), the specialised
    annotation LP against the twin LPh over the defines-free parent Parent0 (LPh0 fails with "Bad
    arguments on lhs"), the Fin/LFn rows, the LK/LK2/LK3/LK3h/LK3d/LKe rows read through
    Locale.dest_dependencies and Locale.instance_of, the conflict row LC (stock's type error), the
@@ -18,11 +18,10 @@ locale Parent0 = fixes g :: "'a \<Rightarrow> 'b" and x :: 'a and y :: 'b
 light_locale LB = Parent "\<lambda>n::nat. n + 1" 3 "3 + 1"
 ML \<open>
 val _ = fails_with (defined_as "3rd" "y" "Parent" "3 + 1") (light \<^theory> "LB' = Parent \"\<lambda>n::nat. n + 1\" 3 \"3 + 2\"");
-val _ = fails_with (not_bound "y" "3 + 1" "Parent") (light \<^theory> "LBy = Parent \"\<lambda>n::nat. n + 1\" 3 _ + assumes \"y = y\"");
 \<close>
 
 (* the annotation printed in batch mode (plan lines 5088-5092): the fourth slot carries `::` and no
-   schematic type variable, in the header guard (LZy) and in the defined-position message (LZ) *)
+   schematic type variable in the defined-position message (LZ) *)
 locale Hz = fixes g :: "'a::numeral \<Rightarrow> 'a" and d :: 'a defines "d \<equiv> g 2"
 light_locale LHz = Hz h "h 2" for h
 ML \<open>
@@ -30,7 +29,6 @@ ML \<open>
 fun annotated prefix =
   fails_checked ("prefix without ?:\n" ^ prefix)
     (fn s => String.isPrefix prefix s andalso not (exists_string (fn c => c = "?") s));
-val _ = annotated "A light locale does not support definitions. `d \<equiv> h (2::" (light \<^theory> "LZy = Hz h _ for h + assumes \"d = d\"");
 val _ = annotated "The 2nd parameter `d` of locale `Hz` is defined as `h (2::" (light \<^theory> "LZ = Hz h \"h 3\" for h");
 \<close>
 

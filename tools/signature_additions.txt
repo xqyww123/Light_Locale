@@ -21,6 +21,7 @@ src/Pure/Isar/locale.ML LOCALE val eliminated_names_of
 src/Pure/Isar/locale.ML LOCALE val eliminated_names_declaration
 src/Pure/Isar/locale.ML LOCALE val eliminated_name_warning
 src/Pure/Isar/locale.ML LOCALE val add_registration_level
+src/Pure/Isar/locale.ML LOCALE val implicit_structure_of_imports
 
 # plan §3.2
 src/Pure/Isar/expression.ML EXPRESSION val add_light_locale
@@ -44,6 +45,9 @@ src/Pure/exported_premises.ML EXPORTED_PREMISES val strong_consumes
 src/Pure/exported_premises.ML EXPORTED_PREMISES val discharge
 src/Pure/exported_premises.ML EXPORTED_PREMISES val put_major_prem_first
 src/Pure/exported_premises.ML EXPORTED_PREMISES val exported_premises
+# plan §11 (39), REV19-14
+src/Pure/exported_premises.ML EXPORTED_PREMISES val keep_count
+src/Pure/exported_premises.ML EXPORTED_PREMISES val keep_counts
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val is_light_prop
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val add
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val add_attribute
@@ -57,6 +61,10 @@ src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val premise_c
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val norm_result
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val light_export
 src/Pure/Isar/parse_spec.ML PARSE_SPEC val locale_val
+src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val implicit_structure_
+src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val implicit_structure
+src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val put_implicit_structure
+src/Pure/Isar/proof_context.ML PROOF_CONTEXT val declare_implicit_structure
 
 # plan §4 item 9
 src/Tools/induct.ML INDUCT val own_vars_of

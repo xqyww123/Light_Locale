@@ -14,7 +14,10 @@
    before) keep K alike.  The premise-count door: a global_interpretation inside context fixes
    ... assumes ... begin puts the block's assumption in front of every activated fact, so K is
    not put back (J.foo2); the door's reference is the normal form, so a K-tagged input not in
-   HHF form keeps K on the local copy (foo_nhhf, reachable from ML only).  Pinned as it is,
+   HHF form keeps K on the local copy (foo_nhhf, reachable from ML only); [exported_premises n]
+   tags the HHF normal form, so written last on a lemmas line after an attribute that leaves a
+   non-HHF result it keeps K (nh1; [exported_premises 2] on the same input: the range counts the
+   normal form).  Pinned as it is,
    outside this fix: the copy a nested context assumes ... begin inside H's block leaves behind
    in H's block (foo3) -- K 0, the nested assumption first; milestone 3's narrow variant owns
    that path and must tag it K = count_of th + the added premises = 2.  The row of plan lines
@@ -190,6 +193,31 @@ ML_val \<open>
 val th = @{thm foo_nhhf};
 val _ = \<^assert> (Thm.nprems_of th = 3 andalso hd (Thm.prems_of th) aconv Thm.prop_of @{thm LF_axioms});
 val _ = \<^assert> (Exported_Premises.count_of th = 1);
+\<close>
+(* the attribute normalises to HHF form before tagging (user 2026-10-17): written last on a lemmas
+   line whose earlier attributes leave a non-HHF result, the tag survives the export morphism of
+   lemmas, which leaves a theorem already in that form alone *)
+lemma nh: "Qc z \<Longrightarrow> (\<forall>x. Pc x z \<longrightarrow> Pc x z)" by simp
+lemmas nh1 = nh[folded atomize_all atomize_imp, exported_premises 1]
+ML_val \<open>
+val th = @{thm nh1};
+val _ = \<^assert> (Thm.nprems_of th = 2 andalso hd (Thm.prems_of th) aconv \<^prop>\<open>Qc z\<close>);
+val _ = \<^assert> (Exported_Premises.count_of th = 1);
+\<close>
+(* the range is counted on the normal form: 2 is in range although the raw input has one premise *)
+ML_val \<open>
+val th0 = @{thm nh[folded atomize_all atomize_imp]};
+val _ = \<^assert> (Thm.nprems_of th0 = 1 andalso not (Drule.is_norm_hhf {protect = true} (Thm.prop_of th0)));
+val th2 = @{thm nh[folded atomize_all atomize_imp, exported_premises 2]};
+val _ = \<^assert> (Thm.nprems_of th2 = 2 andalso Exported_Premises.count_of th2 = 2);
+\<close>
+(* on an input not in HHF form the normalisation rebuilds the theorem, so a tag written before the
+   attribute is lost with it (user 2026-10-18; keeping every tag across normalisation when K is
+   present is milestone 3's first item) *)
+ML_val \<open>
+val th3 = @{thm nh[folded atomize_all atomize_imp, consumes 1, exported_premises 2]};
+val _ = \<^assert> (Thm.nprems_of th3 = 2 andalso Exported_Premises.count_of th3 = 2 andalso
+  is_none (Exported_Premises.lookup_consumes th3));
 \<close>
 end
 

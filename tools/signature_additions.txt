@@ -44,7 +44,6 @@ src/Pure/exported_premises.ML EXPORTED_PREMISES val own_major_prem
 src/Pure/exported_premises.ML EXPORTED_PREMISES val strong_consumes
 src/Pure/exported_premises.ML EXPORTED_PREMISES val discharge
 src/Pure/exported_premises.ML EXPORTED_PREMISES val put_major_prem_first
-src/Pure/exported_premises.ML EXPORTED_PREMISES val exported_premises
 # plan §11 (39), REV19-14
 src/Pure/exported_premises.ML EXPORTED_PREMISES val keep_count
 src/Pure/exported_premises.ML EXPORTED_PREMISES val keep_counts

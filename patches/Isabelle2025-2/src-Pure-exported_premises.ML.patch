@@ -1,7 +1,7 @@
 diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 --- a/src/Pure/exported_premises.ML	1970-01-01 00:00:00.000000000 +0000
 +++ b/src/Pure/exported_premises.ML
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,102 @@
 +(*  Title:      Pure/exported_premises.ML
 +
 +Leading premises of a rule that are exported contextual assumptions (light locale
@@ -25,7 +25,6 @@ diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 +  val strong_consumes: thm -> int
 +  val discharge: thm list -> thm -> thm
 +  val put_major_prem_first: thm -> thm
-+  val exported_premises: int -> attribute
 +end;
 +
 +structure Exported_Premises: EXPORTED_PREMISES =
@@ -103,12 +102,5 @@ diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 +    if k = 0 orelse n = k then th
 +    else th |> Thm.permute_prems 0 k |> Thm.permute_prems 1 (n - 1 - k)
 +  end;
-+
-+fun exported_premises n =
-+  Thm.rule_attribute [] (fn context => fn th =>
-+    if 0 <= n andalso n <= Thm.nprems_of th then put n th
-+    else
-+      error ("exported_premises: count out of range\n" ^
-+        Thm.string_of_thm (Context.proof_of context) th));
 +
 +end;

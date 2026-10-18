@@ -155,9 +155,9 @@ val _ = \<^assert> (Exported_Premises.count_of @{thm untagged [exported_premises
   andalso tags_without_K @{thm untagged [exported_premises 1]} = Thm.get_tags @{thm untagged});
 val tc1 = @{thm tagged_c [exported_premises 1]};
 val _ = \<^assert> (Exported_Premises.count_of tc1 = 1 andalso tags_without_K tc1 = Thm.get_tags @{thm tagged_c});
-val _ = \<^assert> ((attr (Exported_Premises.exported_premises 5) foo ctxt; false)
+val _ = \<^assert> ((attr (Attrib.attribute_cmd ctxt (hd (attribs_of \<^theory> "[exported_premises 5]"))) foo ctxt; false)
   handle ERROR msg => String.isPrefix "exported_premises: count out of range" (Protocol_Message.clean_output msg));
-val _ = \<^assert> ((attr (Exported_Premises.exported_premises (~1)) foo ctxt; false)
+val _ = \<^assert> ((attr (Attrib.attribute_cmd ctxt (hd (attribs_of \<^theory> "[exported_premises -1]"))) foo ctxt; false)
   handle ERROR msg => String.isPrefix "exported_premises: count out of range" (Protocol_Message.clean_output msg));
 val _ = \<^assert> (Long_Name.base_name (#1 (Token.name_of_src (Attrib.check_src ctxt (hd (attribs_of \<^theory> "[exported_premises 1]"))))) = "exported_premises");
 \<close>

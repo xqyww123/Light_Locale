@@ -1,7 +1,7 @@
 diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 --- a/src/Pure/exported_premises.ML	1970-01-01 00:00:00.000000000 +0000
 +++ b/src/Pure/exported_premises.ML
-@@ -0,0 +1,102 @@
+@@ -0,0 +1,118 @@
 +(*  Title:      Pure/exported_premises.ML
 +
 +Leading premises of a rule that are exported contextual assumptions (light locale
@@ -19,7 +19,7 @@ diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 +  val count_of: thm -> int
 +  val put: int -> thm -> thm
 +  val keep_count: thm -> thm -> thm
-+  val keep_counts: (thm list -> thm list) -> thm list -> thm list
++  val keep_counts: morphism -> thm list -> thm list -> thm list
 +  val own_prems: thm -> term list
 +  val own_major_prem: thm -> term
 +  val strong_consumes: thm -> int
@@ -49,17 +49,33 @@ diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 +fun put 0 = Thm.untag_rule exported_premises_tagN
 +  | put k = Thm.map_tags (Properties.put (exported_premises_tagN, string_of_int k));
 +
-+(*th' derived from th by an operation that clears the tags (an inference rule, an activation
-+  morphism): th's count carries over when the premise count is unchanged, since K counts the
-+  leading premises; for an untagged th, th' itself*)
++(*a count beyond the premises (written by hand) becomes 0, "unknown"*)
++fun put_in_range k th' = put (if k <= Thm.nprems_of th' then k else 0) th';
++
++(*th' derived from th by an operation that clears the tags (an inference rule): th's count
++  carries over, since the operation keeps the leading premises in front; for an untagged th,
++  th' itself*)
 +fun keep_count th th' =
 +  (case count_of th of
 +    0 => th'
-+  | k => if Thm.nprems_of th' = Thm.nprems_of th then put k th' else th');
++  | k => put_in_range k th');
 +
-+fun keep_counts f ths =
-+  let val ths' = f ths
-+  in if length ths' = length ths then map2 keep_count ths ths' else ths' end;
++(*ths' = Morphism.fact phi ths: each count carries over plus d, the number of premises phi puts
++  in front, measured once on the zero-premise theorem and only when some input is tagged; a
++  morphism that fails on it falls back to the premise count.  The measure is right for a
++  morphism that treats every theorem alike (the standard and activation morphisms); the light
++  morphisms branch per theorem and must not be wrapped.*)
++fun keep_counts phi =
++  let
++    val d = Lazy.lazy (fn () => try (fn () => Thm.nprems_of (Morphism.thm phi Drule.dummy_thm)) ());
++    fun keep th th' =
++      (case count_of th of
++        0 => th'
++      | k =>
++          (case Lazy.force d of
++            SOME n => put_in_range (k + n) th'
++          | NONE => put (if Thm.nprems_of th' = Thm.nprems_of th then k else 0) th'));
++  in fn ths => fn ths' => if length ths' = length ths then map2 keep ths ths' else ths' end;
 +
 +val consumes_tagN = "consumes";
 +

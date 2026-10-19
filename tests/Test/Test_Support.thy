@@ -91,7 +91,9 @@ sig
   val assume_in: Proof.context -> (string * typ) list -> string -> string -> thm * Proof.context
   val note_in: Proof.context -> string -> string -> thm -> thm * Proof.context
   val induct_entry: (Proof.context -> 'a -> thm list) -> Proof.context -> 'a -> thm -> thm option
+  val claset_entries_by: Proof.context -> (thm -> bool) -> (thm * thm * Bires.kind) list
   val claset_entries: Proof.context -> thm -> (thm * thm * Bires.kind) list
+  val claset_rule_of: Bires.kind -> (thm * thm * Bires.kind) list -> thm * thm
   val claset_rule: Proof.context -> Bires.kind -> thm -> thm * thm
   val tokens: theory -> string -> Token.T list
   val declares: theory -> string -> string list
@@ -585,15 +587,19 @@ fun note_in ctxt name atts th =
 (*the Induct table entry Thm.eq_thm_prop with the theorem, if any*)
 fun induct_entry find ctxt key th = find_first (fn r => Thm.eq_thm_prop (r, th)) (find ctxt key);
 
-(*the claset entries whose key is Thm.eq_thm_prop with the theorem: key, derived plain rule, kind*)
-fun claset_entries ctxt th =
-  Classical.dest_decls ctxt (fn (key, _) => Thm.eq_thm_prop (key, th))
+(*the claset entries whose key satisfies the predicate: key, derived plain rule, kind*)
+fun claset_entries_by ctxt pred =
+  Classical.dest_decls ctxt (pred o #1)
   |> map (fn (key, {kind, info = {plain, ...}, ...}) => (key, plain, kind));
 
-(*the one entry of the kind: key and derived plain rule*)
-fun claset_rule ctxt kind th =
-  the_single (map_filter (fn (key, plain, k) => if k = kind then SOME (key, plain) else NONE)
-    (claset_entries ctxt th));
+(*the entries whose key is Thm.eq_thm_prop with the theorem*)
+fun claset_entries ctxt th = claset_entries_by ctxt (fn key => Thm.eq_thm_prop (key, th));
+
+(*the one entry of the kind among them: key and derived plain rule*)
+fun claset_rule_of kind entries =
+  the_single (map_filter (fn (key, plain, k) => if k = kind then SOME (key, plain) else NONE) entries);
+
+fun claset_rule ctxt kind th = claset_rule_of kind (claset_entries ctxt th);
 
 (*the warnings a light_locale declaration emits*)
 fun declares thy text = #2 (with_warnings (fn () => light_locale_cmd text thy));

@@ -91,20 +91,32 @@ diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
  fun background_abbrev (b, global_rhs) params =
    Local_Theory.background_theory_result (Sign.add_abbrev Print_Mode.internal (b, global_rhs))
    #>> apply2 (fn t => Term.list_comb (Logic.unvarify_global t, params))
-@@ -222,27 +267,36 @@
+@@ -222,27 +267,48 @@
  fun standard_facts lthy ctxt =
    Attrib.transform_facts (Local_Theory.standard_morphism lthy ctxt);
  
 -fun standard_notes pred kind facts lthy =
-+fun gen_standard_notes morph pred kind facts lthy =
++(*the facts transformed by phi, every tagged theorem with its exported-premise count put back
++  (Exported_Premises.keep_counts), the outputs paired with the inputs by position*)
++fun kept_facts phi facts =
++  let val keep = Exported_Premises.keep_counts phi in
++    map2 (fn (_, bs) => fn (a', bs') =>
++        (a', map2 (fn (ths, _) => fn (ths', atts') => (keep ths ths', atts')) bs bs'))
++      facts (Attrib.transform_facts phi facts)
++  end;
++
++fun kept_standard_facts lthy ctxt = kept_facts (Local_Theory.standard_morphism lthy ctxt);
++
++fun gen_standard_notes transform pred kind facts lthy =
    Local_Theory.map_contexts (fn level => fn ctxt =>
      if pred (Local_Theory.level lthy, level)
 -    then Attrib.local_notes kind (standard_facts lthy ctxt facts) ctxt |> snd
-+    then Attrib.local_notes kind (Attrib.transform_facts (morph lthy ctxt) facts) ctxt |> snd
++    then Attrib.local_notes kind (transform lthy ctxt facts) ctxt |> snd
      else ctxt) lthy;
  
 -fun standard_declaration pred decl lthy =
-+val standard_notes = gen_standard_notes Local_Theory.standard_morphism;
++val standard_notes = gen_standard_notes standard_facts;
++val kept_standard_notes = gen_standard_notes kept_standard_facts;
 +
 +fun gen_standard_declaration wrap pred decl lthy =
    Local_Theory.map_contexts (fn level => fn ctxt =>
@@ -134,7 +146,7 @@ diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
  val local_interpretation = standard_registration (fn (n, level) => level >= n - 1);
  
  
-@@ -356,27 +410,85 @@
+@@ -356,27 +422,86 @@
  
    in ((local_thm, global_thm), lthy') end;
  
@@ -175,8 +187,8 @@ diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
 +in
 +
 +(*thm_definition's inference rules clear every tag; keep_count puts K back on the local copy,
-+  whose proposition is that of the normal form th' (Local_Defs.contract), so th' is the
-+  reference -- the raw th may have a different number of premises*)
++  whose proposition is that of the normal form th' (Local_Defs.contract); the copies the
++  target_notes make from it carry it on through kept_standard_facts and kept_standard_notes*)
 +fun notes target_notes kind facts lthy =
 +  let
 +    val ((local_facts, global_facts), lthy') =
@@ -220,14 +232,24 @@ diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
 +          (case Locale.light_degeneracy_check_of (Proof_Context.theory_of lthy2) of
 +            SOME check => check locale hook_facts lthy2
 +          | NONE => ()))
-+      |> gen_standard_notes light_standard_morphism (op <>) kind local_facts
++      |> gen_standard_notes (fn lthy => fn ctxt => Attrib.transform_facts (light_standard_morphism lthy ctxt))
++          (op <>) kind local_facts
 +      |> Attrib.local_notes kind local_facts;
 +  in (map List.last (unflat groups results), lthy'') end;
 +
  end;
  
  
-@@ -428,6 +540,10 @@
+@@ -406,7 +531,7 @@
+ 
+ fun theory_target_notes kind global_facts local_facts =
+   Local_Theory.background_theory (Attrib.global_notes kind global_facts #> snd)
+-  #> standard_notes (op <>) kind local_facts;
++  #> kept_standard_notes (op <>) kind local_facts;
+ 
+ fun theory_target_abbrev prmode (b, mx) global_rhs params =
+   Local_Theory.background_theory_result
+@@ -428,6 +553,10 @@
  fun theory_declaration decl =
    background_declaration decl #> standard_declaration (K true) decl;
  
@@ -238,7 +260,18 @@ diff -ruN a/src/Pure/Isar/generic_target.ML b/src/Pure/Isar/generic_target.ML
  fun target_registration lthy {inst, mixin, export} =
    {inst = inst, mixin = mixin,
      export = export $> Proof_Context.export_morphism lthy (Local_Theory.target_of lthy)};
-@@ -471,10 +587,12 @@
+@@ -447,8 +576,8 @@
+     (Attrib.global_notes kind (Attrib.map_facts (K []) global_facts) #> snd) #>
+   (fn lthy => lthy |>
+     Local_Theory.target (fn ctxt => ctxt |>
+-      Locale.add_facts locale kind (standard_facts lthy ctxt local_facts))) #>
+-  standard_notes (fn (this, other) => other <> 0 andalso this <> other) kind local_facts;
++      Locale.add_facts locale kind (kept_standard_facts lthy ctxt local_facts))) #>
++  kept_standard_notes (fn (this, other) => other <> 0 andalso this <> other) kind local_facts;
+ 
+ fun locale_target_declaration locale params decl lthy = lthy
+   |> Local_Theory.target (fn ctxt => ctxt |>
+@@ -471,10 +600,12 @@
    locale_target_const locale (K true) prmode ((b, mx), rhs)
    #> standard_const (fn (this, other) => other <> 0 andalso this <> other) prmode ((b, mx), rhs);
  

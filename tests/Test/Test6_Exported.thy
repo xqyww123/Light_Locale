@@ -162,6 +162,47 @@ val _ = \<^assert> ((attr (Attrib.attribute_cmd ctxt (hd (attribs_of \<^theory> 
 val _ = \<^assert> (Long_Name.base_name (#1 (Token.name_of_src (Attrib.check_src ctxt (hd (attribs_of \<^theory> "[exported_premises 1]"))))) = "exported_premises");
 \<close>
 
+(* the K + d writer of milestone 3's first item (section 11 (40)), probed through the activation
+   site Element.transform_ctxt with hand-made morphisms: (a) under the identity morphism an
+   untagged theorem, or one tagged with a literal "0", comes back as the same value (no map_tags);
+   (b) d is counted only when some input carries K: on an untagged input the morphism sees no
+   zero-premise probe; (c) a morphism on which the probe fails is caught, K is then put back only
+   when the premise count is unchanged (here it changed: K 0); (d) K + d, the probe sent once per
+   transformation *)
+ML \<open>
+fun transform_facts phi ths =
+  (case Element.transform_ctxt phi (Element.Notes ("", [(Binding.empty_atts, [(ths, [])])])) of
+    Element.Notes (_, [(_, [(ths', _)])]) => ths'
+  | _ => raise Fail "transform_facts");
+val probes = Unsynchronized.ref 0;
+fun count_probe th = if Thm.nprems_of th = 0 then probes := ! probes + 1 else ();
+val add_prem = Thm.implies_intr \<^cprop>\<open>Qc (2::nat)\<close>;
+val adding = Morphism.fact_morphism "adding" (map (fn th => (count_probe th; add_prem th)));
+val adding_strict = Morphism.fact_morphism "adding_strict"
+  (map (fn th => if Thm.nprems_of th = 0 then raise Fail "zero premises" else add_prem th));
+\<close>
+ML_val \<open>
+(* each @{thm} occurrence is its own transferred value, so the input is bound once *)
+val u = @{thm untagged};
+val th0 = Thm.tag_rule (Exported_Premises.exported_premises_tagN, "0") u;
+val [th0', th'] = transform_facts Morphism.identity [th0, u];
+val _ = \<^assert> (pointer_eq (th0', th0) andalso pointer_eq (th', u));
+\<close>
+ML_val \<open>
+val _ = probes := 0;
+val [th'] = transform_facts adding [@{thm untagged}];
+val _ = \<^assert> (! probes = 0 andalso Thm.nprems_of th' = 3 andalso not (has_K_tag th'));
+\<close>
+ML_val \<open>
+val [th'] = transform_facts adding_strict [@{thm LF.fooP}];
+val _ = \<^assert> (Thm.nprems_of th' = 2 andalso Exported_Premises.count_of th' = 0);
+\<close>
+ML_val \<open>
+val _ = probes := 0;
+val [p', f'] = transform_facts adding [@{thm LF.fooP}, @{thm LF.foo}];
+val _ = \<^assert> (Exported_Premises.count_of p' = 2 andalso Exported_Premises.count_of f' = 2 andalso ! probes = 1);
+\<close>
+
 (* n = K outside the block: the stock idiom dest!: works on both sides *)
 lemma "LF t \<Longrightarrow> Pc t" by (auto dest!: LF.zP)
 lemma "D t \<Longrightarrow> Pc t" by (auto dest!: D.zP)
@@ -179,6 +220,28 @@ declare LF.z0 [dest]
 lemmas foo0 = LF.foo[exported_premises 0]
 lemmas foo0c [exported_premises 0, consumes 2] = LF.foo
 lemmas x1 = LF.foo_iff[THEN iffD1, exported_premises 1]
+(* the usage sentence (plan line 873): [exported_premises n] after a mixed attribute on a lemma
+   or lemmas line is stock's error; after a registration attribute it is accepted without a
+   message, the attribute before it having acted on the theorem without K -- the elim rule
+   registered for LF.foo has major premise LF ?S; the control LF.fooQ [exported_premises 1,
+   elim]: Qc ?x (another fact, since Classical drops a second registration of the same one) *)
+ML_val \<open>
+fails_prefix "Mixed dynamic attribute followed by static rule" (fn () =>
+  theorem_in \<^context> (Binding.name "m1") "[consumes 1, exported_premises 1]" "A \<Longrightarrow> A" assume_tac);
+fails_prefix "Mixed dynamic attribute followed by static rule" (fn () =>
+  lemmas_in \<^context> "m2" "LF.foo" "[consumes 1, exported_premises 1]");
+\<close>
+local_setup \<open>fn lthy =>
+  let val (lthy', w) = with_warnings (fn () => declare_in lthy "LF.foo" "[exported_premises 0, elim, exported_premises 1]")
+  in \<^assert> (null w); lthy' end\<close>
+declare LF.fooQ [exported_premises 1, elim]
+ML_val \<open>
+val ctxt = \<^context>;
+val (_, silent) = claset_rule ctxt Bires.elim_kind @{thm LF.foo};
+val (_, control) = claset_rule ctxt Bires.elim_kind @{thm LF.fooQ};
+val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop ctxt (Thm.major_prem_of silent));
+val _ = \<^assert> (same_shape (Thm.major_prem_of control, Logic.varify_global \<^prop>\<open>Qc x\<close>));
+\<close>
 ML_val \<open>
 val LFa = @{thm LF_axioms};
 val (_, plain) = claset_rule \<^context> Bires.dest_kind @{thm LF.z0};

@@ -1,7 +1,7 @@
 diff -ruN a/src/Pure/Isar/light_locale_axiom_facts.ML b/src/Pure/Isar/light_locale_axiom_facts.ML
 --- a/src/Pure/Isar/light_locale_axiom_facts.ML	1970-01-01 00:00:00.000000000 +0000
 +++ b/src/Pure/Isar/light_locale_axiom_facts.ML
-@@ -0,0 +1,121 @@
+@@ -0,0 +1,117 @@
 +(*  Title:      Pure/Isar/light_locale_axiom_facts.ML
 +
 +Unconditional facts "LF t" of light locale predicates, indexed by proposition, and the export
@@ -94,14 +94,10 @@ diff -ruN a/src/Pure/Isar/light_locale_axiom_facts.ML b/src/Pure/Isar/light_loca
 +  Thm.nprems_of
 +    (Assumption.export lthy (Proof_Context.init_global (Proof_Context.theory_of lthy)) Drule.dummy_thm);
 +
-+(*Goal.norm_result keeping the exported-premise count: its inference rules return tags = []; put
-+  the count back without Exported_Premises.keep_count's door, since normalisation keeps the
-+  leading premises in front (the number of premises behind them may change); an untagged theorem
-+  gets stock's value, untouched*)
-+fun norm_result ctxt th =
-+  (case Exported_Premises.count_of th of
-+    0 => Goal.norm_result ctxt th
-+  | k => Goal.norm_result ctxt th |> Exported_Premises.put k);
++(*Goal.norm_result keeping the exported-premise count: its inference rules return tags = [], and
++  normalisation keeps the leading premises in front; an untagged theorem gets stock's value,
++  untouched*)
++fun norm_result ctxt th = Exported_Premises.keep_count th (Goal.norm_result ctxt th);
 +
 +(*unfold the fixed variables defined between lthy and ctxt, generalise the ones ctxt does not
 +  know, add no assumption; only the exported_premises tag survives*)

@@ -169,6 +169,8 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test6_Intro_Bang
     Test6_Coinduct
     Test6_Heavy_Imports
+    Test6_Theory_Nested
+    Test6_Activation
     Test6_Interpret_Block
     Test7_Degeneracy
     Test7_Declare_Block

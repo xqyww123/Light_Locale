@@ -1,12 +1,27 @@
 diff -ruN a/src/Pure/Isar/element.ML b/src/Pure/Isar/element.ML
 --- a/src/Pure/Isar/element.ML
 +++ b/src/Pure/Isar/element.ML
-@@ -120,7 +120,7 @@
-   typ = Morphism.typ phi,
-   term = Morphism.term phi,
-   pattern = Morphism.term phi,
+@@ -115,13 +115,16 @@
+   fact = map (Thm.transfer thy),
+   attrib = map (Token.transfer thy)};
+ 
+-fun transform_ctxt phi = map_ctxt
+- {binding = Morphism.binding phi,
+-  typ = Morphism.typ phi,
+-  term = Morphism.term phi,
+-  pattern = Morphism.term phi,
 -  fact = Morphism.fact phi,
-+  fact = Exported_Premises.keep_counts (Morphism.fact phi),
-   attrib = map (Token.transform phi)};
+-  attrib = map (Token.transform phi)};
++fun transform_ctxt phi =
++  let val keep = Exported_Premises.keep_counts phi in
++    map_ctxt
++     {binding = Morphism.binding phi,
++      typ = Morphism.typ phi,
++      term = Morphism.term phi,
++      pattern = Morphism.term phi,
++      fact = fn ths => keep ths (Morphism.fact phi ths),
++      attrib = map (Token.transform phi)}
++  end;
+ 
  
  

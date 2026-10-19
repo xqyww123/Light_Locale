@@ -114,14 +114,14 @@ val st = run ctxtr [@{thm LF_axioms}, hr] "cases" "Sc x";
 val _ = \<^assert> ((cases_text st, subgoals st) = heavy_r9);
 \<close>
 declare LF.foo9[elim]
-ML_val \<open>
+ML \<open>
 (* the derived rule: major premise first, LF ?S second -- in this block and at theory level *)
 fun elim_shape ctxt = exists (fn (_, plain, _) =>
     major_is \<^const_name>\<open>Rc\<close> plain andalso
     Light_Locale_Axiom_Facts.is_light_prop ctxt (nth (Thm.prems_of plain) 1))
   (claset_entries ctxt @{thm LF.foo9});
-val _ = \<^assert> (elim_shape \<^context> andalso elim_shape (thy_ctxt \<^context>));
 \<close>
+ML_val \<open>\<^assert> (elim_shape \<^context> andalso elim_shape (thy_ctxt \<^context>))\<close>
 lemma d [dest]: "Qc x \<Longrightarrow> Pc x" by (rule Pc1_ax)
 ML \<open>
 (* the derived dest rule of LF.d, literally: the user premise Qc ?x first, then the exported block
@@ -143,6 +143,12 @@ val _ = \<^assert> (block_lemma ("LF", "D") 2 (@{thm LF.bad'}, #bad' heavy_neste
 val _ = \<^assert> (block_lemma ("LF", "D") 2 (@{thm LF.d}, #d heavy_nested));
 \<close>
 end
+
+(* the light block's own outer copies (light_standard_morphism) are not wrapped by the K + d
+   writer of milestone 3's first item, which would count the nested assumption into K: r9 keeps
+   K 1 in the outer block, the elim rule of LF.foo9 its shape *)
+ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r9} = 1 andalso Thm.eq_thm_prop (@{thm r9}, @{thm LF.foo9}))\<close>
+ML_val \<open>\<^assert> (elim_shape \<^context>)\<close>
 
 (* the outer block after the nested end *)
 ML_val \<open>

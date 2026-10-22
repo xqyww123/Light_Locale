@@ -34,6 +34,7 @@ sig
   val instances: theory -> string -> string -> term list
   val tfrees: term list -> (string * sort) list
   val extra_hyps: Proof.context -> string -> term list
+  val hyps_are_assms: Proof.context -> thm -> bool
   val facts_under: theory -> string -> string list
   val visible_fact_names: Proof.context -> string list
   val has_fact: Proof.context -> string -> bool
@@ -58,6 +59,9 @@ sig
   val by_blast: Proof.context -> term -> bool
   val has_K_tag: thm -> bool
   val tags_without_K: thm -> Properties.T
+  val attr: attribute -> thm -> Proof.context -> thm
+  val drop_first: thm -> thm
+  val check_rows: (string * (unit -> bool)) list -> unit
   val light_prems: Proof.context -> thm -> term list
   val simp_props: Proof.context -> term list
   val plain_equal: thm * thm -> bool
@@ -309,6 +313,10 @@ fun extra_hyps ctxt name =
     |> maps Thm.hyps_of |> filter_out (member (op aconv) assms)
   end;
 
+(*the hyps of th are exactly the assumptions of ctxt*)
+fun hyps_are_assms ctxt th =
+  eq_set (op aconv) (Thm.hyps_of th, map Thm.term_of (Assumption.all_assms_of ctxt));
+
 
 (* the twin projection (plan section 7, preface): each locale has its own predicate constants, so
    the light locale's are renamed to the heavy twin's before comparing *)
@@ -393,6 +401,18 @@ fun has_K_tag th = AList.defined (op =) (Thm.get_tags th) Exported_Premises.expo
 
 (*the tags other than K; Thm.untag_rule, not Exported_Premises.put, which is under test*)
 fun tags_without_K th = Thm.get_tags (Thm.untag_rule Exported_Premises.exported_premises_tagN th);
+
+(*the theorem an attribute leaves*)
+fun attr att th ctxt = #1 (Thm.apply_attribute att th (Context.Proof ctxt));
+
+(*discharges the first premise by assuming it (an inference rule: the tags go)*)
+fun drop_first th = Thm.implies_elim th (Thm.assume (hd (Thm.cprems_of th)));
+
+(*named rows of one ML_val, each evaluated on its own, the failing ones named*)
+fun check_rows rows =
+  (case filter_out (fn (_, f) => the_default false (try f ())) rows of
+    [] => ()
+  | bad => error ("Failed rows: " ^ commas (map #1 bad)));
 
 fun light_prems ctxt th = filter (Light_Locale_Axiom_Facts.is_light_prop ctxt) (Thm.prems_of th);
 

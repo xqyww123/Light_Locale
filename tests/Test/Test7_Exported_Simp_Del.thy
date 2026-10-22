@@ -1,4 +1,4 @@
-(* Plan section 7 test 7: the deletion of a theory fact in exported form inside the block is global (section 5.7): st2 (first premise the light predicate) is in the theory simpset before, and after context LFs2 begin declare st2 [simp del] end it is gone, with no warning. *)
+(* Plan section 7 test 7: a theory fact re-declared without hyps inside the block is stored as itself, so its deletion is global (section 5.7, the rule at plan line 3300): st2 (first premise the light predicate) is in the theory simpset before, and after context LFs2 begin declare st2 [simp del] end it is gone, with no warning. *)
 theory Test7_Exported_Simp_Del
   imports Test_Support
 begin

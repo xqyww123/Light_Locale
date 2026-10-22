@@ -42,22 +42,28 @@ src/Pure/exported_premises.ML EXPORTED_PREMISES val put
 src/Pure/exported_premises.ML EXPORTED_PREMISES val own_prems
 src/Pure/exported_premises.ML EXPORTED_PREMISES val own_major_prem
 src/Pure/exported_premises.ML EXPORTED_PREMISES val strong_consumes
-src/Pure/exported_premises.ML EXPORTED_PREMISES val discharge
 src/Pure/exported_premises.ML EXPORTED_PREMISES val put_major_prem_first
 # plan §11 (39), REV19-14
 src/Pure/exported_premises.ML EXPORTED_PREMISES val keep_count
-src/Pure/exported_premises.ML EXPORTED_PREMISES val keep_counts
+# REV2 section 9 step 7: the combinator for the sites that pass a function value (REV2 section 3.3 head)
+src/Pure/exported_premises.ML EXPORTED_PREMISES val keeping_count
+# milestone 3's first item, second version (plan REV2 section 3.2)
+src/Pure/exported_premises.ML EXPORTED_PREMISES val with_count
+src/Pure/exported_premises.ML EXPORTED_PREMISES val shift_count
+src/Pure/exported_premises.ML EXPORTED_PREMISES val restore_counts
+src/Pure/more_exported_premises.ML EXPORTED_PREMISES include EXPORTED_PREMISES
+src/Pure/more_exported_premises.ML EXPORTED_PREMISES val discharge
+src/Pure/Isar/local_theory.ML LOCAL_THEORY val redeclare_result
+src/Pure/Isar/local_theory.ML LOCAL_THEORY val redeclare
+src/Pure/Isar/local_theory.ML PRIVATE_LOCAL_THEORY val redeclaring
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val is_light_prop
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val add
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val add_attribute
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val retrieve
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val is_exported_form_strict
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val unchanged_by
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val is_exported_form
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val replace_fact
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val keep_unchanged
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val premise_count
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val norm_result
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val export_premise_count
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val light_export
 src/Pure/Isar/parse_spec.ML PARSE_SPEC val locale_val
 src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val implicit_structure_

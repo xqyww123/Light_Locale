@@ -1,0 +1,12 @@
+diff -ruN a/src/Pure/Isar/specification.ML b/src/Pure/Isar/specification.ML
+--- a/src/Pure/Isar/specification.ML
++++ b/src/Pure/Isar/specification.ML
+@@ -342,7 +342,7 @@
+     val facts' = facts
+       |> Attrib.partial_evaluation ctxt'
+       |> Attrib.transform_facts (Proof_Context.export_morphism ctxt' lthy);
+-    val (res, lthy') = lthy |> Local_Theory.notes_kind kind facts';
++    val (res, lthy') = lthy |> Local_Theory.redeclare_result (Local_Theory.notes_kind kind facts');
+     val _ =
+       Proof_Display.print_results {interactive = int, pos = Position.thread_data ()}
+         lthy' ((kind, ""), res);

@@ -1,13 +1,27 @@
 diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 --- a/src/Pure/exported_premises.ML	1970-01-01 00:00:00.000000000 +0000
 +++ b/src/Pure/exported_premises.ML
-@@ -0,0 +1,118 @@
+@@ -0,0 +1,135 @@
 +(*  Title:      Pure/exported_premises.ML
 +
-+Leading premises of a rule that are exported contextual assumptions (light locale
-+predicates and nested "assumes" layers), recorded in the "exported_premises" tag as a
-+count K.  The "consumes" primitives of Rule_Cases live here so that get_consumes can
-+default to K.
++K, the exported-premise count of a theorem: its leading K premises are contextual
++assumptions an export pasted on, recorded in the "exprem" tag.  Pure's own
++transformations on the copying paths keep K themselves, each through the gated writer
++whose precondition it meets; on an untagged theorem the gate returns the
++transformation's stock output itself.  So do Local_Defs.unfold/fold and
++Object_Logic.gen_rulify ([unfolded], [folded], [rule_format]); simplification and the
++kernel's inference rules clear K.  light_export copies K back with Rule_Cases.save.
++Custom export layers (Assumption.add_assms) run under thm_export's single shift, and
++other fact functions (HOL tools, user code) under the fallback in Morphism.morphism;
++both are assumed to meet shift_count's precondition.  Where a transformation does not,
++the user sets K by hand with [exported_premises n] -- in Pure this happens only at prop
++level: an equation that rewrites an implication (a rewrites mixin, an
++[unfolded]/[folded] argument, a declared rulify rule) can delete, merge, split or
++reorder leading premises, and a prop-valued defines heading the conclusion splits
++premises off into K.
++
++The "consumes" primitives of Rule_Cases live here so that get_consumes can default
++to K.
 +*)
 +
 +signature EXPORTED_PREMISES =
@@ -18,12 +32,14 @@ diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 +  val exported_premises_tagN: string
 +  val count_of: thm -> int
 +  val put: int -> thm -> thm
++  val with_count: (int -> thm -> thm -> int) -> thm -> thm -> thm
 +  val keep_count: thm -> thm -> thm
-+  val keep_counts: morphism -> thm list -> thm list -> thm list
++  val keeping_count: (thm -> thm) -> thm -> thm
++  val shift_count: thm -> thm -> thm
++  val restore_counts: thm list -> thm list -> thm list
 +  val own_prems: thm -> term list
 +  val own_major_prem: thm -> term
 +  val strong_consumes: thm -> int
-+  val discharge: thm list -> thm -> thm
 +  val put_major_prem_first: thm -> thm
 +end;
 +
@@ -40,42 +56,50 @@ diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 +        SOME n => SOME n
 +      | _ => raise THM ("Malformed '" ^ tagN ^ "' tag of theorem", 0, [th])));
 +
-+val exported_premises_tagN = "exported_premises";
++val exported_premises_tagN = "exprem";
 +
 +val count_of = the_default 0 o lookup_nat_tag exported_premises_tagN;
 +
 +(*K = 0 removes every entry; otherwise the value changes in place, since
 +  Thm.eq_thm_strict compares tags in order*)
-+fun put 0 = Thm.untag_rule exported_premises_tagN
-+  | put k = Thm.map_tags (Properties.put (exported_premises_tagN, string_of_int k));
++fun set 0 = Thm.untag_rule exported_premises_tagN
++  | set k = Thm.map_tags (Properties.put (exported_premises_tagN, string_of_int k));
 +
-+(*a count beyond the premises (written by hand) becomes 0, "unknown"*)
-+fun put_in_range k th' = put (if k <= Thm.nprems_of th' then k else 0) th';
++(*put k th: K becomes k when 0 < k <= nprems th, otherwise the tag is removed ("unknown");
++  th itself when it already carries that value*)
++fun put k th =
++  let val k' = if 0 < k andalso k <= Thm.nprems_of th then k else 0
++  in if count_of th = k' then th else set k' th end;
 +
-+(*th' derived from th by an operation that clears the tags (an inference rule): th's count
-+  carries over, since the operation keeps the leading premises in front; for an untagged th,
-+  th' itself*)
-+fun keep_count th th' =
++(*an untagged th gives th' itself; otherwise th' gets the rule's K through put*)
++fun with_count rule th th' =
 +  (case count_of th of
 +    0 => th'
-+  | k => put_in_range k th');
++  | k => put (rule k th th') th');
 +
-+(*ths' = Morphism.fact phi ths: each count carries over plus d, the number of premises phi puts
-+  in front, measured once on the zero-premise theorem and only when some input is tagged; a
-+  morphism that fails on it falls back to the premise count.  The measure is right for a
-+  morphism that treats every theorem alike (the standard and activation morphisms); the light
-+  morphisms branch per theorem and must not be wrapped.*)
-+fun keep_counts phi =
-+  let
-+    val d = Lazy.lazy (fn () => try (fn () => Thm.nprems_of (Morphism.thm phi Drule.dummy_thm)) ());
-+    fun keep th th' =
-+      (case count_of th of
-+        0 => th'
-+      | k =>
-+          (case Lazy.force d of
-+            SOME n => put_in_range (k + n) th'
-+          | NONE => put (if Thm.nprems_of th' = Thm.nprems_of th then k else 0) th'));
-+  in fn ths => fn ths' => if length ths' = length ths then map2 keep ths ths' else ths' end;
++(*th' derived from th by a step that adds, removes or reorders no premise in front of or
++  among the leading K; it may change their content (instantiation, rewriting) and add
++  premises only behind them (a conclusion split off at the end)*)
++val keep_count = with_count (fn k => fn _ => fn _ => k);
++
++(*f th with th's K, for an f that meets keep_count's precondition.  Wrapping the function
++  value keeps whatever f staged before it saw th (a simpset built once per partial application);
++  where stock is a fun clause over a named theorem, or the result comes out of a case branch,
++  the writer is appended instead.*)
++fun keeping_count f th = keep_count th (f th);
++
++(*th' derived from th by a step whose every added or removed premise lies in front: K moves
++  by the difference of the premise counts*)
++val shift_count = with_count (fn k => fn th => fn th' => k + Thm.nprems_of th' - Thm.nprems_of th);
++
++(*wrapped around each fact function of a morphism: an output that lost its input's K gets it
++  back by shift_count (precondition: file head of exported_premises.ML). It cannot tell a
++  lost K from one the function's own rule took to 0, and writes K + the difference there
++  too. One output per input, in input order; when the lengths differ nothing is done
++  (Eisbach's match changes the length).*)
++fun restore_counts ths ths' =
++  if length ths <> length ths' orelse forall (fn th => count_of th = 0) ths then ths'
++  else map2 (fn th => fn th' => if count_of th' > 0 then th' else shift_count th th') ths ths';
 +
 +val consumes_tagN = "consumes";
 +
@@ -103,13 +127,6 @@ diff -ruN a/src/Pure/exported_premises.ML b/src/Pure/exported_premises.ML
 +
 +
 +(* operations on the exported premises *)
-+
-+fun discharge facts th =
-+  (case count_of th of
-+    0 => th
-+  | k =>
-+      if length facts < k then raise THM ("discharge: too few facts", k, th :: facts)
-+      else take k facts MRS th);
 +
 +(*rotate the first own premise in front of the exported ones; with nothing to rotate the rule
 +  is returned as it is, since permute_prems clears the tags*)

@@ -220,38 +220,53 @@ val _ = \<^assert> (exists (fn (_, plain, _) => major_is \<^const_name>\<open>Pc
 
 end
 
-(* the theory copies against the heavy block facts (lemma rows) and D.x under phi (package rows) *)
+(* the theory copies against the heavy block facts (lemma rows) and D.x under phi (package rows);
+   the ML command binds only what cannot fail, the rows are ML_val commands *)
 ML \<open>
 val LFp = \<^const_name>\<open>LF\<close> and Dp = \<^const_name>\<open>D\<close>;
 fun LF_facts ctxt n = Proof_Context.get_fact ctxt (Facts.named ("LF." ^ n));
 fun D_facts ctxt n = Proof_Context.get_fact ctxt (Facts.named ("D." ^ n));
-val _ = List.app (fn (n, Package) =>
-      (\<^assert> (eq_list (phi_equal (LFp, Dp)) (LF_facts \<^context> n, D_facts \<^context> n));
-       \<^assert> (eq_list (diff_K 1) (LF_facts \<^context> n, H n)))
-    | (n, _) => \<^assert> (eq_list (block_lemma ("LF", "D") 1) (LF_facts \<^context> n, H n))) rows;
+val simps = simp_props \<^context>;
+\<close>
+ML_val \<open>
+check_rows (map (fn (n, kind) => (n, fn () =>
+    (case kind of
+      Package =>
+        eq_list (phi_equal (LFp, Dp)) (LF_facts \<^context> n, D_facts \<^context> n) andalso
+        eq_list (diff_K 1) (LF_facts \<^context> n, H n)
+    | _ => eq_list (block_lemma ("LF", "D") 1) (LF_facts \<^context> n, H n)))) rows)
+\<close>
 
 (* pinned shapes *)
+ML_val \<open>
 val _ = \<^assert> (Thm.prop_of @{thm LF.fooP} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Pc x y\<close>);
 val _ = \<^assert> (Thm.prop_of @{thm LF.fooQ} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Qc x \<Longrightarrow> Pc x y\<close>);
 val _ = \<^assert> (Thm.prop_of @{thm LF.fooT} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Pc S\<close>);
 val _ = \<^assert> (Thm.prop_of @{thm LF.fooV} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> A \<Longrightarrow> A \<or> B\<close>);
+\<close>
+ML_val \<open>
 val _ = \<^assert> (Thm.prop_of @{thm LF.triv} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> A \<Longrightarrow> B \<Longrightarrow> B\<close>
   andalso Exported_Premises.count_of @{thm LF.triv} = 1 andalso Thm.nprems_of @{thm LF.triv} = 3);
 val _ = \<^assert> (Thm.prop_of @{thm LF.triv2} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> A \<Longrightarrow> B \<Longrightarrow> B\<close>
   andalso Exported_Premises.count_of @{thm LF.triv2} = 1
   andalso Rule_Cases.get @{thm LF.triv2} = ([(("a", []), []), (("b", []), [])], 1));
+\<close>
+ML_val \<open>
 val _ = \<^assert> (Thm.prop_of @{thm LF.foo} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> A \<Longrightarrow> B \<Longrightarrow> A \<and> B\<close>
   andalso Exported_Premises.count_of @{thm LF.foo} = 1
   andalso Rule_Cases.get @{thm LF.foo} = ([(("a", []), []), (("b", []), [])], 2));
 val _ = \<^assert> (Thm.prop_of @{thm LF.foo4} aconv
     Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Sc (y :: 'd) \<Longrightarrow> Pc (x :: 'c) \<Longrightarrow> Qc x y\<close>
   andalso Exported_Premises.count_of @{thm LF.foo4} = 1 andalso #2 (Rule_Cases.get @{thm LF.foo4}) = 2);
+\<close>
+ML_val \<open>
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fr} = 1);
 val _ = \<^assert> (exists (fn (_, plain, _) => major_is \<^const_name>\<open>Pc\<close> plain) (claset_entries \<^context> @{thm LF.fr}));
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.b} = 1 andalso Thm.nprems_of @{thm LF.b} = 1
   andalso Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Thm.prems_of @{thm LF.b}))
   andalso Thm.concl_of @{thm LF.b} aconv \<^prop>\<open>gz kz = kc\<close>);
-val simps = simp_props \<^context>;
+\<close>
+ML_val \<open>
 (* the simplifier renumbers the rule's variables (LF ?S1 ==> fz ?S1 == kz): structural check *)
 val _ = \<^assert> (exists (fn p =>
     (case Logic.dest_equals (Logic.strip_imp_concl p) of
@@ -260,6 +275,8 @@ val _ = \<^assert> (exists (fn p =>
     length (Logic.strip_imp_prems p) = 1 andalso
     Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Logic.strip_imp_prems p))) simps);
 val _ = \<^assert> (not (exists (exists_Const (fn (c, _) => c = \<^const_name>\<open>gz\<close>)) simps));
+\<close>
+ML_val \<open>
 (* the predicate premise of LF.bad is the first *)
 val _ = \<^assert> (Thm.prop_of @{thm LF.bad} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Rc x S \<Longrightarrow> Sc x\<close>);
 (* the theory-level claset: the derived elim rule of LF.bad has major premise Rc ?x ?S, LF ?S second *)
@@ -501,15 +518,16 @@ lemmas hc = LF.fooP[of _ cabb]
 (* tags and redeclaration *)
 lemmas h5 [case_names a b] = LF.foo
 lemmas h5' = LF.foo
-ML_val \<open>
-val _ = \<^assert> (not (AList.defined (op =) (Thm.get_tags @{thm h5'}) "consumes"));
-val _ = \<^assert> (not (AList.defined (op =) (Thm.get_tags @{thm h5'}) "case_names"));
-val _ = \<^assert> (Exported_Premises.count_of @{thm h5'} = 1 andalso Rule_Cases.get_consumes @{thm h5'} = 1);
-\<close>
+(* h5' is LF.foo itself (second version: a redeclaration whose export changes nothing keeps the
+   theorem and its tags) *)
+ML_val \<open>\<^assert> (AList.lookup (op =) (Thm.get_tags @{thm h5'}) "consumes" = SOME "2")\<close>
+ML_val \<open>\<^assert> (AList.defined (op =) (Thm.get_tags @{thm h5'}) "case_names")\<close>
+ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm h5'} = 1 andalso Rule_Cases.get_consumes @{thm h5'} = 2)\<close>
 declare LF.foo[cases pred: Rc]
+(* the table entry is LF.foo itself: its case names a b and consumes 2 *)
 ML_val \<open>
 val SOME e = induct_entry Induct.find_casesP \<^context> \<^prop>\<open>Rc x S\<close> @{thm LF.foo};
-val _ = \<^assert> (diff_K 1 (e, heavy2_foo_entry));
+val _ = \<^assert> (Rule_Cases.get e = Rule_Cases.get @{thm LF.foo} andalso Exported_Premises.count_of e = 1);
 \<close>
 lemmas h6 [rotated, consumes 1] = LF.foo
 ML_val \<open>
@@ -528,24 +546,31 @@ val _ = \<^assert> (Thm.concl_of @{thm LF.tr.induct [OF _ LF_axioms]} aconv \<^p
 \<close>
 lemmas fr2 [dest] = LF.fr0[rule_format]
 lemmas fr' [dest] = LF.fr0b[OF LF_axioms, rule_format]
+(* fr2: rule_format keeps K (second version), so fr2 and the theory copy LF.fr2 are
+   LF ?S ==> Qc ?x ==> Pc ?x with K 1 and the theory-level dest rule's major premise is Qc ?x *)
+ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm fr2} = 1)\<close>
+ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm LF.fr2} = 1)\<close>
 ML_val \<open>
-val _ = \<^assert> (Exported_Premises.count_of @{thm fr2} = 0);
 val tctxt = thy_ctxt \<^context>;
-(* the registrations of the theory copies LF.fr2 and LF.fr', read from the theory claset *)
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fr2} = 0);
-val _ = \<^assert> (exists (fn (_, plain, _) => Light_Locale_Axiom_Facts.is_light_prop tctxt (Thm.major_prem_of plain))
+val _ = \<^assert> (exists (fn (_, plain, _) => same_shape (Thm.major_prem_of plain, Logic.varify_global \<^prop>\<open>Qc (x :: 'c)\<close>))
   (claset_entries tctxt @{thm LF.fr2}));
+\<close>
+(* fr': OF clears K first, the stock export gives K 1 *)
+ML_val \<open>
+val tctxt = thy_ctxt \<^context>;
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fr'} = 1);
 val _ = \<^assert> (exists (fn (_, plain, _) => same_shape (Thm.prop_of plain,
     Logic.varify_global \<^prop>\<open>Qc x S \<Longrightarrow> LF S \<Longrightarrow> (Rc x \<Longrightarrow> PROP W) \<Longrightarrow> PROP W\<close>))
   (claset_entries tctxt @{thm LF.fr'}));
 \<close>
 lemmas r' [cases type: T] = LF.Abs_T_cases
+(* r' is LF.Abs_T_cases itself, its case name Abs_T kept *)
 ML_val \<open>
 val SOME e = induct_entry Induct.find_casesT \<^context> \<^typ>\<open>T\<close> @{thm LF.r'};
-val _ = \<^assert> (diff_K 1 (e, heavy2_r'_entry));
-val _ = \<^assert> (is_some (induct_entry Induct.find_casesT \<^context> \<^typ>\<open>tr0\<close> @{thm LF.trS}));
+val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.r'}, @{thm LF.Abs_T_cases}) andalso
+  Rule_Cases.get e = Rule_Cases.get @{thm LF.Abs_T_cases} andalso Exported_Premises.count_of e = 1);
 \<close>
+ML_val \<open>\<^assert> (is_some (induct_entry Induct.find_casesT \<^context> \<^typ>\<open>tr0\<close> @{thm LF.trS}))\<close>
 (* the registrations of the declaration block are still there when the block is reopened *)
 ML_val \<open>ip_table_check \<^context>\<close>
 declare LF.foo9[cases pred: Rc]
@@ -554,13 +579,65 @@ lemmas ipc [case_names Z S, consumes 1] = LF.ip.cases
 ML_val \<open>
 val SOME e = induct_entry Induct.find_casesP \<^context> \<^prop>\<open>Rc x S\<close> @{thm LF.foo9};
 val _ = \<^assert> (diff_K 1 (e, heavy2_foo9_entry));
-val SOME e = induct_entry Induct.find_casesP \<^context> \<^prop>\<open>ip x\<close> @{thm LF.ip.cases};
-val _ = \<^assert> (diff_K 1 (e, heavy2_ipcases_entry));
-val _ = \<^assert> (diff_K (Light_Locale_Axiom_Facts.premise_count \<^context>) (@{thm ipc}, the_single (the (Symtab.lookup heavy2 "ipc"))));
 \<close>
+(* the entry is LF.ip.cases itself, its case names z / s kept *)
+ML_val \<open>
+val SOME e = induct_entry Induct.find_casesP \<^context> \<^prop>\<open>ip x\<close> @{thm LF.ip.cases};
+val _ = \<^assert> (Rule_Cases.get e = Rule_Cases.get @{thm LF.ip.cases} andalso Exported_Premises.count_of e = 1);
+\<close>
+ML_val \<open>\<^assert> (diff_K (Light_Locale_Axiom_Facts.premise_count \<^context>) (@{thm ipc}, the_single (the (Symtab.lookup heavy2 "ipc"))))\<close>
 (* the simp row of milestone 1: the theory copy's condition closed by hand *)
 ML_val \<open>\<^assert> (proves (fn c => simp_tac (c addsimps [@{thm LF.aux [OF LF_axioms]}]) 1) \<^context> \<^prop>\<open>gc (hc 0) = 0\<close>)\<close>
+
+(* N17, the final criterion and the way a redeclaration is stored (second version).  A
+   redeclaration without hyps whose export changes nothing is stored as the theorem itself, tags
+   included: my_induct (nat.induct, K 0), y (LF.foo, K 1), yt (a tag t of its own); one whose
+   export changes it goes through light_export, which only generalises and keeps K and the
+   Rule_Cases tags: yi = LF.foo[of S]; z and z2 mention the block's S; a fact written back by
+   ML Local_Theory.note is not a redeclaration and goes the stock way *)
+lemmas my_induct = nat.induct
+lemmas y = LF.foo
+lemmas yi = LF.foo[of S]
+lemmas yt = LF.foo [tagged t v]
+lemmas z = LF.foo[of S, THEN conjunct1]
+lemmas z2 = conjI[of "P S" for P]
+local_setup \<open>Local_Theory.note ((\<^binding>\<open>nc\<close>, []), @{thms conjI}) #> snd\<close>
+local_setup \<open>Local_Theory.note ((\<^binding>\<open>nf\<close>, []), @{thms LF.foo}) #> snd\<close>
+ML_val \<open>\<^assert> (Rule_Cases.get @{thm yi} = Rule_Cases.get @{thm LF.yi})\<close>
+ML_val \<open>\<^assert> (AList.lookup (op =) (Thm.get_tags @{thm yt}) "t" = SOME "v")\<close>
 end
+
+ML_val \<open>
+val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.my_induct}, @{thm nat.induct}) andalso not (has_K_tag @{thm LF.my_induct})
+  andalso Rule_Cases.get @{thm LF.my_induct} = Rule_Cases.get @{thm nat.induct});
+\<close>
+ML_val \<open>
+val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.y}, @{thm LF.foo}) andalso Exported_Premises.count_of @{thm LF.y} = 1
+  andalso Rule_Cases.get @{thm LF.y} = Rule_Cases.get @{thm LF.foo});
+\<close>
+ML_val \<open>
+val _ = \<^assert> (Thm.prop_of @{thm LF.yi} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> A \<Longrightarrow> B \<Longrightarrow> A \<and> B\<close>
+  andalso Exported_Premises.count_of @{thm LF.yi} = 1
+  andalso Rule_Cases.get @{thm LF.yi} = ([(("a", []), []), (("b", []), [])], 2));
+\<close>
+ML_val \<open>\<^assert> (AList.lookup (op =) (Thm.get_tags @{thm LF.yt}) "t" = SOME "v")\<close>
+ML_val \<open>
+val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.z}, Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> A \<Longrightarrow> B \<Longrightarrow> A\<close>)
+  andalso not (has_K_tag @{thm LF.z}));
+\<close>
+ML_val \<open>
+val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.z2},
+    Logic.varify_global \<^prop>\<open>P (S :: ('a, 'b) ring_scheme) \<Longrightarrow> Q \<Longrightarrow> P S \<and> Q\<close>)
+  andalso not (has_K_tag @{thm LF.z2}));
+\<close>
+ML_val \<open>
+val _ = \<^assert> (Thm.prop_of @{thm LF.nc} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> P \<Longrightarrow> Q \<Longrightarrow> P \<and> Q\<close>
+  andalso Exported_Premises.count_of @{thm LF.nc} = 1);
+\<close>
+ML_val \<open>
+val _ = \<^assert> (Thm.nprems_of @{thm LF.nf} = 4 andalso Exported_Premises.count_of @{thm LF.nf} = 2 andalso
+  forall (Light_Locale_Axiom_Facts.is_light_prop \<^context>) (take 2 (Thm.prems_of @{thm LF.nf})));
+\<close>
 
 context LF2 begin
 lemmas hR1 = LF2.fooR[of _ _ "g S"]
@@ -571,29 +648,38 @@ end
 lemma (in LF) ax: "Pc S y" by (rule Pc_ax)
 lemma (in LF) fa7 [OF LF.ax[OF LF_axioms]]: "Pc S y \<Longrightarrow> Pc S y \<and> Pc S y" by (rule conjI)
 
+(* the bindings of the rows (an ML command stops the theory on failure, so it binds only what
+   cannot fail); the rows are ML_val commands *)
 ML \<open>
 val H2 = the_single o the o Symtab.lookup heavy2;
 val LF_copy = the_single o LF_facts \<^context> and D_copy = the_single o D_facts \<^context>;
 fun one_light th = length (light_prems \<^context> th) = 1;
+val hg_shape = Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Pc (h (Sa :: ('a, 'b) ring_scheme)) y\<close>;
+\<close>
 
 (* the premise-count oracle of the redeclaration rows (plan lines 4232-4233), one row (name, delta, K):
    the theory copy D.x of the twin's row; nprems LF.x = nprems D.x + delta, delta -1 where the row
    is stored unchanged (its exported form has the one light premise D.x gets on top of its own),
-   0 where the block form carries the hyp LF S and goes the stock way (hS1, hq, hq') or the fact is
-   not an LF fact (cj, hm, hle, h7); K is the layer's premise count, 2 in the nested assumes
-   blocks of hle and h7 (section 11, item (19)) *)
-val _ = List.app (fn (n, delta, k) =>
-    \<^assert> (Thm.nprems_of (LF_copy n) = Thm.nprems_of (D_copy n) + delta andalso
+   0 where the block form carries the hyp LF S and goes the stock way (hS1, hq, hq'), K 1 (section
+   11, item (19)); the facts that are not LF facts (cj, hm, hle, h7) are redeclarations stored as
+   the theorems themselves since the second version, checked in their own rows below *)
+ML_val \<open>
+check_rows (map (fn (n, delta, k) =>
+    (n, fn () => Thm.nprems_of (LF_copy n) = Thm.nprems_of (D_copy n) + delta andalso
       Exported_Premises.count_of (LF_copy n) = k))
   [("h", ~1, 1), ("h2", ~1, 1), ("hz", ~1, 1), ("h4", ~1, 1), ("hS0", ~1, 1), ("hS", ~1, 1), ("h3'", ~1, 1),
-   ("hg", ~1, 1), ("hc", ~1, 1), ("hS1", 0, 1), ("hq", 0, 1), ("hq'", 0, 1), ("cj", 0, 1), ("hm", 0, 1),
-   ("hle", 0, 2), ("h7", 0, 2)];
-val _ = List.app (fn (l, d) =>
-    \<^assert> (Thm.nprems_of (Proof_Context.get_thm \<^context> l) = Thm.nprems_of (Proof_Context.get_thm \<^context> d) - 1
+   ("hg", ~1, 1), ("hc", ~1, 1), ("hS1", 0, 1), ("hq", 0, 1), ("hq'", 0, 1)]);
+\<close>
+ML_val \<open>
+check_rows (map (fn (l, d) =>
+    (l, fn () => Thm.nprems_of (Proof_Context.get_thm \<^context> l) = Thm.nprems_of (Proof_Context.get_thm \<^context> d) - 1
       andalso Exported_Premises.count_of (Proof_Context.get_thm \<^context> l) = 1))
-  [("LF2.hR1", "D2.hR1"), ("LF2.hR2", "D2.hR2")];
+  [("LF2.hR1", "D2.hR1"), ("LF2.hR2", "D2.hR2")]);
+\<close>
 (* the rows not mentioning the block's S: phi-equal to the twin's block copy of the same row *)
-val _ = map (fn n => \<^assert> (phi_equal (LFp, Dp) (LF_copy n, H2 n))) ["h", "h2", "hz"];
+ML_val \<open>check_rows (map (fn n => (n, fn () => phi_equal (LFp, Dp) (LF_copy n, H2 n))) ["h", "h2", "hz"])\<close>
+(* the shapes *)
+ML_val \<open>
 val _ = \<^assert> (Thm.prop_of @{thm LF.h} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Pc c y\<close>);
 val _ = \<^assert> (Thm.nprems_of @{thm LF.h} = 1);
 val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.h2},
@@ -610,54 +696,147 @@ val _ = \<^assert> (Thm.nprems_of @{thm LF.h3'} = 1);
 val _ = \<^assert> (Thm.nprems_of @{thm LF2.hR1} = 1 andalso Thm.nprems_of @{thm LF2.hR2} = 1);
 val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF2.hp}, @{thm LF.fooP}) andalso Exported_Premises.count_of @{thm LF2.hp} = 1
   andalso Thm.nprems_of @{thm LF2.hp} = Thm.nprems_of @{thm D2.hp} - 1);
+\<close>
 (* the derived facts *)
+ML_val \<open>
 val _ = \<^assert> (Thm.nprems_of @{thm LF.hq} = 2 andalso
   forall (Light_Locale_Axiom_Facts.is_light_prop \<^context>) (Thm.prems_of @{thm LF.hq}) andalso
   same_shape (Thm.concl_of @{thm LF.hq}, Logic.varify_global \<^prop>\<open>Pc c y\<close>));
 val _ = \<^assert> (Thm.prop_of @{thm LF.hq'} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Pc c y\<close>);
-(* non-LF facts get the premise as in stock *)
-val _ = \<^assert> (Thm.prop_of @{thm LF.cj} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> P \<Longrightarrow> Q \<Longrightarrow> P \<and> Q\<close>);
-val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Thm.prems_of @{thm LF.hm}))
-  andalso not (Light_Locale_Axiom_Facts.is_light_prop \<^context> (nth (Thm.prems_of @{thm LF.hm}) 1)));
-(* nested assumes: the ?a <= ?b premise stays; the sort row *)
-val _ = \<^assert> (Thm.nprems_of @{thm LF.hle} = 4 andalso Exported_Premises.count_of @{thm LF.hle} = 2);
-val _ = \<^assert> (Thm.nprems_of @{thm LF.h7} = 3 andalso Exported_Premises.count_of @{thm LF.h7} = 2);
-val _ =
-  (case map (Term.strip_comb o HOLogic.dest_Trueprop) (Thm.prems_of @{thm LF.h7}) of
-    [_, (_, [Var (_, T1), _]), (_, [Var (_, T2), _])] =>
-      \<^assert> (T1 = TVar (("'c", 0), \<^sort>\<open>linorder\<close>) andalso
-        (case T2 of TVar (_, S) => S = \<^sort>\<open>order\<close> | _ => false))
-  | _ => raise Fail "h7 shape");
+\<close>
 (* nested defines: hg and hc have no g2 / cabb, the shape LF ?S ==> Pc (h ?Sa) ?y *)
-val hg_shape = Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Pc (h (Sa :: ('a, 'b) ring_scheme)) y\<close>;
+ML_val \<open>
 val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.hg}, hg_shape));
 val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.hc}, hg_shape));
 val _ = \<^assert> (length (Term.add_vars (Thm.prop_of @{thm LF.hg}) []) = 3);
 val _ = \<^assert> (not (exists_Const (fn (c, _) => Long_Name.base_name c = "cabb") (Thm.prop_of @{thm LF.hc})));
+\<close>
 (* tags *)
+ML_val \<open>
 val _ = \<^assert> (Thm.prop_of @{thm LF.h5} aconv Thm.prop_of @{thm LF.foo});
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.h5} = 1 andalso
-  not (AList.defined (op =) (Thm.get_tags @{thm LF.h5}) "consumes") andalso Rule_Cases.get_consumes @{thm LF.h5} = 1);
-val _ = \<^assert> (diff_K 1 (@{thm LF.h5}, H2 "h5"));
-(* the theory copy LF.h5' keeps the clause of the block's h5' (plan line 4290) *)
-val _ = \<^assert> (not (AList.defined (op =) (Thm.get_tags @{thm LF.h5'}) "consumes") andalso
-  not (AList.defined (op =) (Thm.get_tags @{thm LF.h5'}) "case_names") andalso
-  Exported_Premises.count_of @{thm LF.h5'} = 1 andalso Rule_Cases.get_consumes @{thm LF.h5'} = 1);
-(* the theory-level table entry of declare LF.foo[cases pred: Rc] *)
-val _ = \<^assert> (diff_K 1 (the (induct_entry Induct.find_casesP \<^context> \<^prop>\<open>Rc x S\<close> @{thm LF.foo}), heavy2_foo_entry));
 val _ = \<^assert> (diff_K 1 (@{thm LF.foo7}, H2 "foo7") andalso Rule_Cases.get @{thm LF.foo7} = ([(("1", []), [])], 2));
 val _ = \<^assert> (Thm.nprems_of @{thm LF.foo7'} = 3);
-val _ = \<^assert> (diff_K 1 (@{thm LF.r'}, H2 "r'"));
 val _ = \<^assert> (is_some (induct_entry Induct.find_casesT \<^context> \<^typ>\<open>LF.T\<close> @{thm LF.r'}));
 val _ = \<^assert> (diff_K 1 (@{thm LF.ipc}, H2 "ipc"));
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fa7} = 1 andalso one_light @{thm LF.fa7});
+\<close>
 (* theory level: lemma (in LF) fa6 [OF ax] reports Undefined fact *)
+ML_val \<open>
 val _ = \<^assert>
   ((lemma_in "LF" (Binding.name "fa6") "[OF ax]" "Pc S y \<Longrightarrow> Pc S y" (fn ctxt => assume_tac ctxt) \<^theory>; false)
     handle ERROR msg => String.isPrefix "Undefined fact" (Protocol_Message.clean_output msg));
+\<close>
 (* the theory-level goal without predicate facts does not close by simp *)
+ML_val \<open>
 val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>gc (hc 0) = 0\<close>));
 val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>LF.Leaf \<noteq> LF.Node a b\<close>));
+\<close>
+
+(* second version: facts unrelated to the block are stored as the theorems themselves, K 0 --
+   one premise fewer than the twin's theory copy, two in the nested assumes blocks *)
+ML_val \<open>
+val _ = List.app (fn (n, delta) =>
+    \<^assert> (Thm.nprems_of (LF_copy n) = Thm.nprems_of (D_copy n) + delta andalso
+      not (has_K_tag (LF_copy n))))
+  [("cj", ~1), ("hm", ~1)];
+\<close>
+ML_val \<open>
+val _ = List.app (fn (n, delta) =>
+    \<^assert> (Thm.nprems_of (LF_copy n) = Thm.nprems_of (D_copy n) + delta andalso
+      not (has_K_tag (LF_copy n))))
+  [("hle", ~2), ("h7", ~2)];
+\<close>
+ML_val \<open>\<^assert> (Thm.eq_thm_prop (@{thm LF.cj}, @{thm conjI}) andalso not (has_K_tag @{thm LF.cj}))\<close>
+ML_val \<open>\<^assert> (Thm.eq_thm_prop (@{thm LF.hm}, @{thm monoid.r_one}) andalso not (has_K_tag @{thm LF.hm}))\<close>
+ML_val \<open>\<^assert> (Thm.nprems_of @{thm LF.hle} = 2 andalso not (has_K_tag @{thm LF.hle}))\<close>
+(* the sort row: one premise left, ?'a::order unchanged *)
+ML_val \<open>
+val _ = \<^assert> (Thm.nprems_of @{thm LF.h7} = 1 andalso not (has_K_tag @{thm LF.h7}));
+val _ =
+  (case map (Term.strip_comb o HOLogic.dest_Trueprop) (Thm.prems_of @{thm LF.h7}) of
+    [(_, [Var (_, T), _])] => \<^assert> (case T of TVar (_, S) => S = \<^sort>\<open>order\<close> | _ => false)
+  | _ => raise Fail "h7 shape");
+\<close>
+(* the tags of h5 and h5': both carry LF.foo's case names a b and consumes 2 (h5' is LF.foo
+   itself, h5 adds the same case names) *)
+ML_val \<open>
+val _ = \<^assert> (Exported_Premises.count_of @{thm LF.h5} = 1 andalso
+  AList.lookup (op =) (Thm.get_tags @{thm LF.h5}) "consumes" = SOME "2" andalso Rule_Cases.get_consumes @{thm LF.h5} = 2);
+\<close>
+ML_val \<open>\<^assert> (Rule_Cases.get @{thm LF.h5} = Rule_Cases.get @{thm LF.foo})\<close>
+ML_val \<open>
+val _ = \<^assert> (AList.lookup (op =) (Thm.get_tags @{thm LF.h5'}) "consumes" = SOME "2" andalso
+  AList.defined (op =) (Thm.get_tags @{thm LF.h5'}) "case_names" andalso
+  Exported_Premises.count_of @{thm LF.h5'} = 1 andalso Rule_Cases.get_consumes @{thm LF.h5'} = 2);
+\<close>
+(* the theory-level table entry of declare LF.foo[cases pred: Rc] is LF.foo itself *)
+ML_val \<open>
+val e = the (induct_entry Induct.find_casesP \<^context> \<^prop>\<open>Rc x S\<close> @{thm LF.foo});
+val _ = \<^assert> (Rule_Cases.get e = Rule_Cases.get @{thm LF.foo} andalso Exported_Premises.count_of e = 1);
+\<close>
+ML_val \<open>
+val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.r'}, @{thm LF.Abs_T_cases}) andalso
+  Rule_Cases.get @{thm LF.r'} = Rule_Cases.get @{thm LF.Abs_T_cases} andalso Exported_Premises.count_of @{thm LF.r'} = 1);
+\<close>
+
+
+section \<open>The attribute steps keep K (N30)\<close>
+
+(* unfolded, folded and rule_format end with keep_count (second version): the leading premises
+   stay in front.  cst is an unconditional theory-level definition: the block's bar_def is
+   shadowed by LF.bar_def, which is conditional, and the rewriter leaves a conditional rule
+   unused *)
+definition cst :: nat where "cst = 2"
+context LF begin
+lemma fub: "cst = cst" by (rule refl)
+end
+context LF begin
+lemmas u = LF.fub[unfolded cst_def]
+lemmas uf = u[folded cst_def]
+lemmas uL = LF.fub[unfolded LF_def]
+ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm u} = 1)\<close>
+ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm uf} = 1)\<close>
+ML_val \<open>
+val _ = \<^assert> (same_shape (Thm.prop_of @{thm uL}, Logic.varify_global \<^prop>\<open>UP_cring (S :: ('a, 'b) ring_scheme) \<Longrightarrow> cst = cst\<close>)
+  andalso Exported_Premises.count_of @{thm uL} = 1);
+\<close>
+end
+ML_val \<open>
+val _ = \<^assert> (Thm.prop_of @{thm LF.u} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> (2::nat) = 2\<close>
+  andalso Exported_Premises.count_of @{thm LF.u} = 1);
+\<close>
+ML_val \<open>
+val _ = \<^assert> (Thm.prop_of @{thm LF.uf} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> cst = cst\<close>
+  andalso Exported_Premises.count_of @{thm LF.uf} = 1);
+\<close>
+ML_val \<open>
+val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.uL}, Logic.varify_global \<^prop>\<open>UP_cring (S :: ('a, 'b) ring_scheme) \<Longrightarrow> cst = cst\<close>)
+  andalso Exported_Premises.count_of @{thm LF.uL} = 1);
+\<close>
+(* the direct rows: each rewriting row also checks that the rewriting happened *)
+ML_val \<open>
+val inp = Exported_Premises.put 1 @{thm LF.fub};
+val out = Local_Defs.unfold \<^context> @{thms cst_def} inp;
+val _ = \<^assert> (not (Thm.prop_of out aconv Thm.prop_of inp));
+val _ = \<^assert> (Exported_Premises.count_of out = 1 andalso
+  Thm.prop_of out aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> (2::nat) = 2\<close>);
+\<close>
+ML_val \<open>
+val inp = Exported_Premises.put 1 @{thm LF.u};
+val out = Local_Defs.fold \<^context> @{thms cst_def} inp;
+val _ = \<^assert> (not (Thm.prop_of out aconv Thm.prop_of inp));
+val _ = \<^assert> (Exported_Premises.count_of out = 1 andalso
+  Thm.prop_of out aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> cst = cst\<close>);
+\<close>
+ML_val \<open>
+val out = Object_Logic.rulify \<^context> @{thm LF.fr0};
+val _ = \<^assert> (Exported_Premises.count_of out = 1 andalso Thm.nprems_of out = 2);
+\<close>
+(* the recorded limitation (plan section 3.5 (b)): an equation whose left-hand side is an
+   implication merges leading premises, and K is copied as it is *)
+ML_val \<open>
+val out = Local_Defs.unfold \<^context> @{thms atomize_conjL} @{thm LF.foo};
+val _ = \<^assert> (Thm.nprems_of out = 1 andalso Exported_Premises.count_of out = 1);
 \<close>
 
 end

@@ -10,12 +10,12 @@ diff -ruN a/src/Pure/Isar/attrib.ML b/src/Pure/Isar/attrib.ML
 +      Thm.rule_attribute [] (fn context => fn th =>
 +        let
 +          val ctxt = Context.proof_of context;
-+          (*K counts the leading premises of the HHF normal form; without a line-level for clause,
-+            the export morphism of lemmas and declare keeps a theorem in that form with its tags;
-+            when the normalisation rebuilds the theorem, the input's Rule_Cases tags are put back
-+            as of and where do*)
++          (*the absolute count n, written in place; a normalisation that rebuilt the theorem
++            (the tags differ) gets the input's rule-case tags back through Rule_Cases.save*)
 +          val th' = Raw_Simplifier.norm_hhf_protect ctxt th;
-+          val th'' = if null (Thm.get_tags th') then Rule_Cases.save th th' else th';
++          val th'' =
++            if eq_list (op =) (Thm.get_tags th, Thm.get_tags th') then th'
++            else Rule_Cases.save th th';
 +        in
 +          if 0 <= n andalso n <= Thm.nprems_of th'' then Exported_Premises.put n th''
 +          else error ("exported_premises: count out of range\n" ^ Thm.string_of_thm ctxt th'')

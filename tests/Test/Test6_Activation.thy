@@ -1,11 +1,12 @@
-(* Plan section 7 test 6, the activation site of milestone 3's first item (section 11 (40)) under
-   an interpretation that changes the premises themselves: Element.transform_ctxt puts K back as
-   K + d, d the premises the morphism puts in front (here 0), with a range check as the door.
-   K2.g: the rewrites mixin instantiates inside the first (the exported) premise, so a door that
-   asks the leading K premises to be literally unchanged would drop K -- the regression pin of
-   the door.  K6.h: a prop-typed parameter instantiated with an implication makes the
-   normalisation split a premise off the conclusion at the end, so the premise count changes
-   while the leading premise stays exported: K 1. *)
+(* Plan section 7 test 6, the activation site of milestone 3's first item (section 11 (40), (42))
+   under an interpretation that changes the premises themselves.  Second version: the writer in
+   Element.transform_ctxt is reverted to stock; each part of the activation morphism keeps K
+   itself (instantiation and the rewrites mixin keep it unchanged), so the copy gets K + d, d the
+   premises the morphism puts in front (here 0).  K2.g: the first (the exported) premise becomes
+   Pa 0 by the instantiation, so a check asking the leading K premises to be literally unchanged
+   would drop K -- the regression pin.  K6.h: a prop-typed parameter instantiated with an
+   implication splits a premise off the conclusion at the end (the instantiation itself does
+   that), so the premise count changes while the leading premise stays exported: K 1. *)
 theory Test6_Activation
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin

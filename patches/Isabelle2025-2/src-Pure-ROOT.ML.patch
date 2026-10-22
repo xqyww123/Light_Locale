@@ -1,15 +1,21 @@
 diff -ruN a/src/Pure/ROOT.ML b/src/Pure/ROOT.ML
 --- a/src/Pure/ROOT.ML
 +++ b/src/Pure/ROOT.ML
-@@ -194,6 +194,7 @@
+@@ -187,11 +187,13 @@
+ ML_file "more_pattern.ML";
+ ML_file "more_unify.ML";
+ ML_file "more_thm.ML";
++ML_file "exported_premises.ML";
+ 
+ ML_file "facts.ML";
+ ML_file "global_theory.ML";
+ ML_file "pure_thy.ML";
  ML_file "drule.ML";
++ML_file "more_exported_premises.ML";
  ML_file "morphism.ML";
  ML_file "variable.ML";
-+ML_file "exported_premises.ML";
  ML_file "conv.ML";
- ML_file "goal_display.ML";
- ML_file "tactical.ML";
-@@ -267,10 +268,11 @@
+@@ -267,10 +269,11 @@
  ML_file "Isar/element.ML";
  ML_file "Isar/obtain.ML";
  ML_file "Isar/subgoal.ML";

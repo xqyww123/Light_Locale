@@ -1,4 +1,14 @@
-(* Plan section 7 test 7: the defines assumption of a nested block is unfolded by the stock export and is not counted by K: in the predicate-free Setting, lemmas t = thin_rl inside context fixes f defines "f == n + 1" stores PROP ?V ==> PROP ?W ==> PROP ?W with count_of 0; in the gate fixture LF, lemmas t2 = v (v a theory fact with the vacuous premise a == b) inside context fixes g defines "g == Suc 0" stores LF ?S ==> ?a == ?b ==> ?a = ?b, count_of 1. *)
+(* Plan section 7 test 7: the defines assumption of a nested block is unfolded by the stock export
+   and is not counted by K.  The rows that pin it are fresh lemmas, which go through the light
+   block's writer: in the predicate-free Setting, lemma t inside context fixes f defines
+   "f == n + 1" stores PROP ?V ==> PROP ?W ==> PROP ?W with no K (the writer counts the premises
+   the export pastes on, none here; an assumption count would give 1); in the gate fixture LF,
+   lemma t3 inside context fixes g defines "g == Suc 0" stores LF ?S ==> ?a == ?b ==> ?a = ?b with
+   K 1 (an assumption count would give the in-range K 2).  The redeclaration row of the flip
+   table: lemmas t2 = v (v a theory fact with the vacuous premise a == b) in LF's defines layer
+   stores v itself, count_of 0 (second version: a redeclaration of a fact unrelated to the block
+   is stored as the theorem itself).  At the end the boundary row of the rule (N26): a defines
+   layer whose definiendum is a prop occurring in a leading premise. *)
 theory Test7_Defines_K
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -9,13 +19,13 @@ light_locale Setting = fixes n :: nat
 
 context Setting begin
 context fixes f :: nat defines "f \<equiv> n + 1" begin
-lemmas t = thin_rl
+lemma t: "PROP V \<Longrightarrow> PROP W \<Longrightarrow> PROP W" by assumption
 end
 end
 
-ML \<open>
+ML_val \<open>
 val _ = \<^assert> (Thm.prop_of @{thm Setting.t} aconv Thm.prop_of @{thm thin_rl});
-val _ = \<^assert> (Exported_Premises.count_of @{thm Setting.t} = 0);
+val _ = \<^assert> (not (has_K_tag @{thm Setting.t}) andalso Thm.nprems_of @{thm Setting.t} = 2);
 \<close>
 
 (* plan line 4873: the predicate-free Setting declared and has no Setting_axioms, where the gate
@@ -32,14 +42,32 @@ lemma v: "(a::nat) \<equiv> b \<Longrightarrow> a = b" by simp
 context LF begin
 context fixes g :: nat defines "g \<equiv> Suc 0" begin
 lemmas t2 = v
+lemma t3: "(a::nat) \<equiv> b \<Longrightarrow> a = b" by simp
 end
 end
 
-ML \<open>
-val _ = \<^assert> (Thm.prop_of @{thm LF.t2} aconv
-  Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> (a::nat) \<equiv> b \<Longrightarrow> a = b\<close>);
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.t2} = 1);
-val _ = \<^assert> (Thm.nprems_of @{thm LF.t2} = 2);
+ML_val \<open>
+val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.t2}, @{thm v}) andalso not (has_K_tag @{thm LF.t2}));
+val _ = \<^assert> (Thm.nprems_of @{thm LF.t2} = 1);
 \<close>
+ML_val \<open>
+val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.t3},
+  Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> (a::nat) \<equiv> b \<Longrightarrow> a = b\<close>));
+val _ = \<^assert> (Exported_Premises.count_of @{thm LF.t3} = 1 andalso Thm.nprems_of @{thm LF.t3} = 2);
+\<close>
+
+(* N26: the boundary of the rule (plan section 3.5 (b)).  The definiendum x is a prop occurring in
+   the leading premise: def_export unfolds it to A ==> B and the normalisation splits A off as a
+   premise of its own, which the one shift of thm_export counts into K.  The local copy
+   PROP x ==> PROP x with K 1; the theory copy (?A ==> ?B) ==> ?A ==> ?B with K 2.  A recorded
+   limitation, not a mutant catcher. *)
+context fixes A B :: bool and x :: "prop" defines x_def: "x \<equiv> (A \<Longrightarrow> B)" begin
+lemma r26_0: "PROP x \<Longrightarrow> PROP x" .
+lemmas r26 = r26_0 [exported_premises 1]
+ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r26} = 1 andalso Thm.nprems_of @{thm r26} = 1 andalso
+  Thm.prop_of @{thm r26} aconv \<^prop>\<open>PROP x \<Longrightarrow> PROP x\<close>)\<close>
+end
+ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r26} = 2 andalso Thm.nprems_of @{thm r26} = 2 andalso
+  same_shape (Thm.prop_of @{thm r26}, Logic.varify_global \<^prop>\<open>(A \<Longrightarrow> B) \<Longrightarrow> A \<Longrightarrow> B\<close>))\<close>
 
 end

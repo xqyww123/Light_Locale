@@ -1,0 +1,28 @@
+diff -ruN a/src/Pure/more_exported_premises.ML b/src/Pure/more_exported_premises.ML
+--- a/src/Pure/more_exported_premises.ML	1970-01-01 00:00:00.000000000 +0000
++++ b/src/Pure/more_exported_premises.ML
+@@ -0,0 +1,24 @@
++(*  Title:      Pure/more_exported_premises.ML
++
++Operations on the exported premises that need Drule.
++*)
++
++signature EXPORTED_PREMISES =
++sig
++  include EXPORTED_PREMISES
++  val discharge: thm list -> thm -> thm
++end;
++
++structure Exported_Premises: EXPORTED_PREMISES =
++struct
++
++open Exported_Premises;
++
++fun discharge facts th =
++  (case count_of th of
++    0 => th
++  | k =>
++      if length facts < k then raise THM ("discharge: too few facts", k, th :: facts)
++      else take k facts MRS th);
++
++end;

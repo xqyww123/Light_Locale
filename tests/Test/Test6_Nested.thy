@@ -5,13 +5,17 @@
    nested block; after the nested end the outer block sees the stock standard_notes export
    (fooN: Qc ?y ==> Pc S ?y), its simpset holds that copy and not the theory copy LF.fooN, which
    appears only in a reopened block; h2b loses the nested type variable.  The bundle group and the
-   block-layer guard group (i)-(viii): a bundle noted in the nested block comes back in the outer
-   block without the nested assumption and with K 1 when the outer layer's export does not change
-   the theorem (bn, bS), as stock when it does (bn3), a theory fact unchanged (bn2); the leaf's own
-   Thm_Data6 table filled by declaration (pervasive) / plain declaration in nested blocks is read
-   in the outer block by its head and absolute length, and at theory level after the outer end;
-   bx = refl[of x, keep] in the outer block keeps its loose x.  The r9 row, with its print_cases
-   comparison, lives here in whole (section 11, item (20)). *)
+   block-layer group (i)-(viii), second version: a bundle noted in the nested block (a
+   redeclaration) comes back in the outer block without the nested assumption and with K 1 when
+   the outer layer's export does not change the theorem (bn, bS), and when it does the export only
+   generalises, nothing is put in front (bn3: LF ?S ==> Pc ?ya ?y, K 1, the theory copy the same
+   theorem); a theory fact unchanged (bn2).  The leaf's own Thm_Data6 table filled by declaration
+   (pervasive) / plain declaration in nested blocks -- not redeclarations, so the stock export
+   puts the nested assumption in front: Qc ?y ==> gq6_0 with K 0 in the outer block, at theory
+   level LF ?S ==> Qc ?y ==> gq6_0 with K 2 -- is read in the outer block by its head and absolute
+   length, and at theory level after the outer end; bx = refl[of x, keep] in the outer block keeps
+   its loose x.  The r9 row, with its print_cases comparison, lives here in whole (section 11,
+   item (20)). *)
 theory Test6_Nested
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -20,7 +24,7 @@ ML \<open>open Test_Support\<close>
 
 ML \<open>
 fun mentions c = exists_Const (fn (c', _) => c' = c);
-(*the leaf's own table for the block-layer guard group*)
+(*the leaf's own table for the block-layer group*)
 structure Thm_Data6 = Generic_Data (type T = thm list val empty = [] val merge = op @);
 fun table ctxt = Thm_Data6.get (Context.Proof ctxt);
 \<close>
@@ -144,9 +148,9 @@ val _ = \<^assert> (block_lemma ("LF", "D") 2 (@{thm LF.d}, #d heavy_nested));
 \<close>
 end
 
-(* the light block's own outer copies (light_standard_morphism) are not wrapped by the K + d
-   writer of milestone 3's first item, which would count the nested assumption into K: r9 keeps
-   K 1 in the outer block, the elim rule of LF.foo9 its shape *)
+(* the light block's own outer copies (light_standard_morphism): r9 is a redeclaration without
+   hyps, stored as the theorem itself in the outer block (K 1, the same theorem as LF.foo9, no
+   nested assumption counted into K); the elim rule of LF.foo9 keeps its shape *)
 ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r9} = 1 andalso Thm.eq_thm_prop (@{thm r9}, @{thm LF.foo9}))\<close>
 ML_val \<open>\<^assert> (elim_shape \<^context>)\<close>
 
@@ -198,16 +202,21 @@ val _ = \<^assert> (not (null srcs) andalso no_Qc th andalso Exported_Premises.c
 val _ = \<^assert> (Thm.eq_thm_prop (th, @{thm LF.fooP}));
 val [([th2], _)] = bundle_of \<^context> "bn2";
 val _ = \<^assert> (Thm.eq_thm_prop (th2, @{thm add.assoc}) andalso Thm.get_tags th2 = Thm.get_tags @{thm add.assoc});
-val [([th3], _)] = bundle_of \<^context> "bn3";
-(* (ii): the nested y generalised, hy on top, as stock: Qc ?ya ==> LF ?S ==> Pc ?ya ?y, no tag *)
-val _ = \<^assert> (same_shape (Thm.prop_of th3,
-    Logic.varify_global \<^prop>\<open>Qc (ya :: 'c) \<Longrightarrow> LF S \<Longrightarrow> Pc ya (y :: 'd)\<close>) andalso
-  Exported_Premises.count_of th3 = 0);
 val [([thS], _)] = bundle_of \<^context> "bS";
 val _ = \<^assert> (Thm.eq_thm_prop (thS, @{thm LF.fooP [of S]}) andalso no_Qc thS andalso Exported_Premises.count_of thS = 1);
 \<close>
+(* (ii): the nested y is generalised and nothing is put in front -- LF ?S ==> Pc ?ya ?y with K 1,
+   the same theorem as the theory copy's entry *)
+ML_val \<open>
+val no_Qc = not o mentions \<^const_name>\<open>Qc\<close> o Thm.prop_of;
+val [([th3], _)] = bundle_of \<^context> "bn3";
+val [([th3t], _)] = bundle_of (thy_ctxt \<^context>) "LF.bn3";
+val _ = \<^assert> (same_shape (Thm.prop_of th3, Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Pc (ya :: 'c) (y :: 'd)\<close>) andalso
+  no_Qc th3 andalso Exported_Premises.count_of th3 = 1 andalso Thm.eq_thm_prop (th3, th3t));
+\<close>
 
-(* the block-layer guard group: (iv), (v), (vi), (viii) in their own nested blocks *)
+(* the block-layer group: (iv), (v), (vi), (viii) in their own nested blocks; a declaration
+   is not a redeclaration, so the outer copy gets the nested assumption in front (stock), K 0 *)
 context fixes y assumes hy: "Qc y" begin
 declaration (pervasive) \<open>fn phi => Thm_Data6.map (append (Morphism.fact phi [@{thm gq6_0}]))\<close>
 end
@@ -215,8 +224,8 @@ ML_val \<open>
 val t = table \<^context>;
 val _ = \<^assert> (length t = 1);
 val h = hd t;
-val _ = \<^assert> (Thm.eq_thm_prop (h, @{thm gq6_0}) andalso Thm.nprems_of h = 0 andalso null (Thm.hyps_of h)
-  andalso Thm.get_tags h = Thm.get_tags @{thm gq6_0});
+val _ = \<^assert> (Thm.prop_of h aconv Logic.varify_global \<^prop>\<open>Qc (y :: 'c) \<Longrightarrow> gq6 0 = 1\<close> andalso
+  Thm.nprems_of h = 1 andalso null (Thm.hyps_of h) andalso not (has_K_tag h));
 \<close>
 context fixes y assumes hy: "Qc y" begin
 declaration (pervasive) \<open>fn phi => Thm_Data6.map (append (Morphism.fact phi [Thm.reflexive @{cterm y}]))\<close>
@@ -235,7 +244,8 @@ ML_val \<open>
 val t = table \<^context>;
 val _ = \<^assert> (length t = 3);
 val h = hd t;
-val _ = \<^assert> (Thm.eq_thm_prop (h, @{thm gq6_1}) andalso Thm.nprems_of h = 0 andalso null (Thm.hyps_of h));
+val _ = \<^assert> (Thm.prop_of h aconv Logic.varify_global \<^prop>\<open>Qc (y :: 'c) \<Longrightarrow> gq6 1 = 2\<close> andalso
+  Thm.nprems_of h = 1 andalso null (Thm.hyps_of h) andalso not (has_K_tag h));
 \<close>
 context assumes hz6: "gq6 2 = 3" begin
 declaration (pervasive) \<open>fn phi => Thm_Data6.map (append (Morphism.fact phi [@{thm hz6}]))\<close>
@@ -253,22 +263,34 @@ bundle bx = refl[of x, keep]
 
 end
 
-(* theory level after the outer end *)
+(* theory level after the outer end; the ML command binds only what cannot fail, each row is its
+   own ML_val *)
 ML \<open>
 val tctxt = Proof_Context.init_global \<^theory>;
+val t = table tctxt;
+\<close>
+ML_val \<open>
 val [([th], _)] = bundle_of tctxt "LF.bn";
 val _ = \<^assert> (not (mentions \<^const_name>\<open>Qc\<close> (Thm.prop_of th)) andalso Exported_Premises.count_of th = 1);
+\<close>
+ML_val \<open>
 val [([th3], _)] = bundle_of tctxt "LF.bn3";
 val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop tctxt (hd (Thm.prems_of th3)) andalso
   not (mentions \<^const_name>\<open>Qc\<close> (Thm.prop_of th3)) andalso Exported_Premises.count_of th3 = 1);
-val t = table tctxt;
-val _ = \<^assert> (exists (fn th => Thm.eq_thm_prop (th, @{thm gq6_0})) t);
-val _ = \<^assert> (not (exists (fn th => Thm.prop_of th aconv Thm.prop_of @{thm gq6_1}) t));
+\<close>
+ML_val \<open>\<^assert> (not (exists (fn th => Thm.prop_of th aconv Thm.prop_of @{thm gq6_1}) t))\<close>
+ML_val \<open>
 val [([bx], _)] = bundle_of tctxt "LF.bx";
 val _ = \<^assert> ((case HOLogic.dest_Trueprop (Thm.prop_of bx) of
     Const (\<^const_name>\<open>HOL.eq\<close>, _) $ Free ("x", _) $ Free ("x", _) => true | _ => false));
 val _ = \<^assert> (Thm.nprems_of bx = 0 andalso null (Thm.hyps_of bx) andalso Exported_Premises.count_of bx = 0);
 \<close>
+(* (iv) at theory level: the pervasive declaration's one export from the nested layer to the theory
+   puts both assumptions in front, LF ?S ==> Qc ?y ==> gq6_0, and the light writer counts them: K 2 *)
+ML_val \<open>\<^assert> (exists (fn th =>
+    same_shape (Thm.prop_of th, Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Qc (y :: 'c) \<Longrightarrow> gq6 0 = 1\<close>) andalso
+    Exported_Premises.count_of th = 2 andalso null (Thm.hyps_of th))
+  (table (Proof_Context.init_global \<^theory>)))\<close>
 
 (* reopened (plan line 4431): the theory copy LF.fooN is in the simpset, a Pc rule whose premises
    are exactly LF ?S, Qc ?y *)

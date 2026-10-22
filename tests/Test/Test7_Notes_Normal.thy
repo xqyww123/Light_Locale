@@ -1,8 +1,8 @@
 (* Plan section 7 test 7, the head step of light_notes (section 11, item (14)): every input is
    normalised before the attributes see it, and its exported_premises count K survives the
    normalisation.  Row 1: lemmas lines whose rule attribute renumbers the variables ([where x = 1];
-   [THEN conjunct1, exported_premises 1]) keep K = 1 on the theory copy -- Goal.norm_result clears
-   every tag when it renumbers.  Row 2: a lemma whose attribute output is not in HHF form
+   [THEN conjunct1, exported_premises 1]) keep K = 1 on the theory copy -- Goal.norm_result keeps K
+   itself (second version) and clears the other tags when it renumbers.  Row 2: a lemma whose attribute output is not in HHF form
    ([folded atomize_all] leaves an outer meta-all) is accepted, because the export callback
    normalises again before thm_definition. *)
 theory Test7_Notes_Normal

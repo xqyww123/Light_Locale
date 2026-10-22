@@ -1,16 +1,7 @@
 #!/usr/bin/env bash
-# Run the stock copy's `isabelle` with a clean environment.  A process derived from the shared
-# tree's Isabelle inherits ISABELLE_SETTINGS_PRESENT, ISABELLE_IDENTIFIER and the rest of its
-# settings (getsettings:13, :71), which would make the stock copy write its heaps into the shared
-# tree's user directory; only the variables below are passed through.
+# Run the stock copy's `isabelle` with a clean environment (tools/isabelle-env), its heaps in its
+# own user directory.
 set -euo pipefail
-stock=$(cd "$(dirname "$0")/../Isabelle2025-2-stock" && pwd)
-run() {
-  env -i HOME="$HOME" USER="${USER:-}" LOGNAME="${LOGNAME:-}" PATH="$PATH" LANG="${LANG:-}" \
-    LC_ALL="${LC_ALL:-}" TERM="${TERM:-}" TMPDIR="${TMPDIR:-}" DISPLAY="${DISPLAY:-}" \
-    "$stock/bin/isabelle" "$@"
-}
-home_user=$(run getenv -b ISABELLE_HOME_USER)
-[[ $home_user == "$HOME/.isabelle/Isabelle2025-2-stock" ]] \
-  || { echo "stock-isabelle: unexpected ISABELLE_HOME_USER=$home_user" >&2; exit 1; }
-run "$@"
+unset USER_HOME
+exec "$(dirname "$0")/isabelle-env" "$(dirname "$0")/../Isabelle2025-2-stock" \
+  "$HOME/.isabelle/Isabelle2025-2-stock" "$@"

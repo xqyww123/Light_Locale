@@ -1,0 +1,19 @@
+diff -ruN a/src/Pure/Isar/object_logic.ML b/src/Pure/Isar/object_logic.ML
+--- a/src/Pure/Isar/object_logic.ML
++++ b/src/Pure/Isar/object_logic.ML
+@@ -222,10 +222,11 @@
+ fun rulify_tac ctxt = rewrite_goal_tac ctxt (get_rulify ctxt);
+ 
+ fun gen_rulify full ctxt =
+-  Conv.fconv_rule (Raw_Simplifier.rewrite_wrt ctxt full (get_rulify ctxt))
+-  #> Variable.gen_all ctxt
+-  #> Thm.strip_shyps
+-  #> Drule.zero_var_indexes;
++  Exported_Premises.keeping_count
++    (Conv.fconv_rule (Raw_Simplifier.rewrite_wrt ctxt full (get_rulify ctxt))
++      #> Variable.gen_all ctxt
++      #> Thm.strip_shyps
++      #> Drule.zero_var_indexes);
+ 
+ val rulify = gen_rulify true;
+ val rulify_no_asm = gen_rulify false;

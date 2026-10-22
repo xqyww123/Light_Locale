@@ -1,0 +1,22 @@
+diff -ruN a/src/Pure/drule.ML b/src/Pure/drule.ML
+--- a/src/Pure/drule.ML
++++ b/src/Pure/drule.ML
+@@ -217,7 +217,8 @@
+         val the_var = the o Vars.lookup vars;
+         val inst' =
+           inst |> Vars.map (fn v => fn Var (b, _) => Thm.var (b, Thm.ctyp_of_cterm (the_var v)));
+-      in map (Thm.adjust_maxidx_thm ~1 o Thm.instantiate (instT', inst')) ths end;
++        val inst_thm = Thm.adjust_maxidx_thm ~1 o Thm.instantiate (instT', inst');
++      in map (Exported_Premises.keeping_count inst_thm) ths end;
+ 
+ val zero_var_indexes = singleton zero_var_indexes_list;
+ 
+@@ -234,7 +235,7 @@
+   if null (Thm.tpairs_of th) then th
+   else
+     (case distinct Thm.eq_thm (Seq.list_of (Thm.flexflex_rule opt_ctxt th)) of
+-      [th] => th
++      [th'] => Exported_Premises.keep_count th th'
+     | [] => raise THM ("flexflex_unique: impossible constraints", 0, [th])
+     | _ => raise THM ("flexflex_unique: multiple unifiers", 0, [th]));
+ 

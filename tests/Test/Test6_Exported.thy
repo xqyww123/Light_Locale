@@ -4,16 +4,14 @@
    put_major_prem_first, own_major_prem, kind_make_elim, [dest] on a rule without own premises
    (fails in the block, accepted on the theory copy and read back as LF ?S ==> ...), the n = K
    usage outside the block, [exported_premises n] in all its forms including the out-of-range
-   error, and the in-block writings foo0 / x1 / e1. *)
+   error, and the in-block writings foo0 / x1 / e1; the activation site under hand-made
+   morphisms and the direct rows of Morphism.morphism's fallback (milestone 3's first item,
+   second version). *)
 theory Test6_Exported
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
 
 ML \<open>open Test_Support\<close>
-
-ML \<open>
-fun attr att th ctxt = #1 (Thm.apply_attribute att th (Context.Proof ctxt));
-\<close>
 
 consts Rc :: 'a  Sc :: 'a  Pc :: 'a  Qc :: 'a  c :: 'a
 axiomatization where Sc_ax: "Sc x" and Pc_ax: "Pc x y" and Pc1_ax: "Pc x" and Qc1_ax: "Qc x"
@@ -46,7 +44,8 @@ inductive ev :: "nat \<Rightarrow> bool" where
   zero: "ev 0" | step: "ev n \<Longrightarrow> ev (Suc (Suc n))" | pin: "Pc S (7::nat) \<Longrightarrow> ev 7"
 ML_val \<open>\<^assert> (not (can (fn () => theorem_in \<^context> (Binding.name "z") "[dest]" "Sc x" (fn ctxt => resolve_tac ctxt @{thms Sc_ax})) ()))\<close>
 (* e1 [exported_premises 3] on a one-premise block form: out of range; [exported_premises 2] on
-   two premises: accepted, stored with K 1 *)
+   two premises: accepted; the theory copy keeps the hand-written K plus the one premise the
+   export puts in front, K 3 (second version); e1 is a mechanism fixture, not a user scenario *)
 ML_val \<open>
 fun insert_assume ctxt i = Method.insert_tac ctxt @{thms LF_axioms} i THEN assume_tac ctxt i;
 val _ = \<^assert> ((theorem_in \<^context> (Binding.name "e1") "[exported_premises 3]" "A \<Longrightarrow> A" insert_assume; false)
@@ -72,9 +71,12 @@ val _ = \<^assert> (same_shape (Thm.prop_of (Bires.kind_make_elim Bires.dest_kin
 \<close>
 end
 
-ML \<open>
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.e1} = 1 andalso
+ML_val \<open>
+val _ = \<^assert> (Exported_Premises.count_of @{thm LF.e1} = 3 andalso
   Thm.prop_of @{thm LF.e1} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> A \<Longrightarrow> A \<Longrightarrow> A\<close>);
+\<close>
+
+ML \<open>
 val ctxt = \<^context>;
 val fooP = @{thm LF.fooP} and foo = @{thm LF.foo};
 (* count_of, get_consumes *)
@@ -119,8 +121,8 @@ val _ = \<^assert> (not (has_K_tag fp0) andalso AList.lookup (op =) (Thm.get_tag
 val up1 = Exported_Premises.put 1 @{thm untagged};
 val _ = \<^assert> (Exported_Premises.count_of up1 = 1 andalso not (AList.defined (op =) (Thm.get_tags up1) "consumes"));
 (* the tag strings of two freshly stored theorems are shared *)
-val _ = \<^assert> (pointer_eq (the (AList.lookup (op =) (Thm.get_tags fooP) "exported_premises"),
-  the (AList.lookup (op =) (Thm.get_tags foo) "exported_premises")));
+val _ = \<^assert> (pointer_eq (the (AList.lookup (op =) (Thm.get_tags fooP) Exported_Premises.exported_premises_tagN),
+  the (AList.lookup (op =) (Thm.get_tags foo) Exported_Premises.exported_premises_tagN)));
 (* discharge, put_major_prem_first, own_major_prem *)
 val _ = \<^assert> (Thm.prop_of (Exported_Premises.put_major_prem_first foo) aconv
   Logic.varify_global \<^prop>\<open>A \<Longrightarrow> LF S \<Longrightarrow> B \<Longrightarrow> A \<and> B\<close>
@@ -162,24 +164,24 @@ val _ = \<^assert> ((attr (Attrib.attribute_cmd ctxt (hd (attribs_of \<^theory> 
 val _ = \<^assert> (Long_Name.base_name (#1 (Token.name_of_src (Attrib.check_src ctxt (hd (attribs_of \<^theory> "[exported_premises 1]"))))) = "exported_premises");
 \<close>
 
-(* the K + d writer of milestone 3's first item (section 11 (40)), probed through the activation
-   site Element.transform_ctxt with hand-made morphisms: (a) under the identity morphism an
-   untagged theorem, or one tagged with a literal "0", comes back as the same value (no map_tags);
-   (b) d is counted only when some input carries K: on an untagged input the morphism sees no
-   zero-premise probe; (c) a morphism on which the probe fails is caught, K is then put back only
-   when the premise count is unchanged (here it changed: K 0); (d) K + d, the probe sent once per
-   transformation *)
+(* The activation site Element.transform_ctxt with hand-made morphisms: (a) under the identity
+   morphism an untagged theorem, or one tagged with a literal "0", comes back as the same value
+   (no map_tags); (b) an untagged input through a morphism that puts a premise in front comes back
+   with three premises and no K.  Then the fallback of Morphism.morphism (second version), called
+   directly through Morphism.fact on morphisms whose parts clear the tags: (a') when no input has
+   K the outputs come back as the same objects; (b') K + 1 for each theorem of a list mixing K 1
+   and K 0, checked pair by pair (proposition, K); (c) a part that
+   clears the tags and keeps the premise count: K unchanged; (d1) a part that drops one leading
+   premise of a K 2 theorem: K 1; (d2) one that drops more than K: no K; (e) a tag-clearing part
+   and instantiate_frees_morphism of a prop parameter, in both orders: K 1 and three premises;
+   (f) parts that change the list's length: no exception, the outputs returned as they are. *)
 ML \<open>
 fun transform_facts phi ths =
   (case Element.transform_ctxt phi (Element.Notes ("", [(Binding.empty_atts, [(ths, [])])])) of
     Element.Notes (_, [(_, [(ths', _)])]) => ths'
   | _ => raise Fail "transform_facts");
-val probes = Unsynchronized.ref 0;
-fun count_probe th = if Thm.nprems_of th = 0 then probes := ! probes + 1 else ();
 val add_prem = Thm.implies_intr \<^cprop>\<open>Qc (2::nat)\<close>;
-val adding = Morphism.fact_morphism "adding" (map (fn th => (count_probe th; add_prem th)));
-val adding_strict = Morphism.fact_morphism "adding_strict"
-  (map (fn th => if Thm.nprems_of th = 0 then raise Fail "zero premises" else add_prem th));
+val adding = Morphism.thm_morphism "adding" add_prem;
 \<close>
 ML_val \<open>
 (* each @{thm} occurrence is its own transferred value, so the input is bound once *)
@@ -189,18 +191,67 @@ val [th0', th'] = transform_facts Morphism.identity [th0, u];
 val _ = \<^assert> (pointer_eq (th0', th0) andalso pointer_eq (th', u));
 \<close>
 ML_val \<open>
-val _ = probes := 0;
 val [th'] = transform_facts adding [@{thm untagged}];
-val _ = \<^assert> (! probes = 0 andalso Thm.nprems_of th' = 3 andalso not (has_K_tag th'));
+val _ = \<^assert> (Thm.nprems_of th' = 3 andalso not (has_K_tag th'));
+\<close>
+(* the fallback's direct rows *)
+ML \<open>
+(*a part that clears the tags and keeps the premises*)
+val untag = Morphism.thm_morphism "untag" (Thm.map_tags (K []));
+(*parts that discharge one or two leading premises (inference rules: the tags go)*)
+val dropping = Morphism.thm_morphism "dropping" drop_first;
+val dropping2 = Morphism.thm_morphism "dropping2" (drop_first #> drop_first);
+fun prop_K th = (Thm.prop_of th, Exported_Premises.count_of th);
 \<close>
 ML_val \<open>
-val [th'] = transform_facts adding_strict [@{thm LF.fooP}];
-val _ = \<^assert> (Thm.nprems_of th' = 2 andalso Exported_Premises.count_of th' = 0);
+(* (a') no input has K: the outputs come back as the same objects *)
+val ths = [@{thm untagged}, @{thm tagged_c}];
+val outs = map add_prem ths;
+val _ = \<^assert> (eq_list pointer_eq (Morphism.fact (Morphism.fact_morphism "made" (K outs)) ths, outs));
 \<close>
 ML_val \<open>
-val _ = probes := 0;
-val [p', f'] = transform_facts adding [@{thm LF.fooP}, @{thm LF.foo}];
-val _ = \<^assert> (Exported_Premises.count_of p' = 2 andalso Exported_Premises.count_of f' = 2 andalso ! probes = 1);
+(* (b') K + 1, pair by pair *)
+val fooP = @{thm LF.fooP} and u = @{thm untagged};
+val outs = Morphism.fact adding [fooP, u];
+val _ = \<^assert> (map prop_K outs =
+  [(Logic.mk_implies (\<^prop>\<open>Qc (2::nat)\<close>, Thm.prop_of fooP), 2),
+   (Logic.mk_implies (\<^prop>\<open>Qc (2::nat)\<close>, Thm.prop_of u), 0)]);
+\<close>
+ML_val \<open>
+(* (c) premises unchanged: K unchanged *)
+val [f'] = Morphism.fact untag [@{thm LF.foo}];
+val _ = \<^assert> (Exported_Premises.count_of f' = 1);
+\<close>
+ML_val \<open>
+(* (d1) one leading premise dropped from a K 2 theorem: K 1 *)
+val k2 = Exported_Premises.put 2 (Variable.import_vars \<^context> @{thm LF.foo});
+val [d'] = Morphism.fact dropping [k2];
+val _ = \<^assert> (Thm.nprems_of d' = 2 andalso Exported_Premises.count_of d' = 1);
+\<close>
+ML_val \<open>
+(* (d2) more premises dropped than K: no K *)
+val [d'] = Morphism.fact dropping2 [Exported_Premises.put 1 (Variable.import_vars \<^context> @{thm LF.foo})];
+val _ = \<^assert> (Thm.nprems_of d' = 1 andalso not (has_K_tag d'));
+\<close>
+ML_val \<open>
+(* (e) a tag-clearing part and the instantiation of a prop parameter T := (A ==> B), both orders:
+   the premise split off the conclusion at the end is not counted, K 1 and three premises *)
+val cT = \<^cprop>\<open>PROP T\<close>;
+val th = Thm.implies_intr cT (Thm.assume cT) |> Thm.implies_intr \<^cprop>\<open>Qc (0::nat)\<close> |> Exported_Premises.put 1;
+val inst = Morphism.instantiate_frees_morphism
+  (TFrees.empty, Frees.make1 (("T", propT), \<^cprop>\<open>PROP A \<Longrightarrow> PROP B\<close>));
+val [e1] = Morphism.fact (untag $> inst) [th];
+val [e2] = Morphism.fact (inst $> untag) [th];
+val _ = \<^assert> (forall (fn e => Exported_Premises.count_of e = 1 andalso Thm.nprems_of e = 3) [e1, e2]);
+\<close>
+ML_val \<open>
+(* (f) parts that change the list's length *)
+val u = @{thm untagged} and k = @{thm LF.foo};
+val splitting = Morphism.fact_morphism "splitting" (fn [a, b] => [a, a, b] | ths => ths);
+val outs = Morphism.fact splitting [u, k];
+val _ = \<^assert> (length outs = 3 andalso pointer_eq (nth outs 2, k));
+val dropping_all = Morphism.fact_morphism "dropping_all" (K []);
+val _ = \<^assert> (null (Morphism.fact dropping_all [k]));
 \<close>
 
 (* n = K outside the block: the stock idiom dest!: works on both sides *)
@@ -223,8 +274,9 @@ lemmas x1 = LF.foo_iff[THEN iffD1, exported_premises 1]
 (* the usage sentence (plan line 873): [exported_premises n] after a mixed attribute on a lemma
    or lemmas line is stock's error; after a registration attribute it is accepted without a
    message, the attribute before it having acted on the theorem without K -- the elim rule
-   registered for LF.foo has major premise LF ?S; the control LF.fooQ [exported_premises 1,
-   elim]: Qc ?x (another fact, since Classical drops a second registration of the same one) *)
+   registered for LF.foo has major premise LF ?S; the control, the minimal pair of the same
+   attribute list in the other order, LF.fooQ [exported_premises 0, exported_premises 1, elim]:
+   Qc ?x (another fact, since Classical drops a second registration of the same one) *)
 ML_val \<open>
 fails_prefix "Mixed dynamic attribute followed by static rule" (fn () =>
   theorem_in \<^context> (Binding.name "m1") "[consumes 1, exported_premises 1]" "A \<Longrightarrow> A" assume_tac);
@@ -234,7 +286,7 @@ fails_prefix "Mixed dynamic attribute followed by static rule" (fn () =>
 local_setup \<open>fn lthy =>
   let val (lthy', w) = with_warnings (fn () => declare_in lthy "LF.foo" "[exported_premises 0, elim, exported_premises 1]")
   in \<^assert> (null w); lthy' end\<close>
-declare LF.fooQ [exported_premises 1, elim]
+declare LF.fooQ [exported_premises 0, exported_premises 1, elim]
 ML_val \<open>
 val ctxt = \<^context>;
 val (_, silent) = claset_rule ctxt Bires.elim_kind @{thm LF.foo};
@@ -263,9 +315,13 @@ val _ = \<^assert> (cases_text (run ctxte [LFa, hev] "cases rule: LF.ev.cases[ex
 \<close>
 end
 
-ML \<open>
-val _ = \<^assert> (not (has_K_tag @{thm LF.foo0}) andalso not (AList.defined (op =) (Thm.get_tags @{thm LF.foo0}) "consumes")
-  andalso Rule_Cases.get_consumes @{thm LF.foo0} = 0);
+(* foo0 is a redeclaration whose export changes nothing: stored as the attribute's result itself,
+   no K, its consumes "2" kept (second version) *)
+ML_val \<open>
+val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.foo0}, foo0) andalso not (has_K_tag @{thm LF.foo0})
+  andalso Rule_Cases.get @{thm LF.foo0} = Rule_Cases.get foo0);
+\<close>
+ML_val \<open>
 val _ = \<^assert> (AList.lookup (op =) (Thm.get_tags @{thm LF.foo0c}) "consumes" = SOME "2");
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.x1} = 1);
 \<close>

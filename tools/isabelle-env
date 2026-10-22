@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Run a tree's `isabelle` with a clean environment:  isabelle-env TREE EXPECTED_HOME_USER ARGS...
+# A process derived from another tree's Isabelle inherits ISABELLE_SETTINGS_PRESENT,
+# ISABELLE_IDENTIFIER and the rest of its settings (getsettings:13, :71), which would make TREE
+# write its heaps into the other tree's user directory; only the variables below are passed
+# through, USER_HOME when set (a copy of the tree with its own user directory).  The run is
+# refused unless TREE's ISABELLE_HOME_USER is EXPECTED_HOME_USER.
+set -euo pipefail
+tree=$(cd "$1" && pwd)
+expected=$2
+shift 2
+run() {
+  env -i HOME="$HOME" USER="${USER:-}" LOGNAME="${LOGNAME:-}" PATH="$PATH" LANG="${LANG:-}" \
+    LC_ALL="${LC_ALL:-}" TERM="${TERM:-}" TMPDIR="${TMPDIR:-}" DISPLAY="${DISPLAY:-}" \
+    ${USER_HOME:+USER_HOME="$USER_HOME"} \
+    "$tree/bin/isabelle" "$@"
+}
+home_user=$(run getenv -b ISABELLE_HOME_USER)
+[[ $home_user == "$expected" ]] \
+  || { echo "isabelle-env: unexpected ISABELLE_HOME_USER=$home_user" >&2; exit 1; }
+run "$@"

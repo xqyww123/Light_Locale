@@ -171,12 +171,16 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test6_Heavy_Imports
     Test6_Theory_Nested
     Test6_Activation
+    Test6_Keep_K
+    Test6_Keep_K_Global
     Test6_Interpret_Block
     Test7_Degeneracy
     Test7_Declare_Block
     Test7_Theory_Simp_Del
     Test7_Setting_Simp_Del
     Test7_Exported_Simp_Del
+    Test7_Unbundle_Sites
+    Test7_Lifting_Update
     Test7_Defines_K
     Test7_Declaration_Branches
     Test7_Datatype_Block

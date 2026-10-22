@@ -12,8 +12,9 @@
    induction and Rule_Cases.mutual_rule (the exported premise block exactly), the packages'
    closure found in the Induct tables with the negatives (the block datatype with only h chained
    fails), case_tac/induct_tac on the block datatype, case_product, trS (b), declare LF.ip.cases
-   [cases pred: ip], and the nested block with ip2 (K 2, its instantiated form against the
-   declaring block's oracle) and f2_g2.  The r9 row lives in the nested-target leaf. *)
+   [cases pred: ip] (its table entry is LF.ip.cases itself, case names z / s: the cases print as
+   the twin's), and the nested block with ip2 (K 2, its instantiated form against the declaring
+   block's oracle) and f2_g2.  The r9 row lives in the nested-target leaf. *)
 theory Test6_Cases
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -130,12 +131,6 @@ val heavy =
      (* trS (b): the type rule keyed on tr0 is found *)
      trS_cases_t = texts (run ctxtq [hq] "cases t" "W t")}
   end;
-\<close>
-declare ip.cases [cases pred: ip]
-ML \<open>
-val heavy_ip_cases_declared =
-  let val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "ip n"
-  in texts (run ctxt [h] "cases" "W n") end;
 \<close>
 context fixes y :: nat assumes hy: "Qc y" begin
 ML \<open>
@@ -319,10 +314,13 @@ val _ = \<^assert> (is_some (induct_entry Induct.find_casesT ctxt0 \<^typ>\<open
 val (hq, ctxtq) = assume_in ctxt0 [("t", \<^typ>\<open>tr0\<close>)] "hq" "Q0 S t";
 val _ = \<^assert> (texts (run ctxtq [LFa, hq] "cases t" "W t") = #trS_cases_t heavy);
 \<close>
+(* the block's table entry is LF.ip.cases itself (second version: a redeclaration whose export
+   changes nothing keeps the theorem, case names z / s included), so the cases print as the twin's
+   ip cases pinned above *)
 declare LF.ip.cases [cases pred: ip]
 ML_val \<open>
 val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "LF.ip S n";
-val _ = \<^assert> (texts (run ctxt [@{thm LF_axioms}, h] "cases" "W n") = heavy_ip_cases_declared);
+val _ = \<^assert> (texts (run ctxt [@{thm LF_axioms}, h] "cases" "W n") = #ip_cases heavy);
 \<close>
 
 (* nested: ip2 with K 2 *)

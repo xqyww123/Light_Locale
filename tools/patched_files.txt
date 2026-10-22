@@ -23,3 +23,14 @@ src/Tools/induct.ML
 src/Tools/induct_tacs.ML
 src/HOL/Tools/coinduction.ML
 src/HOL/Tools/inductive.ML
+src/Pure/assumption.ML
+src/Pure/variable.ML
+src/Pure/raw_simplifier.ML
+src/Pure/morphism.ML
+src/Pure/more_exported_premises.ML
+src/Pure/Isar/local_theory.ML
+src/Pure/Isar/specification.ML
+src/Pure/Isar/bundle.ML
+src/HOL/Tools/Lifting/lifting_setup.ML
+src/Pure/Isar/object_logic.ML
+src/Pure/Isar/local_defs.ML

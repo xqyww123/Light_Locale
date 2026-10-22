@@ -1,11 +1,12 @@
 diff -ruN a/src/Pure/Isar/light_locale_axiom_facts.ML b/src/Pure/Isar/light_locale_axiom_facts.ML
 --- a/src/Pure/Isar/light_locale_axiom_facts.ML	1970-01-01 00:00:00.000000000 +0000
 +++ b/src/Pure/Isar/light_locale_axiom_facts.ML
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,98 @@
 +(*  Title:      Pure/Isar/light_locale_axiom_facts.ML
 +
-+Unconditional facts "LF t" of light locale predicates, indexed by proposition, and the export
-+criteria of light targets (plan decisions 9 and 19).
++Unconditional facts "LF t" of light locale predicates, indexed by proposition; the term part
++of an export, the premise count of an export, and the export of light targets that pastes
++nothing on (plan decisions 9 and 19).
 +*)
 +
 +signature LIGHT_LOCALE_AXIOM_FACTS =
@@ -14,13 +15,10 @@ diff -ruN a/src/Pure/Isar/light_locale_axiom_facts.ML b/src/Pure/Isar/light_loca
 +  val add: thm -> Context.generic -> Context.generic
 +  val add_attribute: attribute
 +  val retrieve: Proof.context -> term -> thm list
-+  val is_exported_form_strict: Proof.context -> thm -> bool
 +  val unchanged_by: morphism -> thm -> bool
-+  val is_exported_form: Proof.context -> morphism -> thm -> bool
 +  val replace_fact: string -> (thm -> thm) -> morphism -> morphism
-+  val keep_unchanged: morphism -> morphism
++  val export_premise_count: local_theory -> Proof.context -> int
 +  val premise_count: local_theory -> int
-+  val norm_result: Proof.context -> thm -> thm
 +  val light_export: local_theory -> Proof.context -> thm -> thm
 +end;
 +
@@ -56,23 +54,15 @@ diff -ruN a/src/Pure/Isar/light_locale_axiom_facts.ML b/src/Pure/Isar/light_loca
 +  map (Thm.transfer' ctxt) (Item_Net.retrieve (Data.get (Context.Proof ctxt)) t);
 +
 +
-+(* export criteria *)
-+
-+(*note path: shape only -- a lemma's stored form must not depend on whether its proof was forked,
-+  and a re-declared theory fact is stored under the block's premises, as in the heavy twin*)
-+fun is_exported_form_strict ctxt th =
-+  null (Thm.hyps_of th) andalso
-+    (exists (is_light_prop ctxt) (Thm.prems_of th) orelse Exported_Premises.count_of th > 0);
++(* the term part of an export *)
 +
 +(*the term part of phi; the theorem part of an export morphism would also prepend the layer's
-+  assumptions, which is exactly what keep_unchanged skips*)
++  assumptions*)
 +fun unchanged_by phi th =
 +  null (Thm.hyps_of th) andalso
 +    (case try (Morphism.term phi) (Thm.full_prop_of th) of
 +      SOME p => p aconv Thm.full_prop_of th
 +    | NONE => false);
-+
-+fun is_exported_form ctxt phi th = is_exported_form_strict ctxt th orelse unchanged_by phi th;
 +
 +(*phi with its theorem part replaced*)
 +fun replace_fact name thm phi =
@@ -82,28 +72,20 @@ diff -ruN a/src/Pure/Isar/light_locale_axiom_facts.ML b/src/Pure/Isar/light_loca
 +    term = [K (Morphism.term phi)],
 +    fact = [K (map thm)]};
 +
-+(*each theorem comes back either unchanged or as Morphism.thm phi would give it*)
-+fun keep_unchanged phi =
-+  replace_fact "Light_Locale_Axiom_Facts.keep_unchanged"
-+    (fn th => if unchanged_by phi th then th else Morphism.thm phi th) phi;
 +
++(* premise counts and the export that pastes nothing on *)
 +
-+(* export of theorems in exported form *)
++fun export_premise_count lthy ctxt = Thm.nprems_of (Assumption.export lthy ctxt Drule.dummy_thm);
 +
 +fun premise_count lthy =
-+  Thm.nprems_of
-+    (Assumption.export lthy (Proof_Context.init_global (Proof_Context.theory_of lthy)) Drule.dummy_thm);
-+
-+(*Goal.norm_result keeping the exported-premise count: its inference rules return tags = [], and
-+  normalisation keeps the leading premises in front; an untagged theorem gets stock's value,
-+  untouched*)
-+fun norm_result ctxt th = Exported_Premises.keep_count th (Goal.norm_result ctxt th);
++  export_premise_count lthy (Proof_Context.init_global (Proof_Context.theory_of lthy));
 +
 +(*unfold the fixed variables defined between lthy and ctxt, generalise the ones ctxt does not
-+  know, add no assumption; only the exported_premises tag survives*)
++  know, add no assumption; K and the rule-case tags are copied back by Rule_Cases.save and stay
++  right since no premise moves -- for th without a top-level SORT_CONSTRAINT premise; other tags
++  are not copied back*)
 +fun light_export lthy ctxt th =
 +  let
-+    val k = Exported_Premises.count_of th;
 +    val defined =
 +      Frees.build (Thm.fold_terms {hyps = false} Frees.add_frees th) |> Frees.list_set
 +      |> map_filter (fn v =>
@@ -113,9 +95,8 @@ diff -ruN a/src/Pure/Isar/light_locale_axiom_facts.ML b/src/Pure/Isar/light_loca
 +    th
 +    |> Thm.instantiate_frees (TFrees.empty, Frees.make defined)
 +    |> singleton (Variable.export lthy ctxt)
-+    |> Thm.map_tags (K [])
-+    |> Exported_Premises.put k
-+    |> norm_result ctxt
++    |> Goal.norm_result ctxt
++    |> Rule_Cases.save th
 +  end;
 +
 +end;

@@ -1,0 +1,31 @@
+diff -ruN a/src/Pure/Isar/bundle.ML b/src/Pure/Isar/bundle.ML
+--- a/src/Pure/Isar/bundle.ML
++++ b/src/Pure/Isar/bundle.ML
+@@ -125,7 +125,9 @@
+ 
+ fun apply_bundle loc (add, bundle) ctxt =
+   let
+-    val notes = if loc then Local_Theory.notes else Attrib.local_notes "";
++    (*a bundle's facts re-declare facts that exist (Local_Theory.redeclare_result)*)
++    val notes =
++      if loc then Local_Theory.redeclare_result o Local_Theory.notes else Attrib.local_notes "";
+     val add0 = Syntax.get_polarity ctxt;
+     val add1 = Syntax.effective_polarity ctxt add;
+     val bundle' = if add1 then bundle else rev (map (apsnd rev) bundle);
+@@ -195,10 +197,12 @@
+       |> transform_bundle (Proof_Context.export_morphism ctxt' lthy)
+       |> trim_context_bundle;
+   in
+-    lthy |> Local_Theory.declaration {syntax = false, pervasive = true, pos = Binding.pos_of binding}
+-      (fn phi => fn context =>
+-        let val psi = Morphism.set_trim_context'' context phi
+-        in #2 (define_bundle (Morphism.binding psi binding, transform_bundle psi bundle) context) end)
++    lthy |> Local_Theory.redeclare
++      (Local_Theory.declaration {syntax = false, pervasive = true, pos = Binding.pos_of binding}
++        (fn phi => fn context =>
++          let val psi = Morphism.set_trim_context'' context phi in
++            #2 (define_bundle (Morphism.binding psi binding, transform_bundle psi bundle) context)
++          end))
+     |> open_bundle ? apply_bundle true (true, bundle)
+   end;
+ 

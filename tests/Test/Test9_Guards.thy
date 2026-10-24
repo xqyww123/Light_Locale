@@ -1,16 +1,15 @@
 (* Plan section 7 test 9 (structure): the two guards of set_implicit_structure and
-   with_implicit_structure (plan section 4 item 6; rows at plan 5263).  Own fixture LFtv -- a
-   light locale without a predicate whose parameter type has no type variable, so the names the
-   messages print are 'a, 'b, 'c.  Every row drives the command's function: the negative rows
-   through fails_checked -- the ten verbatim rows compare the whole text with the approved texts
-   of plan section 6 and the 'z row of plan 3677 (fails_with), the nine structural rows (s1)-(s9)
-   assert substrings only -- and the two positive rows through can.  Nothing here writes a
-   slot. *)
+   with_implicit_structure (plan section 4 item 6; rows at plan 5263).  The block rows run in an
+   unnamed block fixing p :: int -- no type variable is declared there, so the names the messages
+   print are 'a, 'b, 'c (a locale's block cannot set the implicit structure since the ban of
+   2026-10-23; the header's guard is Test9_Header_Implicit row 12).  Every row drives the
+   command's function: the negative rows through fails_checked -- the ten verbatim rows compare
+   the whole text with the approved texts of plan section 6 and the 'z row of plan 3677
+   (fails_with), the nine structural rows (s1)-(s9) assert substrings only -- and the two
+   positive rows through can. *)
 theory Test9_Guards
   imports Test9_Fixtures
 begin
-
-light_locale LFtv = fixes p :: int
 
 consts pq :: "int \<Rightarrow> int"
 
@@ -20,7 +19,6 @@ open Test_Support;
 fun set_in lthy text = fn () => Light_Locale.set_implicit_structure_cmd text lthy;
 fun with_in ctxt text = fn () => Light_Locale.with_implicit_structure_cmd text ctxt;
 
-val fixed_here = ". Only variables fixed in this context may occur here.";
 val record = "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr>";
 (*the bare record expression has two type variables -- the carrier's and the operations' --
   (partial_object_ext UNIV (monoid_ext (+) 0 ())); the annotation makes it the 'a monoid of the
@@ -35,12 +33,12 @@ val record_msg =
 fun structural lthy text describe check = fails_checked describe check (set_in lthy text);
 \<close>
 
-context LFtv
+context
+  fixes p :: int
 begin
 
 ML_val \<open>
 val lthy = \<^context>;
-val _ = \<^assert> (Local_Theory.level lthy = 1);
 
 (*the verbatim rows of plan section 6; the tenth, the 'z row, ends the block*)
 val _ = fails_with record_msg (set_in lthy record_input);
@@ -110,11 +108,13 @@ val lthy = \<^context>;
 (*(s6): the avoidance set is the printer's, not the context's names -- x is not renamed*)
 val _ = structural lthy "\<lambda>x. x" "s6: x not renamed although fixed outside" (fn s =>
   String.isSubstring "`\<lambda>x. x`" s andalso String.isSubstring "`x :: 'a`" s);
-(*the guards run in every branch: the nested block reports the first verbatim text*)
+(*the guards run in a nested block too: it reports the first verbatim text*)
 val _ = fails_with record_msg (set_in lthy record_input);
-(*the free variable guard outside the locale branch*)
+(*the free variable guard: the variables fixed in the block, outer first*)
 val _ =
-  fails_with ("Illegal free variables in the implicit structure: \"q\"" ^ fixed_here) (set_in lthy "pq q");
+  fails_with
+    "Illegal undeclared variable \"q\" in the implicit structure. Only variables fixed in this context may occur here: \"p\", \"x\"."
+    (set_in lthy "pq q");
 \<close>
 end
 
@@ -129,17 +129,34 @@ proof -
     val ctxt = \<^context>;
     val _ = fails_with record_msg (with_in ctxt record_input);
     val _ =
-      fails_with ("Illegal free variables in the implicit structure: \"q\"" ^ fixed_here) (with_in ctxt "pq q");
+      fails_with
+        "Illegal undeclared variable \"q\" in the implicit structure. No variables are fixed in this context, so no variable may occur here."
+        (with_in ctxt "pq q");
     val _ = \<^assert> (can (with_in ctxt (record ^ " :: int monoid")) ());
   \<close>
   fix y :: int
   ML_prf \<open>val _ = \<^assert> (can (with_in \<^context> "pq y") ())\<close>
+  (*the proof's y is listed by its external name; the term carries its skolem name*)
+  ML_prf \<open>
+    val _ =
+      fails_with
+        "Illegal undeclared variable \"q\" in the implicit structure. Only variables fixed in this context may occur here: \"y\"."
+        (with_in \<^context> "pq q");
+  \<close>
   fix G
   ML_prf \<open>
     val _ =
       fails_with
         "Undeclared type variable 'a in the implicit structure `G`, where `G :: 'a` requires a concrete type annotation."
         (with_in \<^context> "G");
+  \<close>
+  (*a second fix of y gives another skolem name; the list names y once*)
+  fix y :: int
+  ML_prf \<open>
+    val _ =
+      fails_with
+        "Illegal undeclared variable \"q\" in the implicit structure. Only variables fixed in this context may occur here: \"y\", \"G\"."
+        (with_in \<^context> "pq q");
   \<close>
   show ?thesis ..
 qed
@@ -149,10 +166,11 @@ begin
 lemma "True"
 proof -
   ML_prf \<open>
-    (*locale_of still answers in a proof opened from the block; the value is checked against the
-      proof's variables, so the non-locale sentence is used*)
+    (*a proof opened from a locale's block may set the proof's implicit structure; the value is
+      checked against the proof's variables, so the sentence lists S*)
     val _ =
-      fails_with ("Illegal free variables in the implicit structure: \"q\"" ^ fixed_here)
+      fails_with
+        "Illegal undeclared variable \"q\" in the implicit structure. Only variables fixed in this context may occur here: \"S\"."
         (with_in \<^context> "pq q");
   \<close>
   show True ..

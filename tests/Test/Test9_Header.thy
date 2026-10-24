@@ -2,24 +2,14 @@
    5178-5200, 5232-5250).  A light header's body reads bare index positions as the cut of its
    imports; what it records equals its heavy twin's assumptions after elimination (the twin's
    defined parameter replaced by its definition).  The three literal settings, mixed sorts, the
-   import at index 1, the placeholder's type (the slot rows with a binder are in
-   Test9_Slot_Lambda), the instances read before the body. *)
+   import at index 1, the placeholder's type (the declared term with a binder is
+   Test9_Header_Implicit row 21), the instances read before the body. *)
 theory Test9_Header
   imports Test9_Fixtures "HOL.Real_Vector_Spaces"
 begin
 
 ML \<open>
 open Test_Support;
-
-(*the light locale records what its heavy twin records after elimination of the twin's defined
-  parameters (Test_Support's shared twin projection)*)
-fun same_as_twin thy (l, h) defined =
-  if assumes_equal assumes_of thy (loc thy l, loc thy h) defined then ()
-  else error ("header rows: " ^ l ^ " differs from " ^ h ^ " after elimination");
-fun same_params thy (l, h) defined = \<^assert> (params_equal thy (loc thy l, loc thy h) defined);
-
-(*the first proposition the locale records*)
-fun first_assumption thy name = hd (#2 (hd (assumes_of thy (loc thy name))));
 \<close>
 
 
@@ -45,10 +35,8 @@ val _ = List.app (fn name =>
 
 subsection \<open>The gate row and the three header-and-body rows (plan 5178-5187)\<close>
 
-light_locale LFg = UP_cring S for S + fixes G :: "('c, 'd) monoid_scheme" (structure)
-  assumes g: "x \<otimes> y = y \<otimes> x"
-locale Dg = UP_cring S for S + fixes G :: "('c, 'd) monoid_scheme" (structure)
-  assumes g: "x \<otimes> y = y \<otimes> x"
+light_locale LFg = UP_cring S + Gm for S + assumes g: "x \<otimes> y = y \<otimes> x"
+locale Dg = UP_cring S + Gm for S + assumes g: "x \<otimes> y = y \<otimes> x"
 
 light_locale LFr2' = UP_cring + assumes "x \<otimes> y = y \<otimes> x"
 locale DR2' = UP_cring + assumes "x \<otimes> y = y \<otimes> x"
@@ -63,7 +51,9 @@ locale DXH = DR2 S for S + assumes "x \<otimes> y = y \<otimes> x"
 ML \<open>
 val thy = \<^theory>;
 val ctxt = Locale.init (loc thy "LFg") thy;
-(*the body's bare operator is UP S's, although G (structure) is fixed after the import*)
+(*Gm's G, after UP_cring S, is the first layer beside the cut UP S*)
+val _ = \<^assert> (#1 (layers ctxt) = SOME "G");
+(*the body's bare operator is UP S's; were G to beat the cut, it would be G's*)
 val _ = \<^assert> (first_assumption thy "LFg" aconv
   Syntax.read_prop ctxt "\<And>x y. x \<otimes>\<^bsub>UP S\<^esub> y = y \<otimes>\<^bsub>UP S\<^esub> x");
 val _ = same_as_twin thy ("LFg", "Dg") ["P"];

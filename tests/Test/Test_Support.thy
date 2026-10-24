@@ -7,8 +7,10 @@
    reinstalls warning_fn at process start.
    light_locale_cmd/locale_cmd drive the exported entry points Expression.add_light_locale_cmd and
    Expression.add_locale_cmd on header text, for the negative rows ("every negative assertion names
-   the exported entry function").  The theory imports only Light_Locale, so that a leaf may declare
-   its own fixtures under the names the plan uses. *)
+   the exported entry function"): the light one reads the header with the command's own parser
+   Light_Locale.light_locale_header, the heavy one with the stock-shaped parser; an outer syntax
+   error is an ERROR.  The theory imports only Light_Locale, so that a leaf may declare its own
+   fixtures under the names the plan uses. *)
 theory Test_Support
   imports "Light_Locale.Light_Locale"
 begin
@@ -51,6 +53,9 @@ sig
   val declare_in: local_theory -> string -> string -> local_theory
   val twin_rename: string * string -> term -> term
   val assert_twin: theory -> string * string -> unit
+  val same_as_twin: theory -> string * string -> string list -> unit
+  val same_params: theory -> string * string -> string list -> unit
+  val first_assumption: theory -> string -> term
   val lemmas_in: local_theory -> string -> string -> string -> thm list * local_theory
   val thy_ctxt: Proof.context -> Proof.context
   val proves: (Proof.context -> tactic) -> Proof.context -> term -> bool
@@ -122,6 +127,7 @@ sig
   val placeholder_fixed: Proof.context -> bool
   val bare_denotes: Proof.context -> string -> bool
   val has_bad_markup: Proof.context -> term -> bool
+  val premises_are: Proof.context -> thm -> int -> string -> unit
   val locale_expression: theory -> string -> Expression.expression
 end;
 
@@ -149,19 +155,26 @@ fun with_warnings f =
 (*the proper tokens of a text, by the theory's keywords*)
 fun tokens thy text = filter Token.is_proper (Token.explode (Thy_Header.get_keywords thy) Position.none text);
 
-(*the text after the command word: "name = expression + elements"*)
-fun gen_locale_cmd add text thy =
-  let
-    val toks = tokens thy text;
-    val parser =
-      Parse.binding --
-        Scan.optional (Parse.$$$ "=" |-- Parse.!!! Parse_Spec.locale_val) ((([], []), []), []);
-    val (name, ((expr, includes), elems)) =
-      #1 (Scan.finite Token.stopper (Parse.!!! (parser --| Scan.ahead Parse.eof)) toks);
-  in add name Binding.empty includes expr elems thy end;
+(*the whole text through a parser: "[simp, symmetric]", a locale expression, and the like; an
+  outer syntax error is an ERROR*)
+fun parse_text p thy text =
+  let val toks = tokens thy text
+  in #1 (Scan.error (Scan.finite Token.stopper (Parse.!!! (p --| Scan.ahead Parse.eof))) toks) end;
 
-val light_locale_cmd = gen_locale_cmd Expression.add_light_locale_cmd;
-val locale_cmd = gen_locale_cmd Expression.add_locale_cmd;
+(*the text after the command word ("name = expression + elements") through the header parser, then
+  the declaration function*)
+fun gen_locale_cmd header declare text thy = declare (parse_text header thy text) thy;
+
+val light_locale_cmd =
+  gen_locale_cmd Light_Locale.light_locale_header
+    (fn (name, ((expr, includes), (spec, elems))) =>
+      Expression.add_light_locale_cmd name Binding.empty includes expr spec elems);
+val locale_cmd =
+  gen_locale_cmd
+    (Parse.binding --
+      Scan.optional (Parse.$$$ "=" |-- Parse.!!! Parse_Spec.locale_val) ((([], []), []), []))
+    (fn (name, ((expr, includes), elems)) =>
+      Expression.add_locale_cmd name Binding.empty includes expr elems);
 fun light thy text = fn () => light_locale_cmd text thy;
 fun heavy thy text = fn () => locale_cmd text thy;
 
@@ -245,11 +258,6 @@ fun registration_prefixes ctxt loc =
 (*the right-hand side of an abbreviation, by its full name*)
 fun rhs_of ctxt c =
   the (#2 (the (AList.lookup (op =) (#constants (Consts.dest (Proof_Context.consts_of ctxt))) c)));
-
-(*the whole text through a parser: "[simp, symmetric]", a locale expression, and the like*)
-fun parse_text p thy text =
-  let val toks = tokens thy text
-  in #1 (Scan.finite Token.stopper (Parse.!!! (p --| Scan.ahead Parse.eof)) toks) end;
 
 val locale_expression = parse_text Parse_Spec.locale_expression;
 
@@ -392,6 +400,15 @@ fun assert_twin thy (l, h) =
 
     val _ = check "hyp_spec_of" (assumes_equal assumes_of thy (l, h) []);
   in () end;
+
+(*test 9's header rows, by locale name: the light locale records what its heavy twin records after
+  elimination of the twin's defined parameters; the same parameters; the first proposition the
+  locale records*)
+fun same_as_twin thy (l, h) defined =
+  if assumes_equal assumes_of thy (loc thy l, loc thy h) defined then ()
+  else error ("header rows: " ^ l ^ " differs from " ^ h ^ " after elimination");
+fun same_params thy (l, h) defined = \<^assert> (params_equal thy (loc thy l, loc thy h) defined);
+fun first_assumption thy name = hd (#2 (hd (assumes_of thy (loc thy name))));
 
 
 (* the comparisons of plan section 7 test 6 (preface: "normal equality" of local copies, the three
@@ -688,6 +705,16 @@ fun has_bad_markup ctxt t =
     fun bad (XML.Elem ((name, _), body)) = name = Markup.badN orelse exists bad body
       | bad (XML.Text _) = false;
   in exists bad (YXML.parse_body (Pretty.symbolic_string_of (Syntax.pretty_term ctxt t))) end;
+
+(*the header rows with attributes: the fact's premises are n copies of the proposition read in the
+  block, and the fact holds no placeholder; a light locale's block holds only the schematic theory
+  copy of its assumption (decision 8), so the rows pin it to the block's parameters with
+  [OF <name>_axioms]*)
+fun premises_are ctxt th n text =
+  let val expected = Syntax.read_prop ctxt text; val prems = Thm.prems_of th in
+    \<^assert> (length prems = n andalso forall (fn p => p aconv expected) prems andalso
+      not (has_placeholder (Thm.prop_of th)))
+  end;
 
 end;
 \<close>

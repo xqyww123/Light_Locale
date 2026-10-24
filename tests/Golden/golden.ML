@@ -1,6 +1,7 @@
 (*  Plan section 7 test 1 (invariance): byte-for-byte reference output.
 
-    The tree decides the mode: on the stock copy (ISABELLE_IDENTIFIER = Isabelle2025-2-stock) a
+    The tree decides the mode: on light's stock tree -- the tree without light, migration plan
+    section 7, whose ISABELLE_IDENTIFIER is its directory name <release>-light_locale-stock -- a
     check records tests/golden/<name>; on any other tree it compares and, on a mismatch, writes
     tests/golden/<name>.actual next to the reference and fails.  Theorems are rendered with
     ML_Syntax.print_term so that the facts tables do not depend on the printer, which is itself
@@ -19,7 +20,7 @@ end;
 structure Golden: GOLDEN =
 struct
 
-val recording = getenv "ISABELLE_IDENTIFIER" = "Isabelle2025-2-stock";
+val recording = String.isSuffix "-light_locale-stock" (getenv "ISABELLE_IDENTIFIER");
 
 fun golden_dir thy = Path.append (Resources.master_directory thy) (Path.explode "../golden");
 

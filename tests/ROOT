@@ -5,9 +5,9 @@
 
 session Light_Locale_Golden in "Golden" = "HOL-Algebra" +
   description "
-    Plan section 7 test 1 (invariance): reference output of stock Isabelle.  Run on the stock copy
-    (ISABELLE_IDENTIFIER = Isabelle2025-2-stock) it records tests/golden/*.golden; run anywhere
-    else it compares byte for byte.
+    Plan section 7 test 1 (invariance): reference output of stock Isabelle.  Run on light's stock
+    tree (ISABELLE_IDENTIFIER ends with -light_locale-stock) it records tests/golden/*.golden; run
+    anywhere else it compares byte for byte.
   "
   theories
     Golden_Facts
@@ -204,10 +204,9 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test9_Print
     Test9_Abbrev
     Test9_Abbrev_Input
-    Test9_Class
-    Test9_Class_Attribute
     Test9_Header
     Test9_Header_Attribute
+    Test9_Header_Implicit
     Test9_XO
     Test9_XO_Heavy
     Test9_XO_Sub
@@ -215,17 +214,10 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test9_Set
     Test9_Guards
     Test9_Guards_Positive
-    Test9_Slot_Monoid
-    Test9_Slot_Gm
-    Test9_Slot_Comm_Monoid
-    Test9_Slot_Lambda
     Test9_Sib_A
     Test9_Sib_B
-    Test9_Sib_A0
     Test9_Sib_AB
     Test9_Sib_BA
-    Test9_Sib_A_A0
-    Test9_Sib_A0_A
     Test9_With
     Test9_Memo
     Test9_Annotation
@@ -245,8 +237,8 @@ session Light_Locale_Test_Serial in "Serial" = Light_Locale_Base +
 
 session Light_Locale_Corec_Check in "Corec" = "HOL-Library" +
   description "
-    Plan section 7 test 1: every named fact of HOL-Corec_Examples, recorded on the stock copy and
-    compared elsewhere (the wrapper reloads those theories, so they are proved by this tree's Pure).
+    Plan section 7 test 1: every named fact of HOL-Corec_Examples, recorded on light's stock tree
+    and compared elsewhere (the wrapper reloads those theories, so they are proved by this tree's Pure).
   "
   options [quick_and_dirty]
   sessions "HOL-Corec_Examples"

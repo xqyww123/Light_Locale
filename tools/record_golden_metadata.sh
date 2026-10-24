@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
-# Plan §7 test 1: write tests/golden/METADATA after the golden sessions were run on the stock copy
-# -- which tree produced the files, which dev patches that tree carried (the shared tree's patch
-# status; the stock copy is its pre-edit twin), and the sha256 of every golden file.
+# Plan section 7 test 1: write tests/golden/METADATA after the golden sessions were recorded on
+# light's stock tree (the tree without light, migration plan section 7) -- the tree, the commit it
+# is detached at, its git status (must be empty), Isabelle's version there, and the sha256 of
+# every golden file.  Usage: record_golden_metadata.sh [<stock tree>]
+# (default: ../Isabelle2025-2-light_locale-stock next to this repository).
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 golden=$root/tests/golden
+tree=$(cd "${1:-$root/../Isabelle2025-2-light_locale-stock}" && pwd)
+run_tree=$root/../my_better_isabelle_prover/tools/run-tree
+status=$(git -C "$tree" status --porcelain --untracked-files=all)
+[[ -z $status ]] || { echo "ERROR: $tree has uncommitted changes:" >&2; echo "$status" >&2; exit 1; }
 {
   echo "recorded: $(date -Is)"
-  echo "tree: $root/Isabelle2025-2-stock (ISABELLE_IDENTIFIER=$(cat "$root/Isabelle2025-2-stock/etc/ISABELLE_IDENTIFIER"))"
-  echo "isabelle: $("$root/tools/stock-isabelle" version)"
-  echo "patch status of the shared tree at recording time (the stock copy carries the same dev patches; a dev patch reads CONFLICT once light's edits share its lines):"
-  (cd "$root/../Isabelle2025-2" && my-better-isabelle status 2>&1 || true) | sed 's/^/  /'
+  echo "tree: $tree (ISABELLE_IDENTIFIER=$(cat "$tree/etc/ISABELLE_IDENTIFIER"))"
+  echo "commit: $(git -C "$tree" rev-parse HEAD) ($(git -C "$tree" log -1 --format=%s))"
+  echo "git status: empty"
+  echo "isabelle: $("$run_tree" "$tree" version)"
   echo "sha256:"
   (cd "$golden" && sha256sum ./*.golden) | sed 's/^/  /'
 } > "$golden/METADATA"

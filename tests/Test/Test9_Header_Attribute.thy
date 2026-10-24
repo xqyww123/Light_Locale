@@ -9,7 +9,9 @@
    before the fix but gave the wrong result (2-4, 12), then the rows the fix leaves unchanged
    (9-11, 13), then the rows whose declaration failed (1, 5-8); on the unfixed tree a failing
    declaration hides every ML_val result of the leaf, so a test-first run must comment out rows
-   1 and 5-8 (plan section 11 (39)). *)
+   1 and 5-8 (plan section 11 (39)).  The grouping is that of the rows as first written, when a
+   light header could still declare G (structure) or R (structure) itself (rows 2-4, 8); now rows
+   2, 4 and 8 inherit G from Gm and row 3 is built on UPr. *)
 theory Test9_Header_Attribute
   imports Test9_Fixtures "HOL.Real_Vector_Spaces"
 begin
@@ -29,27 +31,19 @@ fun same_attribute_terms thy (l, h) defined =
 (*the activation context the declaration entry point returns (the heavy branch)*)
 fun activation_context ctxt name =
   #4 (#1 (Expression.read_declaration (locale_expression (Proof_Context.theory_of ctxt) name) I [] ctxt));
-
-(*the fact's premises are n copies of the proposition read in the block, and the fact holds no
-  placeholder; a light locale's block holds only the schematic theory copy of its assumption
-  (decision 8), so the rows pin it to the block's parameters with [OF LF_axioms]*)
-fun premises_are ctxt th n text =
-  let val expected = Syntax.read_prop ctxt text; val prems = Thm.prems_of th in
-    \<^assert> (length prems = n andalso forall (fn p => p aconv expected) prems andalso
-      not (has_placeholder (Thm.prop_of th)))
-  end;
 \<close>
 
 
 subsection \<open>The rows that ran before the fix but gave the wrong result\<close>
 
-(* row 2: a (structure) fixes after the import -- the attribute read \<one> on G, the body on UP S;
-   the twin's first layer is P *)
-light_locale LFgat = UP_cring S for S + fixes G :: "('c, 'd) monoid_scheme" (structure)
+(* row 2: Gm's G, after UP_cring S, is the first layer beside the cut UP S -- the attribute reads
+   \<one> on UP S, as the body does; were G to beat the cut, on G; the twin's first layer is P *)
+light_locale LFgat = UP_cring S + Gm for S +
   assumes ax [t9_premise "\<one>"]: "\<one> \<otimes> \<one> = \<one>"
-locale Dgat = UP_cring S for S + fixes G :: "('c, 'd) monoid_scheme" (structure)
+locale Dgat = UP_cring S + Gm for S +
   assumes ax [t9_premise "\<one>"]: "\<one> \<otimes> \<one> = \<one>"
 context LFgat begin
+ML_val \<open>\<^assert> (#1 (layers \<^context>) = SOME "G")\<close>
 ML_val \<open>premises_are \<^context> @{thm LFgat.ax [OF LFgat_axioms]} 1 "\<one>\<^bsub>UP S\<^esub> = \<one>\<^bsub>UP S\<^esub>"\<close>
 end
 context Dgat begin
@@ -57,23 +51,27 @@ ML_val \<open>premises_are \<^context> @{thm ax} 1 "\<one>\<^bsub>P\<^esub> = \<
 end
 ML_val \<open>same_attribute_terms \<^theory> ("LFgat", "Dgat") ["P"]\<close>
 
-(* row 3: the import's R kept as a (structure) parameter -- the attribute read \<one> on R *)
-light_locale LFrat = UP_cring R for R (structure) + assumes ax [t9_premise "\<one>"]: "\<one> \<otimes> \<one> = \<one>"
-locale Drat = UP_cring R for R (structure) + assumes ax [t9_premise "\<one>"]: "\<one> \<otimes> \<one> = \<one>"
-context LFrat begin
-ML_val \<open>premises_are \<^context> @{thm LFrat.ax [OF LFrat_axioms]} 1 "\<one>\<^bsub>UP R\<^esub> = \<one>\<^bsub>UP R\<^esub>"\<close>
+(* row 3: UPr's P eliminated (the cut f R), its R kept as the first layer -- the attribute reads
+   \<one> on f R; were R to beat the cut, on R; the twin's first layer is P *)
+light_locale LRat = UPr + assumes ax [t9_premise "\<one>"]: "\<one> \<otimes> \<one> = \<one>"
+locale DRat = UPr + assumes ax [t9_premise "\<one>"]: "\<one> \<otimes> \<one> = \<one>"
+context LRat begin
+ML_val \<open>\<^assert> (#1 (layers \<^context>) = SOME "R")\<close>
+ML_val \<open>premises_are \<^context> @{thm LRat.ax [OF LRat_axioms]} 1 "\<one>\<^bsub>f R\<^esub> = \<one>\<^bsub>f R\<^esub>"\<close>
 end
-context Drat begin
+context DRat begin
 ML_val \<open>premises_are \<^context> @{thm ax} 1 "\<one>\<^bsub>P\<^esub> = \<one>\<^bsub>P\<^esub>"\<close>
 end
-ML_val \<open>same_attribute_terms \<^theory> ("LFrat", "Drat") ["P"]\<close>
+ML_val \<open>same_attribute_terms \<^theory> ("LRat", "DRat") ["P"]\<close>
 
 (* row 4: a term parameter read once and a string parameter read again at the second
    evaluation, in the new locale's target: the same premise twice -- the declaration's value
-   equals the one Locale.init computes *)
-light_locale LFbat = UP_cring S for S + fixes G :: "('c, 'd) monoid_scheme" (structure)
+   equals the one Locale.init computes; Gm's G is the first layer beside the cut UP S, and were G
+   to beat the cut, a premise would be on G *)
+light_locale LFbat = UP_cring S + Gm for S +
   assumes ax [t9_premise "\<one>", THEN t9_premise_rule[where x = "\<one>"]]: "\<one> \<otimes> \<one> = \<one>"
 context LFbat begin
+ML_val \<open>\<^assert> (#1 (layers \<^context>) = SOME "G")\<close>
 ML_val \<open>premises_are \<^context> @{thm LFbat.ax [OF LFbat_axioms]} 2 "\<one>\<^bsub>UP S\<^esub> = \<one>\<^bsub>UP S\<^esub>"\<close>
 end
 
@@ -163,9 +161,12 @@ locale Hl4at = LFl + assumes ax [t9_premise "\<one>"]: "x \<otimes> \<one> = x"
 locale DHl4at = Dl + assumes ax [t9_premise "\<one>"]: "x \<otimes> \<one> = x"
 ML_val \<open>same_attribute_terms \<^theory> ("Hl4at", "DHl4at") ["M"]\<close>
 
-(* row 8: a string parameter whose type constraint fits the second layer (nat \<Rightarrow> 'a) and not G:
-   the declaration succeeds; before the fix its first evaluation reported a type error *)
-light_locale LFwat = UP_cring S for S + fixes G :: "('c, 'd) monoid_scheme" (structure)
+(* row 8: a string parameter whose type constraint fits the second layer (nat \<Rightarrow> 'a) and not G
+   (Gm's, the first layer): were G to beat the cut, the declaration would fail with a type error *)
+light_locale LFwat = UP_cring S + Gm for S +
   assumes ax [THEN t9_premise_rule[where x = "\<one> :: nat \<Rightarrow> _"]]: "\<one> \<otimes> \<one> = \<one>"
+context LFwat begin
+ML_val \<open>\<^assert> (#1 (layers \<^context>) = SOME "G")\<close>
+end
 
 end

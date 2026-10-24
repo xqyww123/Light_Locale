@@ -5,6 +5,8 @@ theory Light_Locale
   imports Main
   keywords
     "light_locale" :: thy_decl_block and
+    "implicit_structure" :: quasi_command and
+    "no_implicit_structure" :: quasi_command and
     "set_implicit_structure" :: thy_decl and
     "with_implicit_structure" :: prf_decl
 begin
@@ -14,6 +16,8 @@ subsection \<open>The commands (plan section 4 items 1, 6 and 7)\<close>
 ML \<open>
 signature LIGHT_LOCALE =
 sig
+  val light_locale_header: (binding * ((Expression.expression * Bundle.xname list) *
+    (string Syntax_Trans.implicit_structure_spec * Element.context list))) parser
   val set_implicit_structure_cmd: string -> local_theory -> local_theory
   val with_implicit_structure_cmd: string -> Proof.context -> Proof.context
 end;
@@ -118,56 +122,111 @@ fun undeclared_message ctxt0 t undeclared =
      else " require concrete type annotations.")
   end;
 
-(*the two guards (plan section 4 item 6): only the context's variables, only its type variables;
-  second is the second sentence of the free variable message*)
-fun guard ctxt second t =
-  (case Variable.add_frees ctxt t [] of
-    [] => ()
-  | frees =>
-      error ("Illegal free variables in the implicit structure: " ^
-        commas_quote (map #1 (rev frees)) ^ second);
-   case filter_out (Variable.is_declared ctxt o #1) (rev (Term.add_tfrees t [])) of
-    [] => ()
-  | tfrees => error (undeclared_message ctxt t (map #1 tfrees)));
+(*the two guards (plan section 4 item 6; header plan section 3.4) with explicit inputs: the
+  variables allowed, each with the name the second sentence prints; that sentence, built from the
+  printed names, or the one for no variables; and the test on type variables*)
+fun guard ctxt {allowed, tfree_ok, listed, none} t =
+  let
+    val undeclared = filter_out (member (op =) (map #1 allowed)) (rev (Term.add_free_names t []));
+    val second = if null allowed then none else listed (distinct (op =) (map #2 allowed));
+  in
+    (case undeclared of
+      [] => ()
+    | [x] =>
+        error ("Illegal undeclared variable " ^ quote x ^ " in the implicit structure. " ^ second)
+    | xs =>
+        error ("Illegal undeclared variables " ^ commas_quote xs ^
+          " in the implicit structure. " ^ second));
+    (case filter_out tfree_ok (rev (Term.add_tfree_names t [])) of
+      [] => ()
+    | tfrees => error (undeclared_message ctxt t tfrees))
+  end;
 
-val fixed_here = ". Only variables fixed in this context may occur here.";
+(*the header: the parameters being declared*)
+fun header_guard params =
+  let val tfrees = fold (Term.add_tfree_namesT o #2) params [] in
+   {allowed = map (fn (x, _) => (x, x)) params,
+    tfree_ok = member (op =) tfrees,
+    listed = fn xs => "Only the parameters being declared may occur here: " ^ commas_quote xs ^ ".",
+    none = "No parameters are being declared in the locale, so no variable may occur here."}
+  end;
 
-(*plan decision 16 (d): block scope -- the innermost snapshot and the live context; at the
-  outermost level of a locale's block also the locale's record*)
+(*a block or a proof: the variables fixed in the context, in order of declaration --
+  allowed by the names a read term carries (a proof's skolem names), listed by their external
+  names; the placeholder, whose external name is internal, is not a variable*)
+fun fixed_guard ctxt =
+ {allowed = map swap (filter_out (Name.is_internal o #1) (Variable.dest_fixes ctxt)),
+  tfree_ok = Variable.is_declared ctxt,
+  listed = fn xs => "Only variables fixed in this context may occur here: " ^ commas_quote xs ^ ".",
+  none = "No variables are fixed in this context, so no variable may occur here."};
+
+(*the empty text, blanks included, cancels (header plan section 2 item 9); a value is read and
+  passed through fixed_guard here, so that every command reading one guards it; the source explode
+  drops the padding of a token's text*)
+fun cancel_or_declare ctxt s =
+  if forall (Symbol.is_blank o Symbol_Pos.symbol) (Input.source_explode (Syntax.read_input s))
+  then Syntax_Trans.Cancel
+  else
+    let val t = Syntax.read_term ctxt s
+    in guard ctxt (fixed_guard ctxt) t; Syntax_Trans.Declare t end;
+
+fun install (Syntax_Trans.Declare t) = Proof_Context.declare_implicit_structure t
+  | install spec = Syntax_Trans.put_implicit_structure spec;
+
+(*plan decision 16 (d): block scope -- the innermost snapshot and the live context.  A locale's
+  implicit structure is declared in its header only (header plan section 2 item 1): no block
+  whose bottom target is a locale may set one*)
 fun set_implicit_structure_cmd s lthy =
   if Named_Target.is_theory lthy then
     error "You cannot set the implicit structure at the theory level. \
-      \Use it inside a locale or a context block."
+      \Use it inside a context block."
+  else if is_some (Named_Target.bottom_locale_of lthy) then
+    error "You cannot set the implicit structure inside a locale. \
+      \Declare it in the header of a light locale with implicit_structure instead."
   else
-    let
-      val t = Syntax.read_term lthy s;
-      val here =
-        Local_Theory.map_contexts (fn level =>
-          level >= Local_Theory.level lthy - 1 ? Proof_Context.declare_implicit_structure t);
-    in
-      (case Named_Target.locale_of lthy of
-        SOME loc =>
-          (guard lthy
-            (". Only the parameters of locale " ^ quote (Locale.extern lthy loc) ^
-              " may occur here.") t;
-           lthy |> Local_Theory.background_theory (Locale.set_implicit_structure loc t) |> here)
-      | NONE => (guard lthy fixed_here t; here lthy))
+    let val spec = cancel_or_declare lthy s in
+      Local_Theory.map_contexts (fn level => level >= Local_Theory.level lthy - 1 ? install spec)
+        lthy
     end;
 
-fun with_implicit_structure_cmd s ctxt =
-  let val t = Syntax.read_term ctxt s
-  in guard ctxt fixed_here t; Proof_Context.declare_implicit_structure t ctxt end;
+fun with_implicit_structure_cmd s ctxt = install (cancel_or_declare ctxt s) ctxt;
+
+(*the header text after the command word (header plan section 3.2): the elements may hold at
+  most one implicit_structure t / no_implicit_structure, anywhere among them*)
+val light_locale_header =
+  Parse.binding --
+    Scan.optional (\<^keyword>\<open>=\<close> |--
+      Parse.!!! (Parse_Spec.locale_val'
+        [(\<^keyword>\<open>implicit_structure\<close>, Parse.term >> Syntax_Trans.Declare),
+         (\<^keyword>\<open>no_implicit_structure\<close>, Scan.succeed Syntax_Trans.Cancel)]))
+      ((([], []), []), ([], []))
+  >> (fn (name, ((expr, includes), (elems, extras))) =>
+      (name, ((expr, includes),
+        ((case extras of
+          [] => Syntax_Trans.Inherit
+        | [spec] => spec
+        | _ => error "A light locale header declares at most one implicit structure"), elems))));
+
+(*the two checks of a light header run inside Pure through these hooks (header plan section
+  3.4), so that every way of declaring a light locale meets them*)
+val _ =
+  Theory.setup
+   (Locale.set_light_own_structure_check (fn _ => fn names =>
+      error ("A light locale does not declare (structure) parameters: " ^ commas_quote names ^
+        (case names of
+          [x] => ". Write implicit_structure " ^ x ^ " instead."
+        | _ => ". Write implicit_structure with one of them instead."))) #>
+    Locale.set_light_structure_guard (fn ctxt => fn {params, declared} =>
+      guard ctxt (header_guard params) declared));
 
 end;
 
 val _ =
   Outer_Syntax.command \<^command_keyword>\<open>light_locale\<close> "define light locale"
-    (Parse.binding --
-      Scan.optional (\<^keyword>\<open>=\<close> |-- Parse.!!! Parse_Spec.locale_val) ((([], []), []), []) --
-      Parse.opt_begin
-      >> (fn ((name, ((expr, includes), elems)), begin) =>
+    (Light_Locale.light_locale_header -- Parse.opt_begin
+      >> (fn ((name, ((expr, includes), (spec, elems))), begin) =>
           Toplevel.begin_main_target begin
-            (Expression.add_light_locale_cmd name Binding.empty includes expr elems #> snd)));
+            (Expression.add_light_locale_cmd name Binding.empty includes expr spec elems #> snd)));
 
 val _ =
   Outer_Syntax.local_theory \<^command_keyword>\<open>set_implicit_structure\<close>
@@ -264,10 +323,10 @@ fun constraints (Ast.Appl [Ast.Constant \<^syntax_const>\<open>_constrain\<close
 
 val most_constrained = foldl1 (fn (a, b) => if constraints b > constraints a then b else a);
 
-(*the default structure: the empty subscript -- the first layer's head when there is no second
-  layer, or the second layer's value, which Pure's elision has replaced wherever it stands at an
-  index position (also one a translation defines, also when it holds an abbreviation, also the
-  placeholder; plan section 11 (39))*)
+(*the default structure: the empty subscript -- the first layer's head while the implicit
+  structure is inherited (Syntax_Trans.inherited_struct), or the second layer's value, which
+  Pure's elision has replaced wherever it stands at an index position (also one a translation
+  defines, also when it holds an abbreviation, also the placeholder; plan section 11 (39))*)
 fun is_default s = s = empty_subscript;
 
 fun has_loose (Ast.Appl [Ast.Constant \<^syntax_const>\<open>_loose\<close>, _]) = true

@@ -358,8 +358,8 @@ val _ = \<^assert> (exists (fn p =>
 
 section \<open>The reopened blocks: lemmas and declare rows\<close>
 
-light_locale LF2 = LF + fixes R :: "('c, 'd) ring_scheme" (structure) assumes lf2: "Qc R"
-locale D2 = D + fixes R :: "('c, 'd) ring_scheme" (structure) assumes lf2: "Qc R"
+light_locale LF2 = LF + fixes R :: "('c, 'd) ring_scheme" assumes lf2: "Qc R"
+locale D2 = D + fixes R :: "('c, 'd) ring_scheme" assumes lf2: "Qc R"
 
 lemma (in LF2) fooR: "Pc R x" by (rule Pc_ax)
 lemma (in D2) fooR: "Pc R x" by (rule Pc_ax)

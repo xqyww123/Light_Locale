@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# Run the stock copy's `isabelle` with a clean environment (tools/isabelle-env), its heaps in its
-# own user directory.
-set -euo pipefail
-unset USER_HOME
-exec "$(dirname "$0")/isabelle-env" "$(dirname "$0")/../Isabelle2025-2-stock" \
-  "$HOME/.isabelle/Isabelle2025-2-stock" "$@"

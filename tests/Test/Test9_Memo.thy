@@ -1,7 +1,8 @@
 (* Plan section 7 test 9 (structure), plan 5266-5267: the memo table of the summary -- a ladder
    of depth 30 declares within the session's timeout of 300 s (tests/ROOT: options [timeout];
    the session takes about a minute) and opens within 10 s (Timeout.apply below); without the
-   table the walk is exponential already in implicit_structure_of_imports at declaration time. *)
+   table the walk is exponential already in the header route's imports_structure_state at
+   declaration time. *)
 theory Test9_Memo
   imports Test9_Fixtures
 begin
@@ -49,9 +50,10 @@ val _ = \<^assert> (is_none (Syntax_Trans.implicit_structure ctxt));
 (*the header route's walk over two L29 imports, memoised, is as fast*)
 val _ =
   Timeout.apply (Time.fromSeconds 10) (fn () =>
-    \<^assert> (is_none (Locale.implicit_structure_of_imports \<^theory>
-      [(Test_Support.loc \<^theory> "L29", [Locale.Inherited]),
-       (Test_Support.loc \<^theory> "L29", [Locale.Inherited])]))) ();
+    \<^assert> (case Locale.imports_structure_state \<^theory> []
+        [(Test_Support.loc \<^theory> "L29", [Locale.Inherited]),
+         (Test_Support.loc \<^theory> "L29", [Locale.Inherited])] of
+      Locale.Inherited_Structure => true | _ => false)) ();
 \<close>
 
 end

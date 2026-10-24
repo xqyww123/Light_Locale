@@ -101,7 +101,7 @@ ML \<open>
 val ctxt = check "LF" NONE (SOME "UP S");
 val _ = bare_is ctxt "UP S";
 val _ = check "D" (SOME "P") NONE;
-val ctxt = check "LFr" (SOME "R") (SOME "UP R");
+val ctxt = check "LFr" NONE (SOME "UP R");
 val _ = bare_is ctxt "UP R";
 val _ = check "LFr2" (SOME "R") NONE;
 val _ = check "Kp'" (SOME "G") (SOME "UP S");
@@ -122,8 +122,8 @@ locale M5 = Gm X + LU X for X (structure)
 locale K2 = LU X + Bt for X
 locale DD = LU + UPm
 locale DD2 = LU S + UPm S for S (structure)
-light_locale L2 = LU S for S (structure)
-light_locale L3 = L2 where S = T for T (structure)
+light_locale L2 = LU S for S
+light_locale L3 = L2 where S = T for T
 light_locale LUr = UPr
 locale Mr = LUr where R = S for S (structure)
 light_locale LC = UPc
@@ -144,7 +144,7 @@ val _ = check "M5" (SOME "X") (SOME "f X");
 val _ = check "K2" (SOME "T") (SOME "f X");
 val _ = check "DD" (SOME "R") NONE;
 val _ = check "DD2" (SOME "P") (SOME "f S");
-val _ = check "L3" (SOME "T") (SOME "f T");
+val _ = check "L3" NONE (SOME "f T");
 val _ = check "LUr" (SOME "R") (SOME "f R");
 val _ = check "Mr" (SOME "S") (SOME "f S");
 val _ = check "LC" (SOME "R") NONE;
@@ -193,7 +193,7 @@ locale M6r = Pm + LU S for S
 locale Y = M6 Q S for Q (structure) and S (structure)
 locale Y3 = M6 Q S for Q and S (structure)
 locale M6xq = M6x where P = Q for Q
-light_locale M11 = UPm where R = S and P = "f S" for S (structure)
+light_locale M11 = UPm where R = S and P = "f S" for S
 locale GH = A: LU G + B: LU H for G (structure) and H (structure)
 
 ML \<open>
@@ -203,7 +203,7 @@ val _ = check "M6r" (SOME "P") NONE;
 val _ = check "Y" (SOME "Q") (SOME "f S");
 val _ = check "Y3" (SOME "S") (SOME "f S");
 val _ = check "M6xq" (SOME "G") (SOME "f S");
-val _ = check "M11" (SOME "S") (SOME "f S");
+val _ = check "M11" NONE (SOME "f S");
 val _ = check "GH" (SOME "G") (SOME "f G");
 \<close>
 

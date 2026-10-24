@@ -1,8 +1,8 @@
 # Signature entries light locale adds to the Isabelle2025-2 tree (plan §8 step 5): one
 # `<path> <SIGNATURE> <keyword> <name>` per line, grouped by the plan section that names them.
-# tools/make_patches.sh requires the heads (path, signature, keyword, name; not the type) of the
-# entries added to the signature sections of the patched ML files to be exactly these (and every
-# stock entry to be unchanged).
+# make-patches (gate (d), through check-signatures) requires the heads (path, signature, keyword,
+# name; not the type) of the entries added to the signature sections of the patched ML files to
+# be exactly these (and every stock entry to be unchanged).
 
 # plan §3.1 (eliminated_name_warning by §11 implementation-period change (10) (e))
 src/Pure/Isar/locale.ML LOCALE datatype level
@@ -10,7 +10,6 @@ src/Pure/Isar/locale.ML LOCALE datatype position_kind
 src/Pure/Isar/locale.ML LOCALE val register_locale'
 src/Pure/Isar/locale.ML LOCALE val is_light
 src/Pure/Isar/locale.ML LOCALE val is_light_predicate
-src/Pure/Isar/locale.ML LOCALE val set_implicit_structure
 src/Pure/Isar/locale.ML LOCALE val activate_facts_level
 src/Pure/Isar/locale.ML LOCALE val matching_marks_of
 src/Pure/Isar/locale.ML LOCALE val set_light_axioms_attributes
@@ -21,7 +20,6 @@ src/Pure/Isar/locale.ML LOCALE val eliminated_names_of
 src/Pure/Isar/locale.ML LOCALE val eliminated_names_declaration
 src/Pure/Isar/locale.ML LOCALE val eliminated_name_warning
 src/Pure/Isar/locale.ML LOCALE val add_registration_level
-src/Pure/Isar/locale.ML LOCALE val implicit_structure_of_imports
 
 # plan §3.2
 src/Pure/Isar/expression.ML EXPRESSION val add_light_locale
@@ -73,3 +71,17 @@ src/Pure/Isar/proof_context.ML PROOF_CONTEXT val declare_implicit_structure
 
 # plan §4 item 9
 src/Tools/induct.ML INDUCT val own_vars_of
+# header elements implicit_structure t / no_implicit_structure (plan
+# ai-artifacts/LIGHT_LOCALE_HEADER_IMPLICIT_STRUCTURE_PLAN.md section 3)
+src/Pure/Isar/parse_spec.ML PARSE_SPEC val locale_val'
+src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS datatype implicit_structure_spec
+src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val inherited_struct
+src/Pure/Isar/locale.ML LOCALE datatype structure_state
+src/Pure/Isar/locale.ML LOCALE val map_structure_state
+src/Pure/Isar/locale.ML LOCALE val imports_structure_state
+src/Pure/Isar/locale.ML LOCALE val install_structure_state
+src/Pure/Isar/locale.ML LOCALE val parent_implicit_structures
+src/Pure/Isar/locale.ML LOCALE val set_light_own_structure_check
+src/Pure/Isar/locale.ML LOCALE val light_own_structure_check_of
+src/Pure/Isar/locale.ML LOCALE val set_light_structure_guard
+src/Pure/Isar/locale.ML LOCALE val light_structure_guard_of

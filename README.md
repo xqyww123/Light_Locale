@@ -4,19 +4,19 @@ Light locales for Isabelle: locale-style structure declarations whose facts live
 ## Patches to the Isabelle tree
 
 `patches/Isabelle2025-2/*.patch` are the only record of the changes this component makes to
-`contrib/Isabelle2025-2/src`: one patch per file, named by the file's path with `/` written `-`
-(`src-Pure-Isar-locale.ML.patch`), generated against the pristine `Isabelle2025-2` sources (a
-sparse checkout of the local hg clone the plan names, unless `--pristine` gives another).  The
-stock copy `Isabelle2025-2-stock/` equals those sources except where the shared tree's dev
-patches apply; for such a file (dev patch `show_types_nv`: currently `attrib.ML` and
-`syntax_phases.ML`) the light patch is taken from the shared tree's file with the dev patch's
-lines reversed, so that it applies to the pristine file and the dev patch is regenerated on top
-of it (the dev patches' conda package depends on light locale).  `tools/make_patches.sh
-[--pristine <hg repo>]` regenerates them and runs the checks: the patched files are exactly the
-ones `tools/check_stock_diff.sh` reports (hence within `tools/patched_files.txt`), the patches
-round-trip on the sparse pristine checkout, every dev patch has the same content below and above
-light (which proves the reversal removed exactly the dev patch), and the signature sections of the
-patched ML files keep every stock entry unchanged and gain exactly the entries whose heads (path,
-signature, keyword, name; not the type) are listed in `tools/signature_additions.txt`.  The dev
-patches regenerated on top of light are written under `$TMPDIR` (never here) for their package;
-applying them to pristine + light gives the shared tree by construction.
+the Isabelle sources: one patch per file, named by the file's path with `/` written `-`
+(`src-Pure-Isar-locale.ML.patch`), beside `provenance.txt`.  They are generated from the
+Isabelle source repository (`contrib/Isabelle2025-2` and its worktrees; the rules are the
+section "Working in the Isabelle source repository" of `contrib/my_better_isabelle_prover/README.md`):
+development happens in the private tree `contrib/Isabelle2025-2-light_locale` on branch
+`Isabelle2025-2/light_locale`, every Isabelle run there goes through `run-tree`, and a release
+is `make-patches --package contrib/light_locale Isabelle2025-2/light_locale <version>`, run on
+the owner's order.  Its gates read three files here: `tools/patched_files.txt` (the files
+changed since the base release tag must be exactly these), `tools/signature_additions.txt` (the
+signature sections of the patched ML files keep every stock entry and gain exactly the entries
+whose heads -- path, signature, keyword, name; not the type -- are listed) and
+`tools/required_sessions.txt` (the tested records `run-tree` writes on the released commit
+must cover these sessions).  The golden files of plan section 7 test 1 are recorded on light's
+stock tree `contrib/Isabelle2025-2-light_locale-stock` (the tree without light) and compared on
+every other tree; `tools/record_golden_metadata.sh` writes `tests/golden/METADATA` after a
+recording.

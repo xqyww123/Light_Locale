@@ -493,15 +493,15 @@ val t = reads ctxt "inj_on (m_inv W) (carrier W)";
 val _ = \<^assert> (not (String.isSubstring "_struct" (shows ctxt t)) andalso not (has_bad_markup ctxt t));
 \<close>
 
-(* both layers present (LFr: R is the first layer, UP R the second): the first layer's head is
-   printed, not elided, so a subscript R is another structure than the default and is annotated;
+(* both layers present (M1: S is the first layer, f S the second): the first layer's head is
+   printed, not elided, so a subscript S is another structure than the default and is annotated;
    the second layer's value is elided by Pure and is the default *)
-context LFr
+context M1
 begin
-ML_val \<open>\<^assert> (#1 (layers \<^context>) = SOME "R" andalso implicit_is \<^context> (reads \<^context> "UP R"))\<close>
-ML_val \<open>annotated (on \<^context>) "x \<otimes>\<^bsub>R\<^esub> y" "x \<otimes> y \<lbrakk>structure: R\<rbrakk>"\<close>
-ML_val \<open>both_modes (fn ctxt => prints_as ctxt "x \<otimes>\<^bsub>UP R\<^esub> y" "x \<otimes> y") (on \<^context>)\<close>
-ML_val \<open>left_alone (on \<^context>) "x \<otimes>\<^bsub>R\<^esub> y = x \<and> u \<otimes> v = u"\<close>
+ML_val \<open>\<^assert> (#1 (layers \<^context>) = SOME "S" andalso implicit_is \<^context> (reads \<^context> "f S"))\<close>
+ML_val \<open>annotated (on \<^context>) "x \<otimes>\<^bsub>S\<^esub> y" "x \<otimes> y \<lbrakk>structure: S\<rbrakk>"\<close>
+ML_val \<open>both_modes (fn ctxt => prints_as ctxt "x \<otimes>\<^bsub>f S\<^esub> y" "x \<otimes> y") (on \<^context>)\<close>
+ML_val \<open>left_alone (on \<^context>) "x \<otimes>\<^bsub>S\<^esub> y = x \<and> u \<otimes> v = u"\<close>
 end
 
 (* the second layer as the default (UP S): S is another structure and gets the annotation, a

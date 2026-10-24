@@ -1,0 +1,12 @@
+# Sessions a release of light locale must have built on the released commit (make-patches gate
+# (e): the tested records run-tree writes must cover them).  One per line; # starts a comment.
+# Plan section 7: the golden comparison, the fixtures, the gate tests, the no-fork mode and the
+# corec facts; FOL and ZF because src/Tools/induct.ML is patched and FOL instantiates it too
+# (plan section 7 test 1's gate).
+Light_Locale_Golden
+Light_Locale_Base
+Light_Locale_Test
+Light_Locale_Test_Serial
+Light_Locale_Corec_Check
+FOL
+ZF

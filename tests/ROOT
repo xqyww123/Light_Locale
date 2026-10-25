@@ -194,6 +194,8 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test7_Notes_Normal
     Test8_Shapes
     Test8_Eliminated
+    Test8_TAT_Interface
+    Test8_Lifting_Premise
     Test8_Gate
     Test8_Siblings
     Test10_Rewrites

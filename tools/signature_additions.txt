@@ -85,3 +85,12 @@ src/Pure/Isar/locale.ML LOCALE val set_light_own_structure_check
 src/Pure/Isar/locale.ML LOCALE val light_own_structure_check_of
 src/Pure/Isar/locale.ML LOCALE val set_light_structure_guard
 src/Pure/Isar/locale.ML LOCALE val light_structure_guard_of
+# the TAT interface patch (plan ai-artifacts/LIGHT_LOCALE_TAT_INTERFACE_PLAN.md section 2): the
+# declaration warning and the rebinding warnings (text and data), the parameters a locale
+# declares itself, the header edges, the parameters a locale defines
+src/Pure/Isar/locale.ML LOCALE val eliminated_name_message
+src/Pure/Isar/locale.ML LOCALE val header_edges
+src/Pure/Isar/locale.ML LOCALE val own_params
+src/Pure/Isar/expression.ML EXPRESSION val eliminated_params
+src/Pure/Isar/expression.ML EXPRESSION val unfolded_definitions
+src/Pure/Isar/expression.ML EXPRESSION val unfolded_definitions_message

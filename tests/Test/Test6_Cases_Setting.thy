@@ -30,7 +30,7 @@ val _ = \<^assert> (diff_K 0 (@{thm Setting.r}, heavy_r));
 context Setting begin
 lemmas rs [cases set: Aset] = Setting.r
 end
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Rule_Cases.get @{thm Setting.rs} = ([(("a", []), []), (("b", []), [])], 1));
 val _ = \<^assert> (not (has_K_tag @{thm Setting.rs}) andalso Thm.eq_thm_prop (@{thm Setting.rs}, @{thm Setting.r}));
 \<close>

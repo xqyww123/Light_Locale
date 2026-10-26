@@ -26,10 +26,10 @@ context LF begin
 inductive_set Evs :: "nat set" where "0 \<in> Evs" | "n \<in> Evs \<Longrightarrow> Suc (Suc n) \<in> Evs" | "Pc S (7::nat) \<Longrightarrow> 7 \<in> Evs"
 end
 context LF begin
-ML_val \<open>
+ML \<open>local
 val (hs, ctxt) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "hs" "n \<in> LF.Evs S";
 val _ = \<^assert> (cases_text (run ctxt [@{thm LF_axioms}, hs] "cases n" "W n") = heavy_cases);
-\<close>
+in end\<close>
 end
 
 end

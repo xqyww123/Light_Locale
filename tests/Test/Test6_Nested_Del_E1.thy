@@ -25,11 +25,11 @@ lemma fooE9 [elim?]: "Pc x \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longri
 end
 context D begin
 context fixes y assumes hy: "Qc y" begin
-ML_val \<open>\<^assert> (declared \<^context> @{thm fooE9})\<close>
+ML \<open>val _ = \<^assert> (declared \<^context> @{thm fooE9})\<close>
 declare D.fooE9 [Pure.rule del]
-ML_val \<open>\<^assert> (declared \<^context> @{thm fooE9})\<close>
+ML \<open>val _ = \<^assert> (declared \<^context> @{thm fooE9})\<close>
 declare fooE9 [Pure.rule del]
-ML_val \<open>\<^assert> (not (declared \<^context> @{thm fooE9}))\<close>
+ML \<open>val _ = \<^assert> (not (declared \<^context> @{thm fooE9}))\<close>
 end
 end
 
@@ -40,18 +40,18 @@ end
 
 context LF begin
 context fixes y assumes hy: "Qc y" begin
-ML_val \<open>\<^assert> (declared \<^context> @{thm LF.fooE9} andalso declared (thy_ctxt \<^context>) @{thm LF.fooE9})\<close>
+ML \<open>val _ = \<^assert> (declared \<^context> @{thm LF.fooE9} andalso declared (thy_ctxt \<^context>) @{thm LF.fooE9})\<close>
 declare LF.fooE9 [Pure.rule del]
-ML_val \<open>\<^assert> (not (declared \<^context> @{thm LF.fooE9}))\<close>
-ML_val \<open>\<^assert> (not (null (claset_entries \<^context> @{thm LF.fooE9c})) andalso
+ML \<open>val _ = \<^assert> (not (declared \<^context> @{thm LF.fooE9}))\<close>
+ML \<open>val _ = \<^assert> (not (null (claset_entries \<^context> @{thm LF.fooE9c})) andalso
   not (null (claset_entries (thy_ctxt \<^context>) @{thm LF.fooE9c})))\<close>
 local_setup \<open>fn lthy =>
   let val (lthy', w) = with_warnings (fn () => declare_in lthy "LF.fooE9c" "[rule del]")
   in \<^assert> (null w); lthy' end\<close>
-ML_val \<open>\<^assert> (null (claset_entries \<^context> @{thm LF.fooE9c}))\<close>
+ML \<open>val _ = \<^assert> (null (claset_entries \<^context> @{thm LF.fooE9c}))\<close>
 end
 (* the enclosing reopened block after the nested end: light_notes writes it on its own path *)
-ML_val \<open>\<^assert> (not (declared \<^context> @{thm LF.fooE9}) andalso null (claset_entries \<^context> @{thm LF.fooE9c}))\<close>
+ML \<open>val _ = \<^assert> (not (declared \<^context> @{thm LF.fooE9}) andalso null (claset_entries \<^context> @{thm LF.fooE9c}))\<close>
 end
 
 ML \<open>

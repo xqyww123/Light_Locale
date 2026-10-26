@@ -27,7 +27,7 @@ val D_ctxt = Locale.init (Locale.check_global \<^theory> ("D", Position.none)) \
 \<close>
 
 context LF begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 (*S and, since milestone 2, the placeholder of the implicit structure under its literal name --
   nothing else; the second layer is UP S (plan 4022)*)
@@ -45,7 +45,7 @@ val heavy_only = ["R.m_comm", "P.m_comm", "R.is_cring", "m_comm"];
 val _ = \<^assert> (subset (op =) (remove (op =) "local.LF_axioms" lf_facts, visible_fact_names D_ctxt));
 val _ = \<^assert> (forall (has_fact D_ctxt) heavy_only);
 val _ = \<^assert> (not (exists (has_fact ctxt) heavy_only));
-\<close>
+in end\<close>
 end
 
 (* Locale.init LF: the heavy theorem names are absent as well *)
@@ -112,8 +112,8 @@ ML \<open>val facts_before = map #1 (Facts.dest_static false [] (Global_Theory.f
 context notes fin = LFc.fin[OF LFc_axioms] begin
 lemma "finite S" by (rule \<open>finite S\<close>)
 end
-ML_val \<open>
-\<^assert> (map #1 (Facts.dest_static false [] (Global_Theory.facts_of \<^theory>)) = facts_before)
+ML \<open>
+val _ = \<^assert> (map #1 (Facts.dest_static false [] (Global_Theory.facts_of \<^theory>)) = facts_before)
 \<close>
 end
 

@@ -8,11 +8,11 @@ abbreviation (in LS) sib_b :: "('a, 'b) ring_scheme" where "sib_b \<equiv> S"
 
 context LS
 begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (Test_Support.implicit_is ctxt (Test_Support.reads ctxt "S"));
 val _ = \<^assert> (Test_Support.reads ctxt "sib_b" aconv Test_Support.reads ctxt "S");
-\<close>
+in end\<close>
 end
 
 end

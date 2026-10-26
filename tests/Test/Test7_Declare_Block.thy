@@ -23,7 +23,7 @@ val by_clarsimp = proves (fn c => clarsimp_tac c 1);
 \<close>
 
 context LF begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (by_safe \<^context> \<^prop>\<open>LF S\<close>);
 val _ = \<^assert> (by_clarify \<^context> \<^prop>\<open>LF S\<close>);
 val _ = \<^assert> (by_clarsimp \<^context> \<^prop>\<open>LF S\<close>);
@@ -33,7 +33,7 @@ end
 
 context D begin
 declare D_axioms [intro]
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (not (by_safe \<^context> \<^prop>\<open>D S\<close>));
 val _ = \<^assert> (not (by_clarify \<^context> \<^prop>\<open>D S\<close>));
 \<close>
@@ -47,48 +47,48 @@ lemma tintro [intro]: "Pq c0" by (rule tintro_ax)
 
 (* a positive control first: the block's simp proves k0 = 0 by tsimp *)
 context LF begin
-ML_val \<open>\<^assert> (by_simp \<^context> \<^prop>\<open>k0 = 0\<close>)\<close>
+ML \<open>val _ = \<^assert> (by_simp \<^context> \<^prop>\<open>k0 = 0\<close>)\<close>
 local_setup \<open>fn lthy =>
   let val (lthy', w) = with_warnings (fn () => declare_in lthy "tsimp" "[simp del]")
   in \<^assert> (not (exists (String.isPrefix "Rewrite rule not in simpset:") w)); \<^assert> (null w); lthy' end\<close>
-ML_val \<open>\<^assert> (not (by_simp \<^context> \<^prop>\<open>k0 = 0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>k0 = 0\<close>))\<close>
 (* tintro: the positive control; the deletion's warnings, read on a throw-away context (the theory
    level finds tintro itself and deletes it without a word); then the deletion itself *)
-ML_val \<open>\<^assert> (by_blast \<^context> \<^prop>\<open>Pq c0\<close>)\<close>
-ML_val \<open>\<^assert> (null (#2 (with_warnings (fn () => declare_in \<^context> "tintro" "[rule del]"))))\<close>
+ML \<open>val _ = \<^assert> (by_blast \<^context> \<^prop>\<open>Pq c0\<close>)\<close>
+ML \<open>val _ = \<^assert> (null (#2 (with_warnings (fn () => declare_in \<^context> "tintro" "[rule del]"))))\<close>
 declare tintro [rule del]
-ML_val \<open>\<^assert> (not (by_blast \<^context> \<^prop>\<open>Pq c0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_blast \<^context> \<^prop>\<open>Pq c0\<close>))\<close>
 local_setup \<open>fn lthy =>
   let val (lthy', w) = with_warnings (fn () => declare_in lthy "LF_axioms" "[rule del]")
   in \<^assert> (length w = 1 andalso String.isPrefix "Undeclared classical rule" (hd w)); lthy' end\<close>
 end
 
 (* the redeclarations are the theorems themselves, so the deletions are global and permanent *)
-ML_val \<open>\<^assert> (not (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>k0 = 0\<close>))\<close>
-ML_val \<open>\<^assert> (not (by_blast (Proof_Context.init_global \<^theory>) \<^prop>\<open>Pq c0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>k0 = 0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_blast (Proof_Context.init_global \<^theory>) \<^prop>\<open>Pq c0\<close>))\<close>
 
 context LF begin
-ML_val \<open>\<^assert> (not (by_simp \<^context> \<^prop>\<open>k0 = 0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>k0 = 0\<close>))\<close>
 end
 
 (* the (in ...) pairs on their own fact tsimp5: first the heavy pair (the positive control, the
    deletion, the negative), then the light pair *)
 definition k5 :: nat where "k5 = 0"
 lemma tsimp5 [simp]: "k5 = 0" by (simp add: k5_def)
-ML_val \<open>
+ML \<open>local
 val lthy = Named_Target.init [] (Locale.check_global \<^theory> ("D", Position.none)) \<^theory>;
 val _ = \<^assert> (by_simp lthy \<^prop>\<open>k5 = 0\<close>);
-\<close>
+in end\<close>
 declare (in D) tsimp5 [simp del]
-ML_val \<open>
+ML \<open>local
 val lthy = Named_Target.init [] (Locale.check_global \<^theory> ("D", Position.none)) \<^theory>;
 val _ = \<^assert> (not (by_simp lthy \<^prop>\<open>k5 = 0\<close>));
-\<close>
+in end\<close>
 (* the light pair: after declare (in LF) the deletion reaches the global simpset *)
-ML_val \<open>\<^assert> (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>k5 = 0\<close>)\<close>
-ML_val \<open>\<^assert> (by_simp (Named_Target.init [] (Locale.check_global \<^theory> ("LF", Position.none)) \<^theory>) \<^prop>\<open>k5 = 0\<close>)\<close>
+ML \<open>val _ = \<^assert> (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>k5 = 0\<close>)\<close>
+ML \<open>val _ = \<^assert> (by_simp (Named_Target.init [] (Locale.check_global \<^theory> ("LF", Position.none)) \<^theory>) \<^prop>\<open>k5 = 0\<close>)\<close>
 declare (in LF) tsimp5 [simp del]
-ML_val \<open>\<^assert> (not (by_simp (Named_Target.init [] (Locale.check_global \<^theory> ("LF", Position.none)) \<^theory>) \<^prop>\<open>k5 = 0\<close>))\<close>
-ML_val \<open>\<^assert> (not (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>k5 = 0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_simp (Named_Target.init [] (Locale.check_global \<^theory> ("LF", Position.none)) \<^theory>) \<^prop>\<open>k5 = 0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>k5 = 0\<close>))\<close>
 
 end

@@ -9,11 +9,11 @@ begin
 
 abbreviation (input) Pv where "Pv \<equiv> UP S"
 
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (Test_Support.reads ctxt "x \<otimes>\<^bsub>Pv\<^esub> y" aconv Test_Support.reads ctxt "x \<otimes> y");
 val _ = Test_Support.prints_as ctxt "x \<otimes> y" "x \<otimes> y";
-\<close>
+in end\<close>
 
 end
 

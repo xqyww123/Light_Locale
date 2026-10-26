@@ -63,18 +63,18 @@ val _ = \<^assert> (assumes "H" = [\<^prop>\<open>\<And>q. Sq q\<close>]);
 lemma True
 proof -
   interpret I: LFs1 a b t by unfold_locales (simp_all add: Rq_ax Pq_ax)
-  ML_val \<open>\<^assert> (null (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q"))))\<close>
+  ML_prf \<open>val _ = \<^assert> (null (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q"))))\<close>
   show True ..
 qed
 light_locale LF0 = Heavy_Def
 ML \<open>val thy = \<^theory>\<close>
 (*the eliminated q in a heavy child's element: the use warning, q closed (user 2026-10-16 (a));
   at a light child's instance position: the warning, then stock's free-variable error*)
-ML_val \<open>
+ML \<open>local
 val ((h0, thy'), ws) = accepted (heavy thy "H0 = LF0 a b for a b + assumes \"Sq q\"");
 val _ = \<^assert> (ws = [use_warning_q] andalso maps #2 (assumes_of thy' h0) = [\<^prop>\<open>\<And>q. Sq q\<close>]);
-\<close>
-ML_val \<open>\<^assert> (member (op =) (rejected illegal_q (light thy "LF2 = Heavy_Def + M2 q")) use_warning_q)\<close>
+in end\<close>
+ML \<open>val _ = \<^assert> (member (op =) (rejected illegal_q (light thy "LF2 = Heavy_Def + M2 q")) use_warning_q)\<close>
 
 (* out-of-order defines through Y; the cyclic defines *)
 locale X1 = fixes f :: "nat \<Rightarrow> nat" and a b :: nat defines "a \<equiv> f b"
@@ -91,7 +91,7 @@ locale Y3 = X1 + X2 + X3 + X4
 locale X5 = fixes p :: "nat \<Rightarrow> nat" and u v :: nat defines "u \<equiv> p v"
 locale X6 = fixes r :: "nat \<Rightarrow> nat" and v u :: nat defines "v \<equiv> r u"
 locale Yc2 = X1 + X2c + X5 + X6
-ML_val \<open>
+ML \<open>local
 val thy = \<^theory>;
 val _ = \<^assert> (nth (instances thy "Y" (loc thy "LFY")) 1 aconv \<^term>\<open>(f :: nat \<Rightarrow> nat) ((g :: nat \<Rightarrow> nat) c)\<close>);
 (*the control without Y: a's instance is f b, b being the shared parameter name*)
@@ -108,23 +108,23 @@ val _ = fails_prefix "A light locale does not support definitions. The definitio
   exception from the notes export*)
 val _ = \<^assert> ((heavy thy "Xc = fixes f g :: \"nat \<Rightarrow> nat\" and a b :: nat defines \"a \<equiv> f b\" and \"b \<equiv> g a\"" (); false)
   handle THM _ => true);
-\<close>
+in end\<close>
 (*a cycle of three, a -> b -> c -> a, and d, which depends on the cycle without being on it:
   only the cycle is listed, joined "x, y and z"*)
-ML_val \<open>
+ML \<open>local
 val thy = \<^theory>;
 val _ = \<^assert> (length (#2 (Locale.specification_of thy (loc thy "Y3"))) = 4);
 val _ = fails_with ("A light locale does not support definitions. The definitions `a \<equiv> f b`, " ^
   "`b \<equiv> g c` and `c \<equiv> k a` from locale `Y3` refer to each other in a cycle and cannot be unfolded.")
   (light thy "LFc3 = Y3");
-\<close>
+in end\<close>
 (*two separate cycles: only the first in parameter order is listed (user 2026-10-17, U3 (A))*)
-ML_val \<open>
+ML \<open>local
 val thy = \<^theory>;
 val _ = \<^assert> (length (#2 (Locale.specification_of thy (loc thy "Yc2"))) = 4);
 val _ = fails_with ("A light locale does not support definitions. The definitions `a \<equiv> f b` and " ^
   "`b \<equiv> g a` from locale `Yc2` refer to each other in a cycle and cannot be unfolded.") (light thy "LFc2 = Yc2");
-\<close>
+in end\<close>
 
 (* the D20 table written twice in one proof; the same inside LF0's block; two instances in one
    header *)
@@ -132,7 +132,7 @@ lemma True
 proof -
   interpret I: LF0 h 5 by unfold_locales (rule Rq_ax)
   interpret J: LF0 h 7 by unfold_locales (rule Rq_ax)
-  ML_val \<open>\<^assert> (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q")) = [use_warning_q])\<close>
+  ML_prf \<open>val _ = \<^assert> (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q")) = [use_warning_q])\<close>
   show True ..
 qed
 context LF0 begin
@@ -140,7 +140,7 @@ lemma True
 proof -
   interpret I: LF0 h 5 by unfold_locales (rule Rq_ax)
   interpret J: LF0 h 7 by unfold_locales (rule Rq_ax)
-  ML_val \<open>\<^assert> (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q")) = [use_warning_q])\<close>
+  ML_prf \<open>val _ = \<^assert> (#2 (with_warnings (fn () => Syntax.read_term \<^context> "Sq q")) = [use_warning_q])\<close>
   show True ..
 qed
 end
@@ -151,10 +151,10 @@ light_locale LF2i = A: LF0 s u + B: LF0 t v for s t u v
 locale Nat_Par = fixes x :: nat assumes "x = x"
 light_locale LF0n = Heavy_Def + Nat_Par x
 ML \<open>val thy = \<^theory>\<close>
-ML_val \<open>
+ML \<open>local
 val ((h0', thy'), ws) = accepted (heavy thy "H0' = LF0n g 5 for g + assumes \"Sq q\"");
 val _ = \<^assert> (ws = [use_warning_q] andalso maps #2 (assumes_of thy' h0') = [\<^prop>\<open>\<And>q. Sq q\<close>]);
-\<close>
+in end\<close>
 light_locale LFsib = Heavy_Par + Heavy_Def _ q
 ML \<open>
 val thy = \<^theory>;

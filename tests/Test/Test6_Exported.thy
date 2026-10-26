@@ -24,7 +24,7 @@ lemma fooQ: "Qc x \<Longrightarrow> Pc x y" by (rule Pc_ax)
 lemma z0: "Sc x" by (rule Sc_ax)
 lemma zP: "Pc S" by (rule Pc1_ax)
 lemma fooD0: "Rc x S \<Longrightarrow> Sc x" by (rule Sc_ax)
-ML_val \<open>\<^assert> (not (can (fn () => theorem_in \<^context> (Binding.name "z") "[dest]" "Sc x" (fn ctxt => resolve_tac ctxt @{thms Sc_ax})) ()))\<close>
+ML \<open>val _ = \<^assert> (not (can (fn () => theorem_in \<^context> (Binding.name "z") "[dest]" "Sc x" (fn ctxt => resolve_tac ctxt @{thms Sc_ax})) ()))\<close>
 ML \<open>
 val heavy_r = #1 (note_in \<^context> "r" "[cases pred: Qc]" @{thm fooQ [of c]});
 \<close>
@@ -42,19 +42,19 @@ lemma foo_iff: "A \<longleftrightarrow> A" by (rule refl)
 lemma fooB: "(\<And>a b. Q a b) \<Longrightarrow> Q c c" by (drule_tac x = c in meta_spec, drule_tac x = c in meta_spec, assumption)
 inductive ev :: "nat \<Rightarrow> bool" where
   zero: "ev 0" | step: "ev n \<Longrightarrow> ev (Suc (Suc n))" | pin: "Pc S (7::nat) \<Longrightarrow> ev 7"
-ML_val \<open>\<^assert> (not (can (fn () => theorem_in \<^context> (Binding.name "z") "[dest]" "Sc x" (fn ctxt => resolve_tac ctxt @{thms Sc_ax})) ()))\<close>
+ML \<open>val _ = \<^assert> (not (can (fn () => theorem_in \<^context> (Binding.name "z") "[dest]" "Sc x" (fn ctxt => resolve_tac ctxt @{thms Sc_ax})) ()))\<close>
 (* e1 [exported_premises 3] on a one-premise block form: out of range; [exported_premises 2] on
    two premises: accepted; the theory copy keeps the hand-written K plus the one premise the
    export puts in front, K 3 (second version); e1 is a mechanism fixture, not a user scenario *)
-ML_val \<open>
+ML \<open>local
 fun insert_assume ctxt i = Method.insert_tac ctxt @{thms LF_axioms} i THEN assume_tac ctxt i;
 val _ = \<^assert> ((theorem_in \<^context> (Binding.name "e1") "[exported_premises 3]" "A \<Longrightarrow> A" insert_assume; false)
   handle ERROR msg => String.isPrefix "exported_premises: count out of range" (Protocol_Message.clean_output msg));
-\<close>
+in end\<close>
 lemma e1 [exported_premises 2]: "A \<Longrightarrow> A \<Longrightarrow> A"
   apply (insert LF_axioms) apply assumption done
 (* the same-row note with cases pred, up to K with the twin's *)
-ML_val \<open>
+ML \<open>local
 val r = #1 (note_in \<^context> "r" "[cases pred: Qc]" @{thm LF.fooQ [of _ c]});
 val _ = \<^assert> (diff_K 1 (r, heavy_r));
 (* the notes in a proof in the block (plan lines 4629-4632), driven through note_in -- the
@@ -68,10 +68,10 @@ val _ = \<^assert> (Exported_Premises.count_of r' = 1 andalso not (AList.defined
 (* THEN renames to conjunct1's ?P ?Q: compared up to variable names *)
 val _ = \<^assert> (same_shape (Thm.prop_of (Bires.kind_make_elim Bires.dest_kind r'),
   Logic.varify_global \<^prop>\<open>A \<Longrightarrow> LF S \<Longrightarrow> B \<Longrightarrow> (A \<Longrightarrow> PROP W) \<Longrightarrow> PROP W\<close>));
-\<close>
+in end\<close>
 end
 
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.e1} = 3 andalso
   Thm.prop_of @{thm LF.e1} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> A \<Longrightarrow> A \<Longrightarrow> A\<close>);
 \<close>
@@ -183,17 +183,17 @@ fun transform_facts phi ths =
 val add_prem = Thm.implies_intr \<^cprop>\<open>Qc (2::nat)\<close>;
 val adding = Morphism.thm_morphism "adding" add_prem;
 \<close>
-ML_val \<open>
+ML \<open>local
 (* each @{thm} occurrence is its own transferred value, so the input is bound once *)
 val u = @{thm untagged};
 val th0 = Thm.tag_rule (Exported_Premises.exported_premises_tagN, "0") u;
 val [th0', th'] = transform_facts Morphism.identity [th0, u];
 val _ = \<^assert> (pointer_eq (th0', th0) andalso pointer_eq (th', u));
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 val [th'] = transform_facts adding [@{thm untagged}];
 val _ = \<^assert> (Thm.nprems_of th' = 3 andalso not (has_K_tag th'));
-\<close>
+in end\<close>
 (* the fallback's direct rows *)
 ML \<open>
 (*a part that clears the tags and keeps the premises*)
@@ -203,37 +203,37 @@ val dropping = Morphism.thm_morphism "dropping" drop_first;
 val dropping2 = Morphism.thm_morphism "dropping2" (drop_first #> drop_first);
 fun prop_K th = (Thm.prop_of th, Exported_Premises.count_of th);
 \<close>
-ML_val \<open>
+ML \<open>local
 (* (a') no input has K: the outputs come back as the same objects *)
 val ths = [@{thm untagged}, @{thm tagged_c}];
 val outs = map add_prem ths;
 val _ = \<^assert> (eq_list pointer_eq (Morphism.fact (Morphism.fact_morphism "made" (K outs)) ths, outs));
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 (* (b') K + 1, pair by pair *)
 val fooP = @{thm LF.fooP} and u = @{thm untagged};
 val outs = Morphism.fact adding [fooP, u];
 val _ = \<^assert> (map prop_K outs =
   [(Logic.mk_implies (\<^prop>\<open>Qc (2::nat)\<close>, Thm.prop_of fooP), 2),
    (Logic.mk_implies (\<^prop>\<open>Qc (2::nat)\<close>, Thm.prop_of u), 0)]);
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 (* (c) premises unchanged: K unchanged *)
 val [f'] = Morphism.fact untag [@{thm LF.foo}];
 val _ = \<^assert> (Exported_Premises.count_of f' = 1);
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 (* (d1) one leading premise dropped from a K 2 theorem: K 1 *)
 val k2 = Exported_Premises.put 2 (Variable.import_vars \<^context> @{thm LF.foo});
 val [d'] = Morphism.fact dropping [k2];
 val _ = \<^assert> (Thm.nprems_of d' = 2 andalso Exported_Premises.count_of d' = 1);
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 (* (d2) more premises dropped than K: no K *)
 val [d'] = Morphism.fact dropping2 [Exported_Premises.put 1 (Variable.import_vars \<^context> @{thm LF.foo})];
 val _ = \<^assert> (Thm.nprems_of d' = 1 andalso not (has_K_tag d'));
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 (* (e) a tag-clearing part and the instantiation of a prop parameter T := (A ==> B), both orders:
    the premise split off the conclusion at the end is not counted, K 1 and three premises *)
 val cT = \<^cprop>\<open>PROP T\<close>;
@@ -243,8 +243,8 @@ val inst = Morphism.instantiate_frees_morphism
 val [e1] = Morphism.fact (untag $> inst) [th];
 val [e2] = Morphism.fact (inst $> untag) [th];
 val _ = \<^assert> (forall (fn e => Exported_Premises.count_of e = 1 andalso Thm.nprems_of e = 3) [e1, e2]);
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 (* (f) parts that change the list's length *)
 val u = @{thm untagged} and k = @{thm LF.foo};
 val splitting = Morphism.fact_morphism "splitting" (fn [a, b] => [a, a, b] | ths => ths);
@@ -252,7 +252,7 @@ val outs = Morphism.fact splitting [u, k];
 val _ = \<^assert> (length outs = 3 andalso pointer_eq (nth outs 2, k));
 val dropping_all = Morphism.fact_morphism "dropping_all" (K []);
 val _ = \<^assert> (null (Morphism.fact dropping_all [k]));
-\<close>
+in end\<close>
 
 (* n = K outside the block: the stock idiom dest!: works on both sides *)
 lemma "LF t \<Longrightarrow> Pc t" by (auto dest!: LF.zP)
@@ -277,24 +277,24 @@ lemmas x1 = LF.foo_iff[THEN iffD1, exported_premises 1]
    registered for LF.foo has major premise LF ?S; the control, the minimal pair of the same
    attribute list in the other order, LF.fooQ [exported_premises 0, exported_premises 1, elim]:
    Qc ?x (another fact, since Classical drops a second registration of the same one) *)
-ML_val \<open>
-fails_prefix "Mixed dynamic attribute followed by static rule" (fn () =>
+ML \<open>
+val _ = fails_prefix "Mixed dynamic attribute followed by static rule" (fn () =>
   theorem_in \<^context> (Binding.name "m1") "[consumes 1, exported_premises 1]" "A \<Longrightarrow> A" assume_tac);
-fails_prefix "Mixed dynamic attribute followed by static rule" (fn () =>
+val _ = fails_prefix "Mixed dynamic attribute followed by static rule" (fn () =>
   lemmas_in \<^context> "m2" "LF.foo" "[consumes 1, exported_premises 1]");
 \<close>
 local_setup \<open>fn lthy =>
   let val (lthy', w) = with_warnings (fn () => declare_in lthy "LF.foo" "[exported_premises 0, elim, exported_premises 1]")
   in \<^assert> (null w); lthy' end\<close>
 declare LF.fooQ [exported_premises 0, exported_premises 1, elim]
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val (_, silent) = claset_rule ctxt Bires.elim_kind @{thm LF.foo};
 val (_, control) = claset_rule ctxt Bires.elim_kind @{thm LF.fooQ};
 val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop ctxt (Thm.major_prem_of silent));
 val _ = \<^assert> (same_shape (Thm.major_prem_of control, Logic.varify_global \<^prop>\<open>Qc x\<close>));
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 val LFa = @{thm LF_axioms};
 val (_, plain) = claset_rule \<^context> Bires.dest_kind @{thm LF.z0};
 val _ = \<^assert> (Thm.prop_of plain aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> (Sc x \<Longrightarrow> PROP W) \<Longrightarrow> PROP W\<close>);
@@ -312,16 +312,16 @@ val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo [OF LF_axioms]} = 0 
 val (hev, ctxte) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "h" "LF.ev S n";
 val _ = \<^assert> (cases_text (run ctxte [LFa, hev] "cases rule: LF.ev.cases[exported_premises 0]" "W n") =
   cases_text (run ctxte [LFa, hev] "cases rule: LF.ev.cases" "W n"));
-\<close>
+in end\<close>
 end
 
 (* foo0 is a redeclaration whose export changes nothing: stored as the attribute's result itself,
    no K, its consumes "2" kept (second version) *)
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.foo0}, foo0) andalso not (has_K_tag @{thm LF.foo0})
   andalso Rule_Cases.get @{thm LF.foo0} = Rule_Cases.get foo0);
 \<close>
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (AList.lookup (op =) (Thm.get_tags @{thm LF.foo0c}) "consumes" = SOME "2");
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.x1} = 1);
 \<close>

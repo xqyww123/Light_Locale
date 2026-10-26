@@ -17,15 +17,15 @@ end
 
 context LF begin
 (* the print_claset row: the declaration keys *)
-ML_val \<open>
+ML \<open>local
 val (key, _) = claset_rule \<^context> Bires.elim_kind @{thm LF.fooE};
 val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Thm.prems_of key)));
 val _ = claset_rule (thy_ctxt \<^context>) Bires.elim_kind @{thm LF.fooE};
-\<close>
+in end\<close>
 local_setup \<open>fn lthy =>
   let val (lthy', w) = with_warnings (fn () => declare_in lthy "LF.fooE" "[rule del]")
   in \<^assert> (not (exists (String.isPrefix "Undeclared classical rule") w)); lthy' end\<close>
-ML_val \<open>\<^assert> (null (claset_entries \<^context> @{thm LF.fooE}))\<close>
+ML \<open>val _ = \<^assert> (null (claset_entries \<^context> @{thm LF.fooE}))\<close>
 end
 
 ML \<open>val _ = \<^assert> (null (claset_entries \<^context> @{thm LF.fooE}));\<close>

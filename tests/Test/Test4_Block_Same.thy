@@ -11,7 +11,7 @@ light_locale LF = HB
 
 context LF begin
 
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Test_Support.consts_named \<^context> "hqa" = ["Test4_Fixture.HQ.hqa", "local.hqa"]);
 val _ = \<^assert> (Test_Support.visible_fact_names \<^context> = ["local.HB_axioms", "local.HQ_axioms", "local.LF_axioms"]);
 \<close>
@@ -19,7 +19,7 @@ val _ = \<^assert> (Test_Support.visible_fact_names \<^context> = ["local.HB_axi
 lemma True
 proof -
   interpret HQ "Suc x" by (rule HQ_axioms)
-  ML_val \<open>
+  ML_prf \<open>
     val _ = \<^assert> (Test_Support.consts_named \<^context> "hqa" = ["Test4_Fixture.HQ.hqa", "local.hqa"]);
     val _ = \<^assert> (Test_Support.visible_fact_names \<^context> =
       ["local.HB_axioms", "local.HQ_axioms", "local.LF_axioms", "local.hq"]);

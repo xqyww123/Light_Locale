@@ -33,7 +33,7 @@ val _ = \<^assert> (forall (fn {source, target, ...} => not (Locale.is_light thy
 \<close>
 
 context ring begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (not (Test_Support.by_simp \<^context> \<^prop>\<open>ring R\<close>));
 val _ = \<^assert> (not (Test_Support.proves safe_tac \<^context> \<^prop>\<open>ring R\<close>));
 \<close>
@@ -58,7 +58,7 @@ val _ = \<^assert> (Exported_Premises.count_of th = 0);
 
 lemma "Evn n \<Longrightarrow> n = n" and "Odd m \<Longrightarrow> m = m"
 proof (induct rule: Evn_Odd.inducts)
-  ML_val \<open>\<^assert> (map #1 (Proof_Context.dest_cases NONE \<^context>) = ["zero", "succ_Evn", "succ_Odd"])\<close>
+  ML_prf \<open>val _ = \<^assert> (map #1 (Proof_Context.dest_cases NONE \<^context>) = ["zero", "succ_Evn", "succ_Odd"])\<close>
 qed simp_all
 
 (* heavy blocks with (structure) parameters still parse: a bare \<otimes>, a nested assumes naming the

@@ -11,34 +11,34 @@ ML \<open>open Test_Support\<close>
 
 context D begin
 lemma foo: "k S = 0" by (rule kS)
-ML_val \<open>\<^assert> (Thm.prop_of @{thm foo} aconv @{prop "k S = 0"})\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm foo} aconv @{prop "k S = 0"})\<close>
 end
 
 (* in the block: foo is the unconditional local copy, Thm.eq_thm_prop with the heavy block's foo;
    a goal that needs it is closed by simp *)
 context LF begin
 lemma foo [simp]: "k S = 0" by (rule kS)
-ML_val \<open>\<^assert> (Thm.prop_of @{thm foo} aconv @{prop "k S = 0"})\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm foo} aconv @{prop "k S = 0"})\<close>
 lemma "k S + 1 = 1" by simp
 (* after a lemma (in LF) in the same block, its own short name and the earlier copy foo are gone *)
 lemma (in LF) foo' [simp]: "k2 S = 0" by (rule k2S)
-ML_val \<open>\<^assert> (not (has_fact \<^context> "foo'") andalso not (has_fact \<^context> "foo"))\<close>
+ML \<open>val _ = \<^assert> (not (has_fact \<^context> "foo'") andalso not (has_fact \<^context> "foo"))\<close>
 end
 
 (* reopened: foo is not defined; simp closes the goal with LF.foo, its condition LF S discharged
    through LF_axioms [simp] *)
 context LF begin
-ML_val \<open>\<^assert> (not (has_fact \<^context> "foo"))\<close>
+ML \<open>val _ = \<^assert> (not (has_fact \<^context> "foo"))\<close>
 lemma "k S + 1 = 1" by simp
-ML_val \<open>\<^assert> (Thm.prop_of @{thm LF.foo[OF LF_axioms]} aconv @{prop "k S = 0"})\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm LF.foo[OF LF_axioms]} aconv @{prop "k S = 0"})\<close>
 end
 
-ML_val \<open>
+ML \<open>local
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo} = 1);
 (*negative control: without the predicate fact the same goal is not closed by simp*)
 val ctxt = fix_in \<^context> [("T", \<^typ>\<open>('a, 'b) ring_scheme\<close>)];
 val _ = \<^assert> (not (by_simp ctxt @{prop "k (T :: ('a, 'b) ring_scheme) + 1 = 1"}));
-\<close>
+in end\<close>
 
 (* a block inductive: after a lemma (in LF) in the same block, "using h proof cases" no longer finds
    ipx.cases (stored as LF ?S ==> ..., one exported premise) and falls back to case_split, whose
@@ -48,11 +48,11 @@ inductive ipx :: "nat \<Rightarrow> bool" where ip0: "ipx 0"
 lemma (in LF) t: True ..
 lemma assumes h: "ipx x" shows "x = 0"
   using h proof cases
-  ML_val \<open>\<^assert> (map #1 (Proof_Context.dest_cases NONE \<^context>) = ["True", "False"])\<close>
+  ML_prf \<open>val _ = \<^assert> (map #1 (Proof_Context.dest_cases NONE \<^context>) = ["True", "False"])\<close>
   oops
 lemma assumes h: "ipx x" shows "x = 0"
   using LF_axioms h proof cases
-  ML_val \<open>\<^assert> (map #1 (Proof_Context.dest_cases NONE \<^context>) = ["ip0"])\<close>
+  ML_prf \<open>val _ = \<^assert> (map #1 (Proof_Context.dest_cases NONE \<^context>) = ["ip0"])\<close>
   case ip0 then show ?thesis by simp
 qed
 end

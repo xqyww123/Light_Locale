@@ -24,21 +24,21 @@ locale Di = fixes a :: nat assumes "P a"
 axiomatization where hb_g: "LFi (g c)" and hb_gD: "Di (g c)" and qg: "Q (g c)"
 
 context LFi begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context> addIs @{thms hb_g qg};
 val goal = \<^prop>\<open>\<exists>y. LFi y \<and> Q y\<close>;
 val _ = \<^assert> (not (proves (fn c => Clasimp.fast_force_tac c 1) ctxt goal));
 val _ = \<^assert> (proves Clasimp.auto_tac ctxt goal);
 val _ = \<^assert> (proves (fn c => blast_tac c 1) ctxt goal);
-\<close>
+in end\<close>
 end
 
 context Di begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context> addIs @{thms Di_axioms hb_gD qg};
 val goal = \<^prop>\<open>\<exists>y. Di y \<and> Q y\<close>;
 val _ = \<^assert> (proves (fn c => Clasimp.fast_force_tac c 1) ctxt goal);
-\<close>
+in end\<close>
 end
 
 end

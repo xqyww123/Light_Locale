@@ -20,13 +20,13 @@ begin
 lemma g [exported_premises 1]: "Pa x \<Longrightarrow> Qa x \<Longrightarrow> Qa x" by assumption
 end
 interpretation K2: L5 0 rewrites "Qa 0 = Ra" by (simp_all add: L5_def Pa0 QaRa)
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm K2.g} = 1 andalso Thm.nprems_of @{thm K2.g} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm K2.g} = 1 andalso Thm.nprems_of @{thm K2.g} = 2)\<close>
 
 locale L6 = fixes T :: "prop" and x :: nat assumes a: "Pa x"
 begin
 lemma h [exported_premises 1]: "Pa x \<Longrightarrow> PROP T \<Longrightarrow> PROP T" by assumption
 end
 interpretation K6: L6 "PROP Sa 0 \<Longrightarrow> PROP Sa 1" 0 by (simp add: L6_def Pa0)
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm K6.h} = 1 andalso Thm.nprems_of @{thm K6.h} = 3)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm K6.h} = 1 andalso Thm.nprems_of @{thm K6.h} = 3)\<close>
 
 end

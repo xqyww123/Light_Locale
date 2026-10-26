@@ -40,7 +40,7 @@ begin
 lemma fooS: "x \<otimes> y = x \<otimes> y" by (rule refl)
 lemma fooE: "a \<otimes> b = c \<Longrightarrow> (a \<otimes> b = c \<Longrightarrow> Q) \<Longrightarrow> Q" by blast
 
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (layers ctxt = (NONE, SOME (reads ctxt "UP S")));
 val _ = prints_as ctxt "x \<otimes> y" "x \<otimes> y";
@@ -81,38 +81,38 @@ val _ =
   then ()
   else error ("find_theorems:\n  bare: " ^ commas bare ^ "\n  wildcard: " ^ commas wildcard ^
     "\n  intro: " ^ commas intro ^ "\n  elim: " ^ commas elim);
-\<close>
+in end\<close>
 
 (*the value as an ordinary argument prints as itself*)
-ML_val \<open>prints_as \<^context> "carrier (UP S)" "carrier (UP S)"\<close>
+ML \<open>val _ = prints_as \<^context> "carrier (UP S)" "carrier (UP S)"\<close>
 (*the value strictly inside an index argument prints as itself too: only a direct child of
   _index becomes the empty subscript*)
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = prints_as ctxt "x \<otimes>\<^bsub>f (UP S)\<^esub> y" "x \<otimes>\<^bsub>f (UP S)\<^esub> y";
 val _ = \<^assert> (round_trips ctxt (reads ctxt "x \<otimes>\<^bsub>f (UP S)\<^esub> y"));
-\<close>
+in end\<close>
 
 (*the placeholder at an index position is the default structure by name: at the constant's own
   index syntax and at the translation-defined one*)
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val value = reads ctxt "UP S";
 fun with_placeholder text =
   Term.subst_free [(value, Free (Syntax_Trans.implicit_structure_, fastype_of value))] (reads ctxt text);
 val _ = \<^assert> (shows ctxt (with_placeholder "x \<otimes>\<^bsub>UP S\<^esub> y") = "x \<otimes> y");
 val _ = \<^assert> (shows ctxt (with_placeholder "(\<Oplus>\<^bsub>UP S\<^esub>i\<in>A. p i i) = q") = "(\<Oplus>i\<in>A. p i i) = q");
-\<close>
+in end\<close>
 
 (*a fixed variable with index syntax: its index position is elided like a constant's*)
 context
   fixes F :: "('a, nat \<Rightarrow> 'a) up_ring \<Rightarrow> nat \<Rightarrow> nat" (\<open>\<Phi>\<index> _\<close> [1000] 999)
 begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = prints_as ctxt "\<Phi>\<^bsub>UP S\<^esub> x" "\<Phi> x";
 val _ = \<^assert> (round_trips ctxt (reads ctxt "\<Phi>\<^bsub>UP S\<^esub> x"));
-\<close>
+in end\<close>
 end
 
 end
@@ -123,12 +123,12 @@ begin
 lemma fooS: "x \<otimes> y = x \<otimes> y" by (rule refl)
 lemma fooE: "a \<otimes> b = c \<Longrightarrow> (a \<otimes> b = c \<Longrightarrow> Q) \<Longrightarrow> Q" by blast
 
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (layers ctxt = (SOME "P", NONE));
 (*the heavy block's local copy matches the bare pattern*)
 val _ = \<^assert> (has_fact_named "local.fooS" (found ctxt NONE [(true, pattern ctxt "_ \<otimes> _")]));
-\<close>
+in end\<close>
 
 end
 
@@ -137,7 +137,7 @@ subsection \<open>The two layers side by side (plan 5100-5104, 5107)\<close>
 
 context H'
 begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (layers ctxt = (SOME "G", SOME (reads ctxt "UP S")));
 val _ = prints_as ctxt "x \<otimes>\<^bsub>G\<^esub> y" (golden "otimes_G");
@@ -147,7 +147,7 @@ val _ = prints_as ctxt "x \<otimes>\<^bsub>S\<^esub> y" (golden "otimes_S");
 (*the under-applied inverse keeps its argument, no bare G appears*)
 val _ = \<^assert> (not (String.isSubstring "G" (shows ctxt (reads ctxt "inj_on (m_inv (UP S)) A"))));
 val _ = \<^assert> (round_trips ctxt (reads ctxt "inj_on (m_inv (UP S)) A"));
-\<close>
+in end\<close>
 end
 
 (* the finite sum needs a ring: a variant of A over a ring_scheme *)
@@ -155,21 +155,21 @@ locale Ar = fixes G :: "('a, 'b) ring_scheme" (structure)
 locale H'r = LF + Ar
 context H'r
 begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (layers ctxt = (SOME "G", SOME (reads ctxt "UP S")));
 val _ = prints_as ctxt "\<Oplus>\<^bsub>G\<^esub>i\<in>A. u i \<otimes>\<^bsub>G\<^esub> v i" (golden "finsum_G");
-\<close>
+in end\<close>
 end
 
 context H
 begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (layers ctxt = (SOME "G", NONE));
 val _ = \<^assert> (bare_denotes ctxt "G");
 val _ = prints_as ctxt "x \<otimes> y" "x \<otimes> y";
-\<close>
+in end\<close>
 end
 
 
@@ -180,7 +180,7 @@ begin
 context
   fixes T :: "('c, 'd) monoid_scheme" (structure)
 begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (layers ctxt = (SOME "T", SOME (reads ctxt "UP S")));
 (*the bare operator is the implicit structure's; the first layer's head keeps its subscript*)
@@ -191,7 +191,7 @@ val _ = prints_as ctxt "x \<otimes> y" "x \<otimes> y";
   print the silently wrong x \<otimes>\<^bsub>f T\<^esub> y*)
 val _ = prints_as ctxt "x \<otimes>\<^bsub>f (UP S)\<^esub> y" "x \<otimes>\<^bsub>f (UP S)\<^esub> y";
 val _ = \<^assert> (round_trips ctxt (reads ctxt "x \<otimes>\<^bsub>f (UP S)\<^esub> y"));
-\<close>
+in end\<close>
 end
 end
 
@@ -206,18 +206,18 @@ locale Di = UPi
 
 context LFi
 begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val int_monoid = reads ctxt "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr> :: int monoid";
 val _ = \<^assert> (layers ctxt = (NONE, SOME int_monoid));
 val t = reads ctxt "x \<otimes> y";
 val _ = \<^assert> (t aconv reads ctxt "x \<otimes>\<^bsub>\<lparr>carrier = UNIV, mult = (+), one = (0 :: int)\<rparr>\<^esub> y");
 val _ = \<^assert> (Term.add_frees t [] = [("y", \<^typ>\<open>int\<close>), ("x", \<^typ>\<open>int\<close>)]);
-\<close>
+in end\<close>
 context
   fixes j :: int
 begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 (*the index argument equals the implicit structure, type included: elided although the value
   holds an abbreviation (UNIV); the same as a PIDE print*)
@@ -225,25 +225,25 @@ val text = "\<one>\<^bsub>\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr>\<^
 val _ = prints_as ctxt text "\<one> = j";
 val _ = \<^assert> (round_trips ctxt (reads ctxt text));
 val _ = \<^assert> (shows (Config.put show_markup true ctxt) (reads ctxt text) = "\<one> = j");
-\<close>
+in end\<close>
 end
 context
   fixes k :: nat
 begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 (*the index argument differs from the implicit structure only in its type: it stays -- the pair
   with the j row: a comparison blind to types breaks one of the two*)
 val text = "\<one>\<^bsub>\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr>\<^esub> = k";
 val _ = prints_as ctxt text (golden "one_int_monoid");
 val _ = \<^assert> (round_trips ctxt (reads ctxt text));
-\<close>
+in end\<close>
 end
 end
 
 context Di
 begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (filter (member (op =) ["x", "y"] o #1) (Term.add_frees (reads \<^context> "x \<otimes> y") []) =
   [("y", \<^typ>\<open>int\<close>), ("x", \<^typ>\<open>int\<close>)]);
 \<close>
@@ -252,7 +252,7 @@ end
 
 subsection \<open>The placeholder is recognised by name, not by a typed comparison (plan 5262)\<close>
 
-ML_val \<open>
+ML \<open>
 val _ =
   fails_checked "a type error naming the operator, never the placeholder"
     (fn msg =>

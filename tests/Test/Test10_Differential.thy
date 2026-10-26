@@ -18,13 +18,13 @@ light_locale LF = fixes x :: nat assumes "x = x"
 begin
 sublocale c: C "x + 1" rewrites "x + 1 + 0 = x + 1" by unfold_locales simp_all
 interpretation i: C "x + 1" by unfold_locales simp
-ML_val \<open>\<^assert> (Thm.prop_of @{thm i.cl} aconv \<^prop>\<open>x + 1 + 0 = x + 1\<close>)\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm i.cl} aconv \<^prop>\<open>x + 1 + 0 = x + 1\<close>)\<close>
 local_setup \<open>Local_Theory.background_theory (Saved.map (cons @{thm i.cl}))\<close>
 end
 
 context LF begin
 interpretation i: C "x + 1" by unfold_locales simp
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Thm.eq_thm (@{thm i.cl}, hd (Saved.get \<^theory>)));
 val _ = \<^assert> (Thm.prop_of @{thm i.cl} aconv \<^prop>\<open>x + 1 + 0 = x + 1\<close>);
 \<close>
@@ -35,11 +35,11 @@ light_locale LF2 = fixes x :: nat assumes "x = x"
 begin
 sublocale c: C "x + 1" rewrites "x + 1 + 0 = x + 1" by unfold_locales simp_all
 interpretation r: C "x + 1" rewrites "x + 1 + 0 = x + 1" by unfold_locales simp_all
-ML_val \<open>\<^assert> (Thm.prop_of @{thm r.cl} aconv \<^prop>\<open>x + 1 = x + 1\<close>)\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm r.cl} aconv \<^prop>\<open>x + 1 = x + 1\<close>)\<close>
 end
 context LF2 begin
 interpretation r: C "x + 1" rewrites "x + 1 + 0 = x + 1" by unfold_locales simp_all
-ML_val \<open>\<^assert> (Thm.prop_of @{thm r.cl} aconv \<^prop>\<open>x + 1 = x + 1\<close>)\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm r.cl} aconv \<^prop>\<open>x + 1 = x + 1\<close>)\<close>
 end
 
 (* without rewrites *)
@@ -51,7 +51,7 @@ local_setup \<open>Local_Theory.background_theory (Saved.map (cons @{thm j.cl}))
 end
 context LG begin
 interpretation j: C "y + 2" by unfold_locales simp
-ML_val \<open>\<^assert> (Thm.eq_thm (@{thm j.cl}, hd (Saved.get \<^theory>)))\<close>
+ML \<open>val _ = \<^assert> (Thm.eq_thm (@{thm j.cl}, hd (Saved.get \<^theory>)))\<close>
 end
 
 end

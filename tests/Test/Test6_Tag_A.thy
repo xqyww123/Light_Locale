@@ -41,8 +41,8 @@ val _ = \<^assert> (major_prem_is \<^context> "Qn (n :: nat)" (#2 (claset_rule \
 context SetN begin
 lemmas fooN3 [dest] = SetN.fooN[of y] for y
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm SetN.fooN3} = 1)\<close>
-ML_val \<open>\<^assert> (major_prem_is \<^context> "Qn (y :: nat)" (#2 (claset_rule \<^context> Bires.dest_kind @{thm SetN.fooN3})))\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm SetN.fooN3} = 1)\<close>
+ML \<open>val _ = \<^assert> (major_prem_is \<^context> "Qn (y :: nat)" (#2 (claset_rule \<^context> Bires.dest_kind @{thm SetN.fooN3})))\<close>
 
 context LF begin
 lemmas g = SetN.fooN[THEN conjunct1, exported_premises 1]
@@ -54,7 +54,7 @@ val _ = \<^assert> (Thm.prop_of @{thm LF.g} aconv Logic.varify_global \<^prop>\<
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.g} = 1 andalso null (light_prems \<^context> @{thm LF.g}));
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.g2} = 1 andalso null (light_prems \<^context> @{thm LF.g2}));
 \<close>
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.g3},
   Logic.varify_global \<^prop>\<open>0 < y \<Longrightarrow> Qn y \<Longrightarrow> Rn y \<and> Rn' y\<close>));
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.g3} = 1 andalso null (light_prems \<^context> @{thm LF.g3}));

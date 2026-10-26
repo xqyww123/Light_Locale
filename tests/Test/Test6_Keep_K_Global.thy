@@ -23,14 +23,14 @@ declare LF.foo [dest]
 lemmas rc = LF.foo [cases pred: Rc]
 end
 
-ML_val \<open>
+ML \<open>local
 val key_shape = Logic.varify_global \<^prop>\<open>Qc (0::nat) \<Longrightarrow> LF S \<Longrightarrow> A \<Longrightarrow> B \<Longrightarrow> A \<and> B\<close>;
 val (key, plain) =
   claset_rule_of Bires.dest_kind (claset_entries_by \<^context> (fn key => same_shape (Thm.prop_of key, key_shape)));
 val _ = \<^assert> (Exported_Premises.count_of key = 2);
 val _ = \<^assert> (major_prem_is \<^context> "A" plain);
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>
 val _ = \<^assert> (Exported_Premises.count_of @{thm rc} = 2 andalso Thm.nprems_of @{thm rc} = 4);
 val _ = \<^assert> (Rule_Cases.get_consumes @{thm rc} = 3);
 val _ = \<^assert> (is_some (induct_entry Induct.find_casesP \<^context> \<^prop>\<open>A\<close> @{thm rc}));
@@ -40,10 +40,10 @@ context fixes w :: nat begin
 declare LF.foo [dest]
 end
 
-ML_val \<open>
+ML \<open>local
 val (key, plain) = claset_rule \<^context> Bires.dest_kind @{thm LF.foo};
 val _ = \<^assert> (Exported_Premises.count_of key = 1);
 val _ = \<^assert> (major_prem_is \<^context> "A" plain);
-\<close>
+in end\<close>
 
 end

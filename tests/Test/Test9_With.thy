@@ -35,7 +35,7 @@ proof -
   show ?thesis ..
 qed
 
-ML_val \<open>\<^assert> (implicit_is \<^context> (reads \<^context> "UP S"))\<close>
+ML \<open>val _ = \<^assert> (implicit_is \<^context> (reads \<^context> "UP S"))\<close>
 
 end
 

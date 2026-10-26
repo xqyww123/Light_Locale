@@ -23,11 +23,11 @@ val _ = \<^assert> (Thm.prop_of (hd @{thms LFu.evu.intros}) aconv
 \<close>
 
 context LFu begin
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "h" "LFu.evu T n";
 val _ = \<^assert> (case_names (run ctxt [@{thm LFu_axioms}, h] "cases n" "W n") = ["0", "Suc"]);
 val _ = \<^assert> (case_names (run ctxt [@{thm LFu_axioms}, h] "cases T n" "W n") = ["1", "2", "3"]);
-\<close>
+in end\<close>
 end
 
 end

@@ -17,19 +17,19 @@ fun elim_entry ctxt th = exists (fn (_, _, kind) => Bires.kind_is_elim kind) (cl
 
 context LF begin
 lemma bad [elim]: "Rc x S \<Longrightarrow> Sc x" by (rule Sc_ax)
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (by_auto \<^context> \<^prop>\<open>Rc a S \<Longrightarrow> Sc a\<close>);
 val _ = \<^assert> (elim_entry \<^context> @{thm bad} andalso elim_entry (thy_ctxt \<^context>) @{thm LF.bad});
 \<close>
 local_setup \<open>fn lthy =>
   let val (lthy', w) = with_warnings (fn () => declare_in lthy "LF.bad" "[rule del]")
   in \<^assert> (exists (String.isPrefix "Undeclared classical rule") w); lthy' end\<close>
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (by_auto \<^context> \<^prop>\<open>Rc a S \<Longrightarrow> Sc a\<close>);
 val _ = \<^assert> (not (elim_entry (thy_ctxt \<^context>) @{thm LF.bad}));
 \<close>
 declare bad [rule del]
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (not (by_auto \<^context> \<^prop>\<open>Rc a S \<Longrightarrow> Sc a\<close>));
 val _ = \<^assert> (not (elim_entry \<^context> @{thm bad}));
 val _ = \<^assert> (not (elim_entry (thy_ctxt \<^context>) @{thm LF.bad}));

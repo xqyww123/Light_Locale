@@ -22,9 +22,9 @@ light_locale Nul
 context Nul begin
 lemma nfoo [case_names a b]: "A \<Longrightarrow> B \<Longrightarrow> A \<and> B" by (rule conjI)
 lemmas nh [consumes 1] = Nul.nfoo
-ML_val \<open>\<^assert> (Thm.eq_thm_prop (@{thm nh}, @{thm Nul.nfoo}) andalso not (has_K_tag @{thm nh}))\<close>
-ML_val \<open>\<^assert> (Rule_Cases.get @{thm nh} = ([(("a", []), []), (("b", []), [])], 1))\<close>
-ML_val \<open>\<^assert> (not (Rule_Cases.get @{thm nh} = Rule_Cases.get heavy_nh))\<close>
+ML \<open>val _ = \<^assert> (Thm.eq_thm_prop (@{thm nh}, @{thm Nul.nfoo}) andalso not (has_K_tag @{thm nh}))\<close>
+ML \<open>val _ = \<^assert> (Rule_Cases.get @{thm nh} = ([(("a", []), []), (("b", []), [])], 1))\<close>
+ML \<open>val _ = \<^assert> (not (Rule_Cases.get @{thm nh} = Rule_Cases.get heavy_nh))\<close>
 end
 
 ML \<open>

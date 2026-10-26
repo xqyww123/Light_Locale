@@ -30,11 +30,11 @@ fun check ctxt =
 locale X = fixes u :: nat assumes "u = u"
 begin
 sublocale LF "u + 2" by unfold_locales simp
-ML_val \<open>check \<^context>\<close>
+ML \<open>val _ = check \<^context>\<close>
 end
 
 context X begin
-ML_val \<open>check \<^context>\<close>
+ML \<open>val _ = check \<^context>\<close>
 end
 
 end

@@ -26,22 +26,22 @@ fun check ctxt =
 light_locale LF = fixes x :: nat assumes "x = x"
 begin
 sublocale b: B "x + 1" rewrites "x + 1 = Suc x" by unfold_locales simp_all
-ML_val \<open>check \<^context>\<close>
+ML \<open>val _ = check \<^context>\<close>
 end
 locale D = fixes x :: nat assumes "x = x"
 sublocale D \<subseteq> b: B "x + 1" rewrites "x + 1 = Suc x" by unfold_locales simp_all
 
 context LF begin
-ML_val \<open>check \<^context>\<close>
+ML \<open>val _ = check \<^context>\<close>
 lemma True
 proof -
   interpret b: B "x + 1" rewrites "x + 1 = Suc x" by unfold_locales simp_all
-  ML_val \<open>\<^assert> (Thm.prop_of @{thm b.bl} aconv \<^prop>\<open>Suc x + 0 = Suc x\<close>)\<close>
+  ML_prf \<open>val _ = \<^assert> (Thm.prop_of @{thm b.bl} aconv \<^prop>\<open>Suc x + 0 = Suc x\<close>)\<close>
   show True ..
 qed
 end
 context D begin
-ML_val \<open>\<^assert> (Thm.prop_of @{thm b.bl} aconv \<^prop>\<open>Suc x + 0 = Suc x\<close>)\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm b.bl} aconv \<^prop>\<open>Suc x + 0 = Suc x\<close>)\<close>
 end
 
 end

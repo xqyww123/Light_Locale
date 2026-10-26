@@ -10,12 +10,12 @@ begin
 interpretation U: XO S "\<one>\<^bsub>UP S\<^esub>"
   by unfold_locales
 
-ML_val \<open>
+ML \<open>local
 val thy = \<^theory>;
 val regs = Locale.registrations_of (Context.Proof \<^context>) (Test_Support.loc thy "XO");
 val _ = \<^assert> (not (exists Test_Support.has_placeholder
   (Locale.instance_of thy (Test_Support.loc thy "XO") (#2 (the_single regs)))));
-\<close>
+in end\<close>
 
 lemma "True"
 proof -

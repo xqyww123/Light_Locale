@@ -25,13 +25,13 @@ locale Setting0 = fixes n :: nat
 context Setting begin
 definition dcode :: nat where "dcode = n + 1"
 fun ffun :: "nat \<Rightarrow> nat" where "ffun 0 = n" | "ffun (Suc k) = ffun k"
-ML_val \<open>\<^assert> (value_unevaluated \<^context> \<^term>\<open>ffun 1\<close>)\<close>
+ML \<open>val _ = \<^assert> (value_unevaluated \<^context> \<^term>\<open>ffun 1\<close>)\<close>
 end
 
 context Setting0 begin
 definition dcode0 :: nat where "dcode0 = n + 1"
 fun ffun0 :: "nat \<Rightarrow> nat" where "ffun0 0 = n" | "ffun0 (Suc k) = ffun0 k"
-ML_val \<open>\<^assert> (value_unevaluated \<^context> \<^term>\<open>ffun0 1\<close>)\<close>
+ML \<open>val _ = \<^assert> (value_unevaluated \<^context> \<^term>\<open>ffun0 1\<close>)\<close>
 end
 
 ML \<open>

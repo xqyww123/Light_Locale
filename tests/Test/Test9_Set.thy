@@ -29,26 +29,26 @@ begin
 context
 begin
 set_implicit_structure "S"
-ML_val \<open>\<^assert> (implicit_is \<^context> (reads \<^context> "S"))\<close>
+ML \<open>val _ = \<^assert> (implicit_is \<^context> (reads \<^context> "S"))\<close>
 end
-ML_val \<open>\<^assert> (is_none (Syntax_Trans.implicit_structure \<^context>))\<close>
+ML \<open>val _ = \<^assert> (is_none (Syntax_Trans.implicit_structure \<^context>))\<close>
 set_implicit_structure "UP S"
 context
 begin
 set_implicit_structure "S"
-ML_val \<open>\<^assert> (implicit_is \<^context> (reads \<^context> "S"))\<close>
+ML \<open>val _ = \<^assert> (implicit_is \<^context> (reads \<^context> "S"))\<close>
 end
-ML_val \<open>\<^assert> (implicit_is \<^context> (reads \<^context> "UP S"))\<close>
+ML \<open>val _ = \<^assert> (implicit_is \<^context> (reads \<^context> "UP S"))\<close>
 end
 
 context
 begin
 set_implicit_structure "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr> :: int monoid"
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (implicit_is ctxt (reads ctxt "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr> :: int monoid"));
 val _ = \<^assert> (bare_denotes ctxt "\<lparr>carrier = UNIV, mult = (+), one = (0 :: int)\<rparr>");
-\<close>
+in end\<close>
 end
 
 ML \<open>
@@ -74,25 +74,25 @@ val _ = List.app (fn text => fails_with inside_locale (set_in lf text)) ["UP q",
 (* the heavy D and the light LF, each with a block nested in its block; a class *)
 context D
 begin
-ML_val \<open>fails_with inside_locale (set_in \<^context> "S")\<close>
+ML \<open>val _ = fails_with inside_locale (set_in \<^context> "S")\<close>
 context
 begin
-ML_val \<open>fails_with inside_locale (set_in \<^context> "S")\<close>
+ML \<open>val _ = fails_with inside_locale (set_in \<^context> "S")\<close>
 end
 end
 context LF
 begin
-ML_val \<open>fails_with inside_locale (set_in \<^context> "S")\<close>
+ML \<open>val _ = fails_with inside_locale (set_in \<^context> "S")\<close>
 context
   fixes x :: nat
 begin
-ML_val \<open>fails_with inside_locale (set_in \<^context> "S")\<close>
+ML \<open>val _ = fails_with inside_locale (set_in \<^context> "S")\<close>
 end
 end
 class C = fixes G :: "'a monoid"
 context C
 begin
-ML_val \<open>fails_with inside_locale (set_in \<^context> "G")\<close>
+ML \<open>val _ = fails_with inside_locale (set_in \<^context> "G")\<close>
 end
 
 (* a block whose bottom target is neither the theory nor a locale -- overloading here -- accepts
@@ -100,7 +100,7 @@ end
 overloading g2_nat \<equiv> "g2 :: nat \<Rightarrow> nat \<Rightarrow> nat"
 begin
 set_implicit_structure "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr> :: int monoid"
-ML_val \<open>\<^assert> (implicit_is \<^context> (reads \<^context> "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr> :: int monoid"))\<close>
+ML \<open>val _ = \<^assert> (implicit_is \<^context> (reads \<^context> "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr> :: int monoid"))\<close>
 definition g2_nat :: "nat \<Rightarrow> nat \<Rightarrow> nat" where "g2_nat x y = x + y"
 end
 ML \<open>\<^assert> (is_none (Syntax_Trans.implicit_structure \<^context>))\<close>
@@ -112,45 +112,45 @@ context
   fixes S :: "('a, 'b) ring_scheme"
 begin
 set_implicit_structure "UP S"
-ML_val \<open>\<^assert> (implicit_is \<^context> (reads \<^context> "UP S"))\<close>
+ML \<open>val _ = \<^assert> (implicit_is \<^context> (reads \<^context> "UP S"))\<close>
 set_implicit_structure "S"
-ML_val \<open>\<^assert> (implicit_is \<^context> (reads \<^context> "S"))\<close>
+ML \<open>val _ = \<^assert> (implicit_is \<^context> (reads \<^context> "S"))\<close>
 set_implicit_structure "UP S"
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (implicit_is ctxt (reads ctxt "UP S"));
 val _ = \<^assert> (fastype_of (reads ctxt "x \<otimes> y") = \<^typ>\<open>nat \<Rightarrow> 'a\<close>);
-\<close>
+in end\<close>
 
 set_implicit_structure "S"
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val t = reads ctxt "x \<otimes> y";
 val _ = \<^assert> (t aconv reads ctxt "x \<otimes>\<^bsub>S\<^esub> y");
 val _ = \<^assert> (can (Thm.cterm_of ctxt) t);
-\<close>
+in end\<close>
 set_implicit_structure "UP S"
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val t = reads ctxt "x \<otimes> y";
 val _ = \<^assert> (t aconv reads ctxt "x \<otimes>\<^bsub>UP S\<^esub> y");
 val _ = \<^assert> (can (Thm.cterm_of ctxt) t);
-\<close>
+in end\<close>
 set_implicit_structure "S"
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val t = reads ctxt "x \<otimes> y";
 val _ = \<^assert> (t aconv reads ctxt "x \<otimes>\<^bsub>S\<^esub> y");
 val _ = \<^assert> (can (Thm.cterm_of ctxt) t);
-\<close>
+in end\<close>
 set_implicit_structure "UP S"
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val t = reads ctxt "x \<otimes> y";
 val _ = \<^assert> (t aconv reads ctxt "x \<otimes>\<^bsub>UP S\<^esub> y");
 val _ = \<^assert> (can (Thm.cterm_of ctxt) t);
 val _ = \<^assert> (fastype_of t = \<^typ>\<open>nat \<Rightarrow> 'a\<close>);
-\<close>
+in end\<close>
 lemma "True"
 proof -
   with_implicit_structure "S"

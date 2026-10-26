@@ -14,14 +14,14 @@ ML \<open>open Test_Support\<close>
 consts gq :: "nat \<Rightarrow> nat"
 axiomatization where gq0: "gq 0 = 1"
 
-ML_val \<open>\<^assert> (not (by_simp \<^context> \<^prop>\<open>gq 0 = 1\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>gq 0 = 1\<close>))\<close>
 
 context LF begin
 bundle bgq = gq0 [simp]
 end
 
 ML \<open>val ctxt = Proof_Context.init_global \<^theory>\<close>
-ML_val \<open>
+ML \<open>
 val _ = \<^assert>
   (case bundle_of ctxt "LF.bgq" of
     [([th], srcs)] => Thm.eq_thm_prop (th, @{thm gq0}) andalso Exported_Premises.count_of th = 0 andalso not (null srcs)

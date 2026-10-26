@@ -10,7 +10,7 @@ begin
 light_locale LFr = ring
 
 context ring begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (not (Test_Support.by_simp \<^context> \<^prop>\<open>ring R\<close>));
 val _ = \<^assert> (not (Test_Support.proves safe_tac \<^context> \<^prop>\<open>ring R\<close>));
 \<close>
@@ -24,10 +24,10 @@ setup \<open>
 light_locale LO = OldL
 locale HO = OldL
 context LO begin
-ML_val \<open>\<^assert> (not (can (Proof_Context.get_thm \<^context>) "OldL_axioms"))\<close>
+ML \<open>val _ = \<^assert> (not (can (Proof_Context.get_thm \<^context>) "OldL_axioms"))\<close>
 end
 context HO begin
-ML_val \<open>\<^assert> (can (Proof_Context.get_thm \<^context>) "OldL_axioms")\<close>
+ML \<open>val _ = \<^assert> (can (Proof_Context.get_thm \<^context>) "OldL_axioms")\<close>
 end
 
 end

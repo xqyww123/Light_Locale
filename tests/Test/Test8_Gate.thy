@@ -56,10 +56,10 @@ val _ = fails_with "Parameter(s) declared simultaneously in expression and for c
 \<close>
 (*the eliminated name in this import's own instance (plan line 5013; user 2026-10-16 (a)): the
   D20 use warning, then stock's free-variable error*)
-ML_val \<open>
+ML \<open>local
 val ws = rejected "Illegal free variables in expression: \"f\", \"P\"" (light thy "LX = UP_cring \"f P\"");
 val _ = \<^assert> (member (op =) ws use_warning);
-\<close>
+in end\<close>
 ML \<open>
 val _ = fails_with (defined_as "2nd" "P" "UP_cring" "UP S") (light thy "LX = UP_cring S \"UP R\" for S");
 val _ = fails_with (defined_as "2nd" "P" "UP_cring" "UP S") (light thy "LX = UP_cring \"S :: ('c,'d) ring_scheme\" \"UP R\" for S");
@@ -130,52 +130,52 @@ fun closes_zp (name, thy') = assumes_of thy' name = assumes_of thy' (loc thy' "L
 fun params_as control (name, thy') = params thy' name = params thy' (loc thy' control);
 \<close>
 (*the name eliminated by the header itself, in an element: one warning, the closure*)
-ML_val \<open>
+ML \<open>local
 val (lx, ws) = accepted (light thy "LX = Pdef + assumes ax: \"Q Zp\"");
 val _ = \<^assert> (ws = [use_warning_zp, pdef_warning] andalso closes_zp lx andalso params_as "LY2" lx);
-\<close>
+in end\<close>
 (*at an incompatible type: no use warning, as with lemma (REV8-1)*)
-ML_val \<open>
+ML \<open>local
 val (_, ws) = accepted (light thy "LX = Pdef + assumes ax: \"Zp = (0::nat)\"");
 val _ = \<^assert> (ws = [pdef_warning]);
-\<close>
+in end\<close>
 (*the same name at a later import's instance position, and at an earlier one's -- the check at
   the end of each import sees every instance so far; the warning can repeat, once per name per
   type check (section 11 (30)), and the count is not asserted*)
-ML_val \<open>\<^assert> (member (op =) (rejected illegal_zp (light thy "LX = Pdef + M2 Zp")) use_warning_zp)\<close>
-ML_val \<open>\<^assert> (member (op =) (rejected illegal_zp (light thy "LX = M2 Zp + Pdef")) use_warning_zp)\<close>
+ML \<open>val _ = \<^assert> (member (op =) (rejected illegal_zp (light thy "LX = Pdef + M2 Zp")) use_warning_zp)\<close>
+ML \<open>val _ = \<^assert> (member (op =) (rejected illegal_zp (light thy "LX = M2 Zp + Pdef")) use_warning_zp)\<close>
 (*a light ancestor's name (LFP'), in light and heavy headers; the count of the warning is
   recorded in plan section 11 (30), not asserted*)
-ML_val \<open>
+ML \<open>local
 val (lx, ws) = accepted (light thy "LX = LFP' + assumes ax: \"Q Zp\"");
 val _ = \<^assert> (member (op =) ws use_warning_zp andalso closes_zp lx andalso params_as "LY2" lx);
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 val (hx, ws) = accepted (heavy thy "HX = LFP' + assumes ax: \"Q Zp\"");
 val _ = \<^assert> (member (op =) ws use_warning_zp andalso closes_zp hx andalso params_as "LY2" hx);
-\<close>
-ML_val \<open>\<^assert> (member (op =) (rejected illegal_zp (heavy thy "HX = LFP' + M2 Zp")) use_warning_zp)\<close>
+in end\<close>
+ML \<open>val _ = \<^assert> (member (op =) (rejected illegal_zp (heavy thy "HX = LFP' + M2 Zp")) use_warning_zp)\<close>
 (*a kept written position beside an element naming P: one use warning (with the declaration
   warning), P closed -- the table holds the kept position's parse result under the parameter's
   type constraint, so the type comparison reads that type and never the parse result's dummy
   types, which would raise TERM*)
 light_locale LY3 = UP_cring S "UP S" for S + assumes ax: "\<And>P. P = UP S"
-ML_val \<open>
+ML \<open>local
 val (lx, ws) = accepted (light \<^theory> "LX = UP_cring S \"UP S\" for S + assumes ax: \"P = UP S\"");
 val _ = \<^assert> (sort_strings ws = [lfe_warning, use_warning]);
 val _ = \<^assert> (assumes_of (#2 lx) (#1 lx) = assumes_of (#2 lx) (loc (#2 lx) "LY3") andalso params_as "LY3" lx);
-\<close>
+in end\<close>
 (*the two-hop variant (plan line 5010): the table entry carried through the morphism names the
   defining locale*)
 light_locale LFPq = LFP' q for q
-ML_val \<open>
+ML \<open>local
 val (hx, ws) = accepted (heavy \<^theory> "HX2 = LFPq + assumes ax: \"Q Zp\"");
 val _ = \<^assert> (member (op =) ws use_warning_zp andalso closes_zp hx);
-\<close>
+in end\<close>
 (*a nested context's assumes inside the light block: the warning, the closure (the assumed
   proposition, the fact's hyp; its statement is normalised to Q ?Zp); with Zp fixed there, nothing*)
 context LFP' begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val (lthy, ws) = with_warnings (fn () =>
   Target_Context.context_begin_nested_cmd [] [Element.Assumes [((Binding.name "hy", []), [("Q Zp", [])])]] (Context.Proof ctxt));
@@ -184,7 +184,7 @@ val _ = \<^assert> (the_single (Thm.hyps_of (Proof_Context.get_thm lthy "hy")) a
   not (Variable.is_fixed lthy "Zp"));
 val _ = \<^assert> (null (#2 (with_warnings (fn () =>
   Target_Context.context_begin_nested_cmd [] [Element.Fixes [(Binding.name "Zp", NONE, NoSyn)], Element.Assumes [((Binding.name "hy", []), [("Q Zp", [])])]] (Context.Proof ctxt)))));
-\<close>
+in end\<close>
 end
 
 end

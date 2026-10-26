@@ -12,11 +12,11 @@ axiomatization where Sc_ax: "Sc x"
 
 context LF begin
 lemma fooE9c [elim]: "Pc x \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)
-ML_val \<open>\<^assert> (not (null (claset_entries (thy_ctxt \<^context>) @{thm LF.fooE9c})))\<close>
+ML \<open>val _ = \<^assert> (not (null (claset_entries (thy_ctxt \<^context>) @{thm LF.fooE9c})))\<close>
 local_setup \<open>fn lthy =>
   let val (lthy', w) = with_warnings (fn () => declare_in lthy "LF.fooE9c" "[rule del]")
   in \<^assert> (exists (String.isPrefix "Undeclared classical rule") w); lthy' end\<close>
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (null (claset_entries (thy_ctxt \<^context>) @{thm LF.fooE9c}));
 val _ = \<^assert> (not (null (claset_entries \<^context> @{thm fooE9c})));
 \<close>

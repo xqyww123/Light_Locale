@@ -34,20 +34,20 @@ ML \<open>val heavy_foo = @{thm foo};\<close>
 end
 context D begin
 declare fooT2[cases pred: Pc]
-ML_val \<open>\<^assert> (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2})\<close>
+ML \<open>val _ = \<^assert> (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2})\<close>
 declare fooT2[cases del]
-ML_val \<open>\<^assert> (not (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2}))\<close>
+ML \<open>val _ = \<^assert> (not (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2}))\<close>
 declare fooT2[induct pred: Pc]
-ML_val \<open>\<^assert> (has Induct.find_inductP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2})\<close>
+ML \<open>val _ = \<^assert> (has Induct.find_inductP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2})\<close>
 declare fooT2[induct del]
-ML_val \<open>\<^assert> (not (has Induct.find_inductP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2}))\<close>
+ML \<open>val _ = \<^assert> (not (has Induct.find_inductP \<^context> \<^prop>\<open>Pc c S\<close> @{thm fooT2}))\<close>
 declare fooT2[cases pred: Pc]
 declare fooT2[consumes 0, cases pred: Pc]
-ML_val \<open>\<^assert> (length (filter (fn r => Thm.eq_thm_prop (r, @{thm fooT2})) (Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close>)) = 1)\<close>
+ML \<open>val _ = \<^assert> (length (filter (fn r => Thm.eq_thm_prop (r, @{thm fooT2})) (Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close>)) = 1)\<close>
 declare fooT2[cases del]
-ML_val \<open>\<^assert> (has Induct.find_casesT \<^context> \<^typ>\<open>D.T\<close> @{thm Abs_T_cases})\<close>
+ML \<open>val _ = \<^assert> (has Induct.find_casesT \<^context> \<^typ>\<open>D.T\<close> @{thm Abs_T_cases})\<close>
 declare Abs_T_cases [cases del]
-ML_val \<open>\<^assert> (not (has Induct.find_casesT \<^context> \<^typ>\<open>D.T\<close> @{thm Abs_T_cases}))\<close>
+ML \<open>val _ = \<^assert> (not (has Induct.find_casesT \<^context> \<^typ>\<open>D.T\<close> @{thm Abs_T_cases}))\<close>
 end
 
 context LF begin
@@ -70,7 +70,7 @@ declare LF.Abs_T_cases [cases type: LF.T]
 ML \<open>val _ = \<^assert> (has Induct.find_casesT \<^context> \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases});\<close>
 
 context LF begin
-ML_val \<open>
+ML \<open>local
 (* proof-context notes: deleted in the local context first *)
 val (_, ctxt0) = note_in \<^context> "r0" "[cases del]" @{thm LF.Abs_T_cases};
 val _ = \<^assert> (not (has Induct.find_casesT ctxt0 \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases}));
@@ -83,33 +83,33 @@ val _ = \<^assert> (Thm.eq_thm_prop (e, @{thm LF.fooT2}) andalso Light_Locale_Ax
 val (foo', _) = note_in \<^context> "foo'" "[case_names a b, consumes 1]" @{thm LF.foo [OF LF_axioms]};
 val _ = \<^assert> (plain_equal (foo', heavy_foo));
 val _ = \<^assert> (Rule_Cases.get @{thm LF.foo [OF LF_axioms]} = ([(("1", []), []), (("2", []), [])], 0));
-\<close>
+in end\<close>
 (* the deletion sequence on the Induct tables *)
 declare LF.fooT2[cases pred: Pc]
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2});
 val _ = \<^assert> (has Induct.find_casesP (thy_ctxt \<^context>) \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2});
 \<close>
 declare LF.fooT2[cases del]
-ML_val \<open>\<^assert> (not (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2}))\<close>
+ML \<open>val _ = \<^assert> (not (has Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2}))\<close>
 declare LF.fooT2[induct pred: Pc]
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (has Induct.find_inductP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2});
 val _ = \<^assert> (has Induct.find_inductP (thy_ctxt \<^context>) \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2});
 \<close>
 declare LF.fooT2[induct del]
-ML_val \<open>\<^assert> (not (has Induct.find_inductP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2}))\<close>
+ML \<open>val _ = \<^assert> (not (has Induct.find_inductP \<^context> \<^prop>\<open>Pc c S\<close> @{thm LF.fooT2}))\<close>
 (* two declarations, a different consumes in between: exactly one entry *)
 declare LF.fooT2[cases pred: Pc]
 declare LF.fooT2[consumes 0, cases pred: Pc]
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (length (filter (fn r => Thm.eq_thm_prop (r, @{thm LF.fooT2})) (Induct.find_casesP \<^context> \<^prop>\<open>Pc c S\<close>)) = 1);
 \<close>
 declare LF.fooT2[cases del]
 (* [cases del] on the package's own rule (registered again at theory level above) *)
-ML_val \<open>\<^assert> (has Induct.find_casesT \<^context> \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases})\<close>
+ML \<open>val _ = \<^assert> (has Induct.find_casesT \<^context> \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases})\<close>
 declare LF.Abs_T_cases [cases del]
-ML_val \<open>\<^assert> (not (has Induct.find_casesT \<^context> \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases}))\<close>
+ML \<open>val _ = \<^assert> (not (has Induct.find_casesT \<^context> \<^typ>\<open>LF.T\<close> @{thm LF.Abs_T_cases}))\<close>
 (* the hand-written specialised equation *)
 lemma ipS': "LF.ip S (Suc n) = (Pc S n \<and> LF.ip S n)" by (simp add: LF.ip.simps[OF LF_axioms, of "Suc n"])
 end

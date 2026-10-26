@@ -18,7 +18,7 @@ end
 context LF begin
 lemmas fooPf [dest] = LF.fooP[of _ y] for y
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm LF.fooPf} = 1)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm LF.fooPf} = 1)\<close>
 ML \<open>
 val _ = \<^assert> (major_prem_is \<^context> "LF S" (#2 (claset_rule \<^context> Bires.dest_kind @{thm LF.fooPf})));
 \<close>

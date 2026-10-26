@@ -39,7 +39,7 @@ local_setup \<open>fn lthy =>
 
 (* (c) *)
 definition dq where "dq = cc"
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (XML.content_of (YXML.parse_body (Thm.string_of_thm \<^context> @{thm dq_def})) = "dq = cc");
 val _ = \<^assert> (Exported_Premises.count_of @{thm dq_def} = 0);
 \<close>

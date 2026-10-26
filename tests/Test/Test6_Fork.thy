@@ -22,7 +22,7 @@
    witness proved in a context without assumptions has no hyps, the fact is stored as itself,
    K 0; E (heavy block), T (theory-level assumes block), P and R (interpret in a proof): the
    activated fact's hyps are all the context's assumptions.  Every theory-level assertion is in
-   the last ML_val, evaluated row by row, which names each failing row. *)
+   the last ML command, evaluated row by row, which names each failing row. *)
 theory Test6_Fork
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -135,7 +135,7 @@ end
 
 
 (* N29: the block commands; the values only readable inside a block are bound by ML (E, T) or
-   written into a reference by ML_prf (P, R) and asserted in the last ML_val *)
+   written into a reference by ML_prf (P, R) and asserted in the last ML command *)
 
 context LF begin
 interpretation N: Cw 0 by (rule Cw.intro) (rule refl)
@@ -204,8 +204,8 @@ lemmas yn = Nn.cl
 end
 
 
-ML_val \<open>
-check_rows
+ML \<open>
+val _ = check_rows
  [("ax", fn () => shape @{thm LF.ax} (\<^prop>\<open>LF S \<Longrightarrow> Pc S y\<close>, 1)),
   (* two LF premises and K 1, with or without insert LF_axioms *)
   ("tq'", fn () => shape @{thm LF.tq'} (\<^prop>\<open>LF S \<Longrightarrow> Q \<Longrightarrow> LF q \<Longrightarrow> Q \<and> C\<close>, 1)),

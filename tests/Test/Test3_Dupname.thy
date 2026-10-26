@@ -19,13 +19,13 @@ lemma dupname: "Qc S" by (rule qc)
 end
 
 context LF begin
-ML_val \<open>
-  \<^assert> (dest_Const_name (Term.head_of (HOLogic.dest_Trueprop (Thm.prop_of @{thm dupname}))) =
+ML \<open>
+  val _ = \<^assert> (dest_Const_name (Term.head_of (HOLogic.dest_Trueprop (Thm.prop_of @{thm dupname}))) =
     \<^const_name>\<open>Pc\<close>)\<close>
 end
 
 context D begin
-ML_val \<open>\<^assert> (Thm.prop_of @{thm dupname} aconv @{prop "Qc S"})\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm dupname} aconv @{prop "Qc S"})\<close>
 end
 
 end

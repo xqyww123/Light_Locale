@@ -11,13 +11,13 @@ context LF begin
 declaration \<open>K (Tab.map (cons "p"))\<close>
 declaration (pervasive) \<open>K (Tab.map (cons "q"))\<close>
 syntax_declaration \<open>K (Tab.map (cons "s"))\<close>
-ML_val \<open>\<^assert> (sort_strings (Tab.get (Context.Proof \<^context>)) = ["p", "q", "s"])\<close>
+ML \<open>val _ = \<^assert> (sort_strings (Tab.get (Context.Proof \<^context>)) = ["p", "q", "s"])\<close>
 end
 
 ML \<open>val _ = \<^assert> (Tab.get (Context.Theory \<^theory>) = ["q"])\<close>
 
 context LF begin
-ML_val \<open>\<^assert> (sort_strings (Tab.get (Context.Proof \<^context>)) = ["q", "s"])\<close>
+ML \<open>val _ = \<^assert> (sort_strings (Tab.get (Context.Proof \<^context>)) = ["q", "s"])\<close>
 end
 
 context D begin
@@ -27,7 +27,7 @@ syntax_declaration \<open>K (Tab.map (cons "sD"))\<close>
 end
 
 context D begin
-ML_val \<open>\<^assert> (subset (op =) (["pD", "qD", "sD"], Tab.get (Context.Proof \<^context>)))\<close>
+ML \<open>val _ = \<^assert> (subset (op =) (["pD", "qD", "sD"], Tab.get (Context.Proof \<^context>)))\<close>
 end
 
 end

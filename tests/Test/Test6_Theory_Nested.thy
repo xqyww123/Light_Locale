@@ -32,28 +32,28 @@ context assumes c1: "Qc (1::nat)" begin
 context assumes c2: "Qc (2::nat)" begin
 lemmas t4 = LF.foo
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm t4} = 2 andalso Thm.nprems_of @{thm t4} = 4 andalso
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm t4} = 2 andalso Thm.nprems_of @{thm t4} = 4 andalso
   hd (Thm.prems_of @{thm t4}) aconv \<^prop>\<open>Qc (2::nat)\<close>)\<close>
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm t4} = 3 andalso Thm.nprems_of @{thm t4} = 5)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm t4} = 3 andalso Thm.nprems_of @{thm t4} = 5)\<close>
 
 (* h3's row at theory level, read from the own layer's copy; the usage hint.  h3, fa and fb are
    mechanism fixtures, not user scenarios (a hand-written K on a lemma line has no meaning) *)
 context assumes c3: "Qc (3::nat)" begin
 lemma h0: "Qc (3::nat) \<Longrightarrow> Pc y (3::nat) \<and> Pc y (3::nat) \<Longrightarrow> Pc y (3::nat) \<and> Pc y (3::nat)" for y by assumption
-ML_val \<open>\<^assert> (Thm.maxidx_of @{thm h0[THEN conjunct1]} > 0)\<close>
+ML \<open>val _ = \<^assert> (Thm.maxidx_of @{thm h0[THEN conjunct1]} > 0)\<close>
 lemma h3 [THEN conjunct1, exported_premises 1]: "Qc (3::nat) \<Longrightarrow> Pc y (3::nat) \<and> Pc y (3::nat) \<Longrightarrow> Pc y (3::nat) \<and> Pc y (3::nat)" for y by assumption
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm h3} = 1 andalso Thm.nprems_of @{thm h3} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm h3} = 1 andalso Thm.nprems_of @{thm h3} = 2)\<close>
 lemma fa [exported_premises 1]: "Qc (3::nat) \<Longrightarrow> Qc (3::nat)" by assumption
 lemmas fb [exported_premises 1] = fa
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm fb} = 1 andalso Thm.nprems_of @{thm fb} = 1)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm fb} = 1 andalso Thm.nprems_of @{thm fb} = 1)\<close>
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm fa} = 1 andalso Thm.nprems_of @{thm fa} = 2)\<close>
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm fb} = 2 andalso Thm.nprems_of @{thm fb} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm fa} = 1 andalso Thm.nprems_of @{thm fa} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm fb} = 2 andalso Thm.nprems_of @{thm fb} = 2)\<close>
 context fixes v :: nat begin
 lemma fc [exported_premises 1]: "Qc v \<Longrightarrow> Qc v" by assumption
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm fc} = 1 andalso Thm.nprems_of @{thm fc} = 1)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm fc} = 1 andalso Thm.nprems_of @{thm fc} = 1)\<close>
 
 (* N3: an assumes layer over a defines layer.  The defines layer adds nothing (its equation is
    unfolded, c does not occur), the outer layer one: the outer copy K 1, the theory copy K 2 --
@@ -62,9 +62,9 @@ context assumes hq3: "Qc (0::nat)" begin
 context fixes c :: nat defines c_def: "c \<equiv> (0::nat)" begin
 lemmas r3 = LF.foo
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r3} = 1 andalso Thm.nprems_of @{thm r3} = 3)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r3} = 1 andalso Thm.nprems_of @{thm r3} = 3)\<close>
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r3} = 2 andalso Thm.nprems_of @{thm r3} = 4 andalso
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r3} = 2 andalso Thm.nprems_of @{thm r3} = 4 andalso
   hd (Thm.prems_of @{thm r3}) aconv \<^prop>\<open>Qc (0::nat)\<close>)\<close>
 
 (* N19: the bundle path outside a light block keeps K plus the premises put in front: bt's entry
@@ -73,7 +73,7 @@ ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r3} = 2 andalso Thm.n
 context assumes c19: "Qc (1::nat)" begin
 bundle bt = LF.foo [keep]
 end
-ML_val \<open>
+ML \<open>
 val _ = \<^assert>
   (case bundle_of \<^context> "bt" of
     [([th], _)] =>
@@ -92,12 +92,12 @@ context assumes "SORT_CONSTRAINT('a::type)" begin
 lemmas r8 = LF.foo
 lemmas r8t = LF.fooT
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r8} = 1 andalso Thm.nprems_of @{thm r8} = 3)\<close>
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r8t} = 1 andalso Thm.nprems_of @{thm r8t} = 1)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r8} = 1 andalso Thm.nprems_of @{thm r8} = 3)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r8t} = 1 andalso Thm.nprems_of @{thm r8t} = 1)\<close>
 context fixes c :: nat assumes hc8: "Qc c" "SORT_CONSTRAINT('a::type)" begin
 lemmas r8m = LF.foo
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r8m} = 2 andalso Thm.nprems_of @{thm r8m} = 4 andalso
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r8m} = 2 andalso Thm.nprems_of @{thm r8m} = 4 andalso
   same_shape (hd (Thm.prems_of @{thm r8m}), Logic.varify_global \<^prop>\<open>Qc (c :: nat)\<close>))\<close>
 
 end

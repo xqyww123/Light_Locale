@@ -16,14 +16,14 @@ end
 context LF begin
 declare LF.fooIE [intro]
 declare LF.fooIE [elim]
-ML_val \<open>
+ML \<open>local
 fun both_kinds ctxt =
   let val kinds = map #3 (claset_entries ctxt @{thm LF.fooIE})
   in exists Bires.kind_is_elim kinds andalso exists (not o Bires.kind_is_elim) kinds end;
 val _ = \<^assert> (forall both_kinds [\<^context>, thy_ctxt \<^context>]);
-\<close>
+in end\<close>
 declare LF.fooIE [rule del]
-ML_val \<open>\<^assert> (null (claset_entries \<^context> @{thm LF.fooIE}))\<close>
+ML \<open>val _ = \<^assert> (null (claset_entries \<^context> @{thm LF.fooIE}))\<close>
 end
 
 ML \<open>val _ = \<^assert> (null (claset_entries \<^context> @{thm LF.fooIE}));\<close>

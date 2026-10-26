@@ -23,7 +23,7 @@ lemma t: "PROP V \<Longrightarrow> PROP W \<Longrightarrow> PROP W" by assumptio
 end
 end
 
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Thm.prop_of @{thm Setting.t} aconv Thm.prop_of @{thm thin_rl});
 val _ = \<^assert> (not (has_K_tag @{thm Setting.t}) andalso Thm.nprems_of @{thm Setting.t} = 2);
 \<close>
@@ -31,10 +31,10 @@ val _ = \<^assert> (not (has_K_tag @{thm Setting.t}) andalso Thm.nprems_of @{thm
 (* plan line 4873: the predicate-free Setting declared and has no Setting_axioms, where the gate
    fixture's block has its LF_axioms (the control) *)
 context Setting begin
-ML_val \<open>\<^assert> (not (has_fact \<^context> "Setting_axioms"))\<close>
+ML \<open>val _ = \<^assert> (not (has_fact \<^context> "Setting_axioms"))\<close>
 end
 context LF begin
-ML_val \<open>\<^assert> (has_fact \<^context> "LF_axioms")\<close>
+ML \<open>val _ = \<^assert> (has_fact \<^context> "LF_axioms")\<close>
 end
 
 lemma v: "(a::nat) \<equiv> b \<Longrightarrow> a = b" by simp
@@ -46,11 +46,11 @@ lemma t3: "(a::nat) \<equiv> b \<Longrightarrow> a = b" by simp
 end
 end
 
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.t2}, @{thm v}) andalso not (has_K_tag @{thm LF.t2}));
 val _ = \<^assert> (Thm.nprems_of @{thm LF.t2} = 1);
 \<close>
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.t3},
   Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> (a::nat) \<equiv> b \<Longrightarrow> a = b\<close>));
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.t3} = 1 andalso Thm.nprems_of @{thm LF.t3} = 2);
@@ -64,10 +64,10 @@ val _ = \<^assert> (Exported_Premises.count_of @{thm LF.t3} = 1 andalso Thm.npre
 context fixes A B :: bool and x :: "prop" defines x_def: "x \<equiv> (A \<Longrightarrow> B)" begin
 lemma r26_0: "PROP x \<Longrightarrow> PROP x" .
 lemmas r26 = r26_0 [exported_premises 1]
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r26} = 1 andalso Thm.nprems_of @{thm r26} = 1 andalso
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r26} = 1 andalso Thm.nprems_of @{thm r26} = 1 andalso
   Thm.prop_of @{thm r26} aconv \<^prop>\<open>PROP x \<Longrightarrow> PROP x\<close>)\<close>
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r26} = 2 andalso Thm.nprems_of @{thm r26} = 2 andalso
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r26} = 2 andalso Thm.nprems_of @{thm r26} = 2 andalso
   same_shape (Thm.prop_of @{thm r26}, Logic.varify_global \<^prop>\<open>(A \<Longrightarrow> B) \<Longrightarrow> A \<Longrightarrow> B\<close>))\<close>
 
 end

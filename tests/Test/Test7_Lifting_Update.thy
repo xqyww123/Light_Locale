@@ -21,12 +21,12 @@ end
 
 (* the restore data is keyed by the bundle's full name (lifting_setup.ML:237); the net holds the
    rules in the Transfer.Rel form of the transfer_raw net, so zq's rule is found by its constant *)
-ML_val \<open>
+ML \<open>local
 val bundle_name = Bundle.check \<^context> ("tq.lifting", Position.none);
 val rules =
   Item_Net.content (#transfer_rules (the (Lifting_Info.lookup_restore_data \<^context> bundle_name)));
 val _ = \<^assert> (exists (exists_Const (fn (c, _) => c = \<^const_name>\<open>zq\<close>) o Thm.prop_of) rules);
 val _ = \<^assert> (forall (fn th => not (has_K_tag th) andalso null (light_prems \<^context> th)) rules);
-\<close>
+in end\<close>
 
 end

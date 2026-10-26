@@ -15,7 +15,7 @@ end
 
 context LF begin
 declare LF.z0 [cases pred: Sc]
-ML_val \<open>\<^assert> (is_some (induct_entry Induct.find_casesP \<^context> \<^prop>\<open>LF S\<close> @{thm LF.z0}))\<close>
+ML \<open>val _ = \<^assert> (is_some (induct_entry Induct.find_casesP \<^context> \<^prop>\<open>LF S\<close> @{thm LF.z0}))\<close>
 end
 
 end

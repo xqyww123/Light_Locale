@@ -53,7 +53,7 @@ fun premise_counts ctxt =
 val all_one = ((1, 1, 1), (1, 1, 1), (1, 1, 1));
 \<close>
 
-(* ML, not ML_val: a failing diagnostic command is not reported when a later command fails *)
+(* K = 1 at theory level: the predicate is no fact here, before and after the second step *)
 ML \<open>val _ = \<^assert> (premise_counts \<^context> = (all_one, all_one))\<close>
 
 light_locale LQ_user = LQ

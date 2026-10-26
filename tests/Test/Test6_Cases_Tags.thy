@@ -31,7 +31,7 @@ lemma foo3 [cases_open, consumes 1]: "A \<Longrightarrow> B \<Longrightarrow> A 
 lemma r1 [case_names a b, consumes 1, cases pred: ipr]: "ipr x \<Longrightarrow> (x = 0 \<Longrightarrow> W) \<Longrightarrow> (x \<noteq> 0 \<Longrightarrow> W) \<Longrightarrow> W" by blast
 lemma r2 [case_names a b, cases pred: ipr]: "ipr y \<Longrightarrow> (y = 0 \<Longrightarrow> V) \<Longrightarrow> (y \<noteq> 0 \<Longrightarrow> V) \<Longrightarrow> V" by blast
 lemma r3 [case_names a b, cases pred: ipr, consumes 1]: "ipr z \<Longrightarrow> (z = 0 \<Longrightarrow> U) \<Longrightarrow> (z \<noteq> 0 \<Longrightarrow> U) \<Longrightarrow> U" by blast
-ML_val \<open>\<^assert> (params_xyz_fails \<^context>)\<close>
+ML \<open>val _ = \<^assert> (params_xyz_fails \<^context>)\<close>
 ML \<open>val heavy = {foo = @{thm foo}, foo2 = @{thm foo2}, foo8 = @{thm foo8}, foo3 = @{thm foo3}, r1 = @{thm r1}, r2 = @{thm r2}, r3 = @{thm r3}};\<close>
 end
 
@@ -44,7 +44,7 @@ lemma foo3 [cases_open, consumes 1]: "A \<Longrightarrow> B \<Longrightarrow> A 
 lemma r1 [case_names a b, consumes 1, cases pred: ipr]: "ipr x \<Longrightarrow> (x = 0 \<Longrightarrow> W) \<Longrightarrow> (x \<noteq> 0 \<Longrightarrow> W) \<Longrightarrow> W" by blast
 lemma r2 [case_names a b, cases pred: ipr]: "ipr y \<Longrightarrow> (y = 0 \<Longrightarrow> V) \<Longrightarrow> (y \<noteq> 0 \<Longrightarrow> V) \<Longrightarrow> V" by blast
 lemma r3 [case_names a b, cases pred: ipr, consumes 1]: "ipr z \<Longrightarrow> (z = 0 \<Longrightarrow> U) \<Longrightarrow> (z \<noteq> 0 \<Longrightarrow> U) \<Longrightarrow> U" by blast
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (params_xyz_fails \<^context>);
 val _ = \<^assert> (plain_equal (@{thm foo}, #foo heavy));
 val _ = \<^assert> (plain_equal (@{thm foo2}, #foo2 heavy) andalso plain_equal (@{thm foo8}, #foo8 heavy));

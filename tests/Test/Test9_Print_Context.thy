@@ -18,17 +18,17 @@ fun structures_markup ctxt =
 
 context LF
 begin
-ML_val \<open>\<^assert> (structures_line \<^context> = "structures: " ^ golden "UP_S")\<close>
+ML \<open>val _ = \<^assert> (structures_line \<^context> = "structures: " ^ golden "UP_S")\<close>
 end
 
 context H'
 begin
-ML_val \<open>\<^assert> (structures_line \<^context> = "structures: " ^ golden "UP_S" ^ ", G")\<close>
+ML \<open>val _ = \<^assert> (structures_line \<^context> = "structures: " ^ golden "UP_S" ^ ", G")\<close>
 end
 
 context H
 begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (structures_line \<^context> = golden "structures_A");
 val _ = \<^assert> (structures_markup \<^context> = golden "structures_A_markup");
 \<close>

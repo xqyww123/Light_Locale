@@ -55,7 +55,7 @@ ML \<open>
 val heavy_ipE = @{thm ipE};
 val heavy_ind_cases_decl = ind_cases_subgoals \<^context> "ip (Suc n)" "ip (Suc n) \<Longrightarrow> W";
 \<close>
-ML_val \<open>\<^assert> (code_pred_fails \<^context> "D.ip")\<close>
+ML \<open>val _ = \<^assert> (code_pred_fails \<^context> "D.ip")\<close>
 end
 context D begin
 inductive_cases ipE2: "ip (Suc n)"
@@ -75,7 +75,7 @@ fun f :: "nat \<Rightarrow> nat" where "f 0 = 0" | "f (Suc n) = f n"
 inductive_cases ipE: "ip (Suc n)"
 inductive_simps ipS: "ip (Suc n)"
 fun_cases fC: "f n = m"
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (three_items (@{thm ipE}, heavy_ipE));
 val _ = \<^assert> (ind_cases_subgoals \<^context> "ip (Suc n)" "ip (Suc n) \<Longrightarrow> W" = heavy_ind_cases_decl);
 val _ = \<^assert> (can (Inductive.the_inductive_global \<^context>) \<^const_name>\<open>LF.ip\<close>);
@@ -111,7 +111,7 @@ context LF begin
 inductive_cases ipE2: "LF.ip S (Suc n)"
 lemma ipE': "LF.ip S (Suc n) \<Longrightarrow> (Pc S n \<Longrightarrow> LF.ip S n \<Longrightarrow> W) \<Longrightarrow> W"
   by (erule LF.ip.cases[OF LF_axioms]) auto
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> ((@{thm ipE3} OF [@{thm LF_axioms}]; false) handle THM (msg, _, _) => String.isPrefix "OF: no unifiers" msg);
 (* the ind_cases method in the reopened block, nothing chained: the twin's subgoal count *)
 val _ = \<^assert> (ind_cases_subgoals \<^context> "LF.ip S (Suc n)" "LF.ip S (Suc n) \<Longrightarrow> W" = heavy_ind_cases_reopened);

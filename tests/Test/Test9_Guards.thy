@@ -37,7 +37,7 @@ context
   fixes p :: int
 begin
 
-ML_val \<open>
+ML \<open>local
 val lthy = \<^context>;
 
 (*the verbatim rows of plan section 6; the tenth, the 'z row, ends the block*)
@@ -98,12 +98,12 @@ val _ =
   fails_with
     "Undeclared type variables 'z, 'a in the implicit structure `\<lparr>carrier = UNIV, mult = (*), one = 1\<rparr>`, where `UNIV :: 'z::comm_ring_1 set` and `1 :: 'a::{one,times}` require concrete type annotations."
     (set_in lthy "\<lparr>carrier = (UNIV :: 'z::comm_ring_1 set), mult = (*), one = 1\<rparr>");
-\<close>
+in end\<close>
 
 context
   fixes x :: nat
 begin
-ML_val \<open>
+ML \<open>local
 val lthy = \<^context>;
 (*(s6): the avoidance set is the printer's, not the context's names -- x is not renamed*)
 val _ = structural lthy "\<lambda>x. x" "s6: x not renamed although fixed outside" (fn s =>
@@ -115,7 +115,7 @@ val _ =
   fails_with
     "Illegal undeclared variable \"q\" in the implicit structure. Only variables fixed in this context may occur here: \"p\", \"x\"."
     (set_in lthy "pq q");
-\<close>
+in end\<close>
 end
 
 end

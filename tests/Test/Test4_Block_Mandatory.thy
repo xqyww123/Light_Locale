@@ -22,7 +22,7 @@ val _ = \<^assert> (d_facts =
 
 context LF begin
 
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Test_Support.consts_named \<^context> "hqa" = ["Test4_Fixture.HQ.hqa", "local.q.hqa"]);
 val _ = \<^assert> (Test_Support.visible_fact_names \<^context> = ["local.HB_axioms", "local.LF_axioms", "local.q.HQ_axioms"]);
 \<close>
@@ -30,7 +30,7 @@ val _ = \<^assert> (Test_Support.visible_fact_names \<^context> = ["local.HB_axi
 lemma True
 proof -
   interpret q: HQ "Suc x" by (rule q.HQ_axioms)
-  ML_val \<open>
+  ML_prf \<open>
     (*no Duplicate constant declaration, exactly one q.hqa; the names under q. now equal the
       heavy twin's; the only addition is the Plain note q.hq*)
     val _ = \<^assert> (Test_Support.consts_named \<^context> "hqa" = ["Test4_Fixture.HQ.hqa", "local.q.hqa"]);
@@ -40,7 +40,7 @@ proof -
   \<close>
   (* after the upgrade, interpreting the same instance again is skipped by the standard *)
   interpret q: HQ "Suc x" by (rule q.HQ_axioms)
-  ML_val \<open>
+  ML_prf \<open>
     val _ = \<^assert> (Test_Support.consts_named \<^context> "hqa" = ["Test4_Fixture.HQ.hqa", "local.q.hqa"]);
     val _ = \<^assert> (Test_Support.visible_fact_names \<^context> =
       ["local.HB_axioms", "local.LF_axioms", "local.q.HQ_axioms", "local.q.hq"]);
@@ -52,7 +52,7 @@ qed
 lemma True
 proof -
   interpret r: HQ "Suc x" by (rule q.HQ_axioms)
-  ML_val \<open>
+  ML_prf \<open>
     val _ = \<^assert> (Test_Support.consts_named \<^context> "hqa" = ["Test4_Fixture.HQ.hqa", "local.q.hqa", "local.r.hqa"]);
     val _ = \<^assert> (Test_Support.visible_fact_names \<^context> =
       ["local.HB_axioms", "local.LF_axioms", "local.q.HQ_axioms", "local.r.HQ_axioms", "local.r.hq"]);
@@ -66,7 +66,7 @@ qed
 lemma True
 proof -
   interpret HQ "Suc x" proof unfold_locales qed
-  ML_val \<open>
+  ML_prf \<open>
     val _ = \<^assert> (Test_Support.consts_named \<^context> "hqa" = ["Test4_Fixture.HQ.hqa", "local.hqa", "local.q.hqa"]);
   \<close>
   show True ..
@@ -83,7 +83,7 @@ proof -
   proof unfold_locales
     show "Suc t = Suc t" ..
   qed
-  ML_val \<open>
+  ML_prf \<open>
     val _ = \<^assert> (Test_Support.consts_named \<^context> "hqa" = ["Test4_Fixture.HQ.hqa", "local.hqa"]);
     val _ = \<^assert> (under "local." (Test_Support.visible_fact_names \<^context>) = ["local.HQ_axioms", "local.hq"]);
   \<close>

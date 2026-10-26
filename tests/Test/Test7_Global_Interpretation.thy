@@ -19,12 +19,12 @@ fun retrieved_eq ctxt prop th =
 (* (1) the control *)
 context fixes x :: "nat set" assumes h: "finite x" begin
 interpretation I2: LFx x by (rule LFx.intro) (rule h)
-ML_val \<open>
+ML \<open>local
 val th = @{thm I2.LFx_axioms};
 val _ = \<^assert> (Thm.nprems_of th = 0);
 val _ = \<^assert> (not (null (Thm.hyps_of th)));
 val _ = \<^assert> (retrieved_eq \<^context> \<^prop>\<open>LFx x\<close> th);
-\<close>
+in end\<close>
 end
 
 ML \<open>val _ = \<^assert> (not (has_fact (Proof_Context.init_global \<^theory>) "I2.LFx_axioms"))\<close>

@@ -173,16 +173,16 @@ val decl_ip2 =
     val st = run ctxt [h] "cases n" "W n";
   in (case_names st, counts st) end;
 \<close>
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "ip2 n";
 val _ = \<^assert> (texts (run ctxt [h] "cases" "W n") = #ip2_cases heavy_decl_nested);
 (* negative: chaining LF_axioms hy in the declaration block falls to case_split, case is undefined *)
 val st = run ctxt [@{thm LF_axioms}, @{thm hy}, h] "cases" "W n";
 val _ = \<^assert> (case_split st andalso undefined_case st "z");
-\<close>
+in end\<close>
 end
 (* declaration-block rows: the local copies are found, the texts are the heavy block's *)
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "ip n";
 val _ = \<^assert> (texts (run ctxt [h] "cases" "W n") = #ip_cases heavy_decl);
 val _ = \<^assert> (texts (run (fix_in \<^context> [("x", natT)]) [] "induct x rule: f.induct" "W x") = #f_induct heavy_decl);
@@ -197,14 +197,14 @@ val SOME e2 = induct_entry Induct.find_casesT \<^context> \<^typ>\<open>tr\<clos
 val SOME e3 = induct_entry Induct.find_casesP \<^context> \<^prop>\<open>ip x\<close> @{thm ip.cases};
 val _ = \<^assert> (three_items (e1, #Abs_T_cases heavy_decl) andalso three_items (e2, #tr_exhaust heavy_decl)
   andalso three_items (e3, #ip_cases_rule heavy_decl));
-\<close>
+in end\<close>
 end
 
 
 section \<open>The reopened light block\<close>
 
 context LF begin
-ML_val \<open>
+ML \<open>local
 val ctxt0 = \<^context>;
 val LFa = @{thm LF_axioms};
 val (h, ctxt) = assume_in ctxt0 [("n", natT)] "h" "LF.ip S n";
@@ -313,19 +313,19 @@ val _ = \<^assert> (Exported_Premises.count_of @{thm LF.tr.exhaust [OF LF_axioms
 val _ = \<^assert> (is_some (induct_entry Induct.find_casesT ctxt0 \<^typ>\<open>tr0\<close> @{thm LF.trS}));
 val (hq, ctxtq) = assume_in ctxt0 [("t", \<^typ>\<open>tr0\<close>)] "hq" "Q0 S t";
 val _ = \<^assert> (texts (run ctxtq [LFa, hq] "cases t" "W t") = #trS_cases_t heavy);
-\<close>
+in end\<close>
 (* the block's table entry is LF.ip.cases itself (second version: a redeclaration whose export
    changes nothing keeps the theorem, case names z / s included), so the cases print as the twin's
    ip cases pinned above *)
 declare LF.ip.cases [cases pred: ip]
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "LF.ip S n";
 val _ = \<^assert> (texts (run ctxt [@{thm LF_axioms}, h] "cases" "W n") = #ip_cases heavy);
-\<close>
+in end\<close>
 
 (* nested: ip2 with K 2 *)
 context fixes y :: nat assumes hy: "Qc y" begin
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "LF.ip2 S y n";
 val _ = \<^assert> (Exported_Premises.count_of @{thm LF.ip2.cases} = 2);
 val _ = \<^assert> (texts (run ctxt [@{thm LF_axioms}, @{thm hy}, h] "cases" "W n") = heavy_nested_ip2_cases);
@@ -342,7 +342,7 @@ val SOME (_, mr) = Rule_Cases.mutual_rule \<^context> @{thms LF.f2_g2.induct};
 val _ = \<^assert> (Exported_Premises.count_of mr = 2 andalso Exported_Premises.lookup_consumes mr = SOME 2 andalso
   same_shape (Logic.mk_conjunction_list (take 2 (Thm.prems_of mr)),
     Logic.varify_global (Logic.mk_conjunction_list [\<^prop>\<open>LF S\<close>, \<^prop>\<open>Qc y\<close>])));
-\<close>
+in end\<close>
 end
 end
 

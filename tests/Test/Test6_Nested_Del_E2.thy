@@ -12,12 +12,12 @@ axiomatization where Sc_ax: "Sc x"
 
 context LF begin
 lemma fooE9c [elim]: "Pc x \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (not (null (claset_entries \<^context> @{thm fooE9c})));
 val _ = \<^assert> (not (null (claset_entries (thy_ctxt \<^context>) @{thm LF.fooE9c})));
 \<close>
 declare fooE9c [rule del]
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (null (claset_entries \<^context> @{thm fooE9c}));
 val _ = \<^assert> (null (claset_entries (thy_ctxt \<^context>) @{thm LF.fooE9c}));
 \<close>

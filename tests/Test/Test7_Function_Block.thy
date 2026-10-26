@@ -18,7 +18,7 @@ context LF begin
 named_theorems ns
 end
 context LF begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (has_fact \<^context> "LF.ns");
 val _ = \<^assert> (not (has_fact \<^context> "ns"));
 val _ = \<^assert> (can (Attrib.check_name \<^context>) ("LF.ns", Position.none));
@@ -29,7 +29,7 @@ context D begin
 named_theorems nsd
 end
 context D begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (has_fact \<^context> "nsd");
 val _ = \<^assert> (can (Attrib.check_name \<^context>) ("nsd", Position.none));
 \<close>

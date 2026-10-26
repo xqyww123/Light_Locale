@@ -33,8 +33,8 @@ fun message_equals_warnings text =
 fun eliminated l = map (fn (y, j, _) => (y, j)) (Expression.eliminated_params thy (loc thy l));
 \<close>
 
-ML_val \<open>
-check_rows [
+ML \<open>
+val _ = check_rows [
   (*the function's value equals the printed warnings*)
   ("LD1m", fn () => message_equals_warnings "LD1m = Parent f v _ for f v"),
   ("LD2m", fn () => message_equals_warnings "LD2m = X1 + X2"),

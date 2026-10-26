@@ -24,9 +24,9 @@ lemma fooPIE: "Pc x \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarro
 end
 context D begin
 declare fooPIE [Pure.intro]
-ML_val \<open>\<^assert> (in_intros \<^context> @{thm fooPIE} andalso not (in_elims \<^context> @{thm fooPIE}))\<close>
+ML \<open>val _ = \<^assert> (in_intros \<^context> @{thm fooPIE} andalso not (in_elims \<^context> @{thm fooPIE}))\<close>
 declare fooPIE [Pure.elim]
-ML_val \<open>\<^assert> (not (in_intros \<^context> @{thm fooPIE}) andalso in_elims \<^context> @{thm fooPIE})\<close>
+ML \<open>val _ = \<^assert> (not (in_intros \<^context> @{thm fooPIE}) andalso in_elims \<^context> @{thm fooPIE})\<close>
 end
 
 context LF begin
@@ -35,14 +35,14 @@ end
 
 context LF begin
 declare LF.fooPIE [Pure.intro]
-ML_val \<open>\<^assert> (in_intros \<^context> @{thm LF.fooPIE} andalso not (in_elims \<^context> @{thm LF.fooPIE})
+ML \<open>val _ = \<^assert> (in_intros \<^context> @{thm LF.fooPIE} andalso not (in_elims \<^context> @{thm LF.fooPIE})
   andalso in_intros (thy_ctxt \<^context>) @{thm LF.fooPIE})\<close>
 declare LF.fooPIE [Pure.elim]
-ML_val \<open>
+ML \<open>local
 val _ = \<^assert> (not (in_intros \<^context> @{thm LF.fooPIE}) andalso in_elims \<^context> @{thm LF.fooPIE});
 val tctxt = thy_ctxt \<^context>;
 val _ = \<^assert> (not (in_intros tctxt @{thm LF.fooPIE}) andalso in_elims tctxt @{thm LF.fooPIE});
-\<close>
+in end\<close>
 end
 
 end

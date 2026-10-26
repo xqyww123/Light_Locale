@@ -25,18 +25,18 @@ lemma "Rc (c :: 'q) S \<Longrightarrow> Sc c" by simp
 lemma "Rc (c :: 'q) S \<Longrightarrow> Sc c" by auto
 lemma "Rc (c :: 'q) S \<Longrightarrow> Sc c" by blast
 lemma assumes h: "Sc (x :: 'q)" shows "Rc x S" using h ..
-ML_val \<open>
+ML \<open>local
 (*the local copy: safe halves*)
 val intro_key = zero_var_indexes (rotate_prems 1 (@{thm biff} RS @{thm iffD2}));
 val _ = \<^assert> (exists (fn (_, _, k) => k = Bires.intro_bang_kind) (claset_entries \<^context> intro_key));
-\<close>
+in end\<close>
 end
 
 context LI begin
 lemma "Rc (c :: 'q) S \<Longrightarrow> Sc c" by simp
 lemma "Rc (c :: 'q) S \<Longrightarrow> Sc c" by auto
 lemma "Rc (c :: 'q) S \<Longrightarrow> Sc c" by blast
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val intro_key = zero_var_indexes (rotate_prems 1 (@{thm LI.biff} RS @{thm iffD2}));
 val dest_key = zero_var_indexes (rotate_prems 1 (@{thm LI.biff} RS @{thm iffD1}));
@@ -54,7 +54,7 @@ val lf = @{thm LI_axioms};
 val _ = \<^assert> (by_method ctxt' [h, lf] "standard" "Rc x S");
 val _ = \<^assert> (not (by_method ctxt' [lf, h] "standard" "Rc x S"));
 val _ = \<^assert> (not (by_method ctxt' [h] "standard" "Rc x S"));
-\<close>
+in end\<close>
 end
 
 end

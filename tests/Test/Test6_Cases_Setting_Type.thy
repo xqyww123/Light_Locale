@@ -13,7 +13,7 @@ locale Setth = fixes n :: nat
 context Setth begin
 lemma r' [case_names a]: "(x = (x::TT) \<Longrightarrow> W) \<Longrightarrow> W" by simp
 lemmas rt [cases type: TT] = r'
-ML_val \<open>\<^assert> (exists (fn r => Thm.equiv_thm \<^theory> (r, @{thm rt})) (Induct.find_casesT \<^context> \<^typ>\<open>TT\<close>))\<close>
+ML \<open>val _ = \<^assert> (exists (fn r => Thm.equiv_thm \<^theory> (r, @{thm rt})) (Induct.find_casesT \<^context> \<^typ>\<open>TT\<close>))\<close>
 end
 
 light_locale Setting = fixes n :: nat
@@ -23,7 +23,7 @@ end
 context Setting begin
 lemmas rt [cases type: TT] = Setting.r'
 end
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Rule_Cases.get @{thm Setting.rt} = ([(("a", []), [])], 0));
 val _ = \<^assert> (not (has_K_tag @{thm Setting.rt}) andalso Thm.eq_thm_prop (@{thm Setting.rt}, @{thm Setting.r'}));
 \<close>

@@ -16,12 +16,12 @@ end
 
 context LF begin
 declare LF.bad[dest]
-ML_val \<open>
+ML \<open>local
 val del = "blast del: LF.bad";
 val _ = \<^assert> (can (fn () => run \<^context> [] "blast" "Rc a S \<Longrightarrow> Sc a") ());
 val _ = \<^assert> (can (fn () => run \<^context> [] del "Rc a S \<Longrightarrow> Rc a S") ());
 val _ = \<^assert> (not (can (fn () => run \<^context> [] del "Rc a S \<Longrightarrow> Sc a") ()));
-\<close>
+in end\<close>
 end
 
 end

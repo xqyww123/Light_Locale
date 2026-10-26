@@ -103,33 +103,33 @@ val heavy_interp =
 locale H = LF + fixes z :: nat assumes hz: "Qc z"
 context H begin
 lemmas foo2 [case_names a b] = LF.foo
-ML_val \<open>
+ML \<open>local
 (* (i) the bare lemmas: case a lands on A, consumes 1 = K *)
 val (info, n) = Rule_Cases.get @{thm foo2};
 val _ = \<^assert> (map (#1 o #1) info = ["a", "b"] andalso n = 1);
 val _ = \<^assert> (light_copy \<^context> 1 (@{thm foo2}, heavy_foo2));
-\<close>
+in end\<close>
 declare LF.foo [elim]
-ML_val \<open>
+ML \<open>
 (* (ii) the bare declare: the registered rule's major premise is A, as the twin's *)
 val _ = \<^assert> (light_elim \<^context> (claset_rule \<^context> Bires.elim_kind @{thm LF.foo}, heavy_foo_elim));
 \<close>
 lemmas foo2' [case_names a b] = LF.foo[OF LF_axioms]
-ML_val \<open>
+ML \<open>local
 (* the compensating spelling: the bare copy with its exported premise discharged, K 0 as the twin *)
 val _ = \<^assert> (diff_K 0 (@{thm foo2'}, heavy_foo2));
 val _ = \<^assert> (Thm.eq_thm_prop (Exported_Premises.discharge [@{thm LF_axioms}] @{thm foo2}, @{thm foo2'}));
 val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "LF.ip S n";
 val _ = \<^assert> (cases_text (run ctxt [@{thm LF_axioms}, h] "cases" "W n") = heavy_H_cases);
 val _ = \<^assert> (case_names (run ctxt [h] "cases" "W n") = ["True", "False"]);
-\<close>
+in end\<close>
 (* the nested layer: H's block reads the record copy after the nested end, made by the standard
    morphism that puts the nested assumption in front (d = 1), so K = 1 + 1; the theory copy
    H.foo3 K 3 (the controls at the end) *)
 context assumes hc: "Qc (0::nat)" begin
 lemmas foo3 = LF.foo
 end
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (Exported_Premises.count_of @{thm foo3} = 2 andalso Thm.nprems_of @{thm foo3} = 4 andalso
   hd (Thm.prems_of @{thm foo3}) aconv \<^prop>\<open>Qc (0::nat)\<close>);
 \<close>
@@ -139,20 +139,20 @@ context assumes hc1: "Qc (1::nat)" begin
 context assumes hc2: "Qc (2::nat)" begin
 lemmas foo4 = LF.foo
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm foo4} = 2 andalso Thm.nprems_of @{thm foo4} = 4)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm foo4} = 2 andalso Thm.nprems_of @{thm foo4} = 4)\<close>
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm foo4} = 3 andalso Thm.nprems_of @{thm foo4} = 5)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm foo4} = 3 andalso Thm.nprems_of @{thm foo4} = 5)\<close>
 (* a fixes-only nested layer: the record copy generalises (Thm.generalize clears the tags even
    when w does not occur), d = 0, so K = 1; inside the layer, its own layer's copy, the same *)
 context fixes w :: nat begin
 lemmas nh4 = LF.foo
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm nh4} = 1 andalso Thm.nprems_of @{thm nh4} = 3)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm nh4} = 1 andalso Thm.nprems_of @{thm nh4} = 3)\<close>
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm nh4} = 1 andalso Thm.nprems_of @{thm nh4} = 3)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm nh4} = 1 andalso Thm.nprems_of @{thm nh4} = 3)\<close>
 end
 
 context H begin
-ML_val \<open>
+ML \<open>
 (* (iii) the block re-opened (the identity morphism): as (i) and (ii) *)
 val _ = \<^assert> (light_copy \<^context> 1 (@{thm foo2}, heavy_foo2));
 val _ = \<^assert> (light_elim \<^context> (claset_rule \<^context> Bires.elim_kind @{thm LF.foo}, heavy_foo_elim));
@@ -160,7 +160,7 @@ val _ = \<^assert> (light_elim \<^context> (claset_rule \<^context> Bires.elim_k
 end
 
 interpretation I: H t 0 by (simp add: H_def H_axioms_def LF_def UP_cring_def t Qc1_ax)
-ML_val \<open>
+ML \<open>local
 (* (iv) the theory copy of foo2 after the interpretation (the registration morphism) against
    the twin's; LF's foo has no interpreted copy (the exported theorem serves every context):
    its theory-level elim registration against the twin's interpreted copy *)
@@ -168,14 +168,14 @@ val ctxt = \<^context>;
 val _ = \<^assert> (light_copy ctxt 1 (@{thm I.foo2}, @{thm Ih.foo2}));
 val _ = \<^assert> (light_elim ctxt
   (claset_rule ctxt Bires.elim_kind @{thm LF.foo}, claset_rule ctxt Bires.elim_kind @{thm Ih.foo}));
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "LF.ip t n";
 val st = run ctxt [@{thm I.LF_axioms}, h] "cases" "W n";
 (* the ?case binds say ?P against the twin's ?Pa (D fixes P): up to renaming *)
 val _ = \<^assert> (cases_terms (canonical_vars o twin_names ("LF", "D")) st = heavy_interp);
 val _ = \<^assert> (case_names (run ctxt [h] "cases" "W n") = ["True", "False"]);
-\<close>
+in end\<close>
 
 (* thm_definition is shared by every named target: a class block, a theory-level anonymous
    block, a heavy importer's header notes clause (its theory copy H2.foo2 carries K 2 since the
@@ -183,21 +183,21 @@ val _ = \<^assert> (case_names (run ctxt [h] "cases" "W n") = ["True", "False"])
 class Cz = fixes zc :: 'a assumes "zc = zc"
 context Cz begin
 lemmas foo2c [case_names a b] = LF.foo
-ML_val \<open>\<^assert> (light_copy \<^context> 1 (@{thm foo2c}, heavy_foo2))\<close>
+ML \<open>val _ = \<^assert> (light_copy \<^context> 1 (@{thm foo2c}, heavy_foo2))\<close>
 (* h3's row (below) in a class block: the class target shares locale_target_notes (h3c is a
    mechanism fixture, not a user scenario) *)
 lemma h3c [THEN conjunct1, exported_premises 1]: "Qc zc \<Longrightarrow> Pc y zc \<and> Pc y zc \<Longrightarrow> Pc y zc \<and> Pc y zc" by assumption
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm h3c} = 1 andalso Thm.nprems_of @{thm h3c} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm h3c} = 1 andalso Thm.nprems_of @{thm h3c} = 2)\<close>
 end
 context assumes hq: "Qc (1::nat)" begin
 lemmas foo2t [case_names a b] = LF.foo
-ML_val \<open>\<^assert> (light_copy \<^context> 1 (@{thm foo2t}, heavy_foo2))\<close>
+ML \<open>val _ = \<^assert> (light_copy \<^context> 1 (@{thm foo2t}, heavy_foo2))\<close>
 end
 locale H2 = LF + fixes z :: nat assumes hz: "Qc z" notes foo2 [case_names a b] = LF.foo
 context H2 begin
-ML_val \<open>\<^assert> (light_copy \<^context> 1 (@{thm foo2}, heavy_foo2))\<close>
+ML \<open>val _ = \<^assert> (light_copy \<^context> 1 (@{thm foo2}, heavy_foo2))\<close>
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm H2.foo2} = 2 andalso Thm.nprems_of @{thm H2.foo2} = 4)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm H2.foo2} = 2 andalso Thm.nprems_of @{thm H2.foo2} = 4)\<close>
 
 (* the activation morphism of global_interpretation J inside context fixes x assumes hx puts the
    block's assumption in front of every activated fact: K = 1 + 1 (user decision B, 2026-10-18),
@@ -205,54 +205,54 @@ ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm H2.foo2} = 2 andalso 
    into the theory's table, has major premise A; inside the block nothing is added yet, K 1 *)
 context fixes x :: nat assumes hx: "Qc x" begin
 global_interpretation J: H t x by (simp add: H_def H_axioms_def LF_def UP_cring_def t hx)
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm J.foo2} = 1 andalso Thm.nprems_of @{thm J.foo2} = 3)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm J.foo2} = 1 andalso Thm.nprems_of @{thm J.foo2} = 3)\<close>
 end
-ML_val \<open>
+ML \<open>local
 val th = @{thm J.foo2};
 val _ = \<^assert> (Exported_Premises.count_of th = 2 andalso Thm.nprems_of th = 4 andalso
   same_shape (hd (Thm.prems_of th), Logic.varify_global \<^prop>\<open>Qc (x::nat)\<close>));
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 val (info, n) = Rule_Cases.get @{thm J.foo2};
 val _ = \<^assert> (map (#1 o #1) info = ["a", "b"] andalso n = 2);
 val _ = \<^assert> (light_copy \<^context> 2 (@{thm J.foo2}, heavy_foo2));
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 val j_foo = Logic.varify_global \<^prop>\<open>Qc (x::nat) \<Longrightarrow> LF S \<Longrightarrow> A \<Longrightarrow> B \<Longrightarrow> A \<and> B\<close>;
 val (key, plain) =
   claset_rule_of Bires.elim_kind (claset_entries_by \<^context> (fn key => same_shape (Thm.prop_of key, j_foo)));
 val _ = \<^assert> (Exported_Premises.count_of key = 2 andalso
   same_shape (Thm.major_prem_of plain, Thm.major_prem_of (#2 heavy_foo_elim)));
-\<close>
+in end\<close>
 
 (* controls: no heavy theorem carries the K tag *)
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (not (has_K_tag heavy_foo2) andalso not (has_K_tag (#1 heavy_foo_elim)));
 val _ = \<^assert> (not (has_K_tag @{thm Ih.foo2}));
 \<close>
 (* the theory copies of H's block and of its nested layers keep K: the predicate H ?S ?z in front
    of LF ?S, plus one per nested assumes layer *)
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm H.foo2} = 2 andalso Thm.nprems_of @{thm H.foo2} = 4)\<close>
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm H.foo3} = 3 andalso Thm.nprems_of @{thm H.foo3} = 5)\<close>
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm H.foo4} = 4 andalso Thm.nprems_of @{thm H.foo4} = 6)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm H.foo2} = 2 andalso Thm.nprems_of @{thm H.foo2} = 4)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm H.foo3} = 3 andalso Thm.nprems_of @{thm H.foo3} = 5)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm H.foo4} = 4 andalso Thm.nprems_of @{thm H.foo4} = 6)\<close>
 
 (* N5: the class target's theory copy keeps K behind the class predicate: Cz.foo2c is
    class.Cz ?zc ==> LF ?S ==> A ==> B ==> A & B with K 2; Cz.h3c's K came from the lemma line's
    attribute alone, which the class target strips from the theory copy: no K (the control) *)
-ML_val \<open>
+ML \<open>local
 val th = @{thm Cz.foo2c};
 val _ = \<^assert> (Exported_Premises.count_of th = 2 andalso Thm.nprems_of th = 4 andalso
   same_shape (hd (Thm.prems_of th), Logic.varify_global \<^prop>\<open>class.Cz (w :: 'w)\<close>));
-\<close>
-ML_val \<open>\<^assert> (not (has_K_tag @{thm Cz.h3c}))\<close>
+in end\<close>
+ML \<open>val _ = \<^assert> (not (has_K_tag @{thm Cz.h3c}))\<close>
 
 (* N6: the bundle target stores its entries through the theory standard morphism, which renumbers
    J.foo2's index-1 variables (an inference that clears the tags): K comes back as 2 *)
-ML_val \<open>\<^assert> (Thm.maxidx_of @{thm J.foo2} > 0)\<close>
+ML \<open>val _ = \<^assert> (Thm.maxidx_of @{thm J.foo2} > 0)\<close>
 bundle bJ begin
 lemmas yJ = J.foo2
 end
-ML_val \<open>
+ML \<open>
 val _ = \<^assert>
   (case bundle_of \<^context> "bJ" of
     [([th], _)] => Exported_Premises.count_of th = 2 andalso Thm.nprems_of th = 4
@@ -269,23 +269,23 @@ context assumes "SORT_CONSTRAINT('a::type)" begin
 lemmas r8 = LF.foo
 lemmas r8t = LF.fooT
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r8} = 1 andalso Thm.nprems_of @{thm r8} = 3)\<close>
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r8t} = 1 andalso Thm.nprems_of @{thm r8t} = 1)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r8} = 1 andalso Thm.nprems_of @{thm r8} = 3)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r8t} = 1 andalso Thm.nprems_of @{thm r8t} = 1)\<close>
 context fixes c :: nat assumes hc8: "Qc c" "SORT_CONSTRAINT('a::type)" begin
 lemmas r8m = LF.foo
 declare LF.foo [dest]
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r8m} = 2 andalso Thm.nprems_of @{thm r8m} = 4 andalso
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r8m} = 2 andalso Thm.nprems_of @{thm r8m} = 4 andalso
   same_shape (hd (Thm.prems_of @{thm r8m}), Logic.varify_global \<^prop>\<open>Qc (c :: nat)\<close>))\<close>
 end
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm H.r8} = 2 andalso Thm.nprems_of @{thm H.r8} = 4)\<close>
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm H.r8t} = 2 andalso Thm.nprems_of @{thm H.r8t} = 2)\<close>
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm H.r8m} = 3 andalso Thm.nprems_of @{thm H.r8m} = 5)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm H.r8} = 2 andalso Thm.nprems_of @{thm H.r8} = 4)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm H.r8t} = 2 andalso Thm.nprems_of @{thm H.r8t} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm H.r8m} = 3 andalso Thm.nprems_of @{thm H.r8m} = 5)\<close>
 (* the dest rule declared in the mixed layer, replayed into the theory's claset through I (LF.foo
    mentions none of H's parameters, so the key keeps LF ?S): Qc ?c ==> LF ?S ==> A ==> B ==> A & B
    carries K 2 (the deleted sort constraint is not
    counted) and the derived rule's major premise is A -- a K 3 would make it B, a K 0 Qc ?c *)
-ML_val \<open>
+ML \<open>local
 val key_shape = Logic.varify_global \<^prop>\<open>Qc (c :: nat) \<Longrightarrow> LF (S :: ('a, 'b) ring_scheme) \<Longrightarrow> A \<Longrightarrow> B \<Longrightarrow> A \<and> B\<close>;
 val ctxt = \<^context>;
 fun show (key, _, kind) =
@@ -298,13 +298,13 @@ val (key, plain) = claset_rule_of Bires.dest_kind entries;
 val _ = \<^assert> (Exported_Premises.count_of key = 2);
 val _ = \<^assert> (same_shape (Thm.prop_of plain, Logic.varify_global
   \<^prop>\<open>A \<Longrightarrow> Qc (c :: nat) \<Longrightarrow> LF (S :: ('a, 'b) ring_scheme) \<Longrightarrow> B \<Longrightarrow> (A \<and> B \<Longrightarrow> PROP W) \<Longrightarrow> PROP W\<close>));
-\<close>
+in end\<close>
 (* the proof block: the exported fact keeps K 1 *)
 notepad
 begin
   { assume "SORT_CONSTRAINT('a::type)" note r8p = LF.foo }
   note r8p' = this
-  ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm r8p'} = 1 andalso Thm.nprems_of @{thm r8p'} = 3)\<close>
+  ML_prf \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r8p'} = 1 andalso Thm.nprems_of @{thm r8p'} = 3)\<close>
 end
 
 (* K is checked against the normal form's premises (section 11 (39) M7, (40), (42)): a K-tagged
@@ -322,11 +322,11 @@ local_setup \<open>fn lthy =>
       not (Drule.is_norm_hhf {protect = false} (Thm.prop_of th)));
   in Local_Theory.notes [((\<^binding>\<open>foo_nhhf\<close>, []), [([th], [])])] lthy |> snd end
 \<close>
-ML_val \<open>
+ML \<open>local
 val th = @{thm foo_nhhf};
 val _ = \<^assert> (Thm.nprems_of th = 3 andalso hd (Thm.prems_of th) aconv Thm.prop_of @{thm LF_axioms});
 val _ = \<^assert> (Exported_Premises.count_of th = 1);
-\<close>
+in end\<close>
 (* a hand-written K beyond the premise count (made with Thm.tag_rule: reachable from ML only) is
    dropped to 0 on the local copy Local_Theory.note returns, rather than kept as a count that
    makes [elim] raise THM *)
@@ -336,65 +336,65 @@ local_setup \<open>fn lthy =>
     val ((_, [k3]), lthy') = Local_Theory.note ((\<^binding>\<open>k3\<close>, []), [th]) lthy;
     val _ = \<^assert> (Exported_Premises.count_of k3 = 0 andalso Thm.nprems_of k3 = 2);
   in lthy' end\<close>
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm k3} = 0 andalso Thm.nprems_of @{thm k3} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm k3} = 0 andalso Thm.nprems_of @{thm k3} = 2)\<close>
 (* the attribute normalises to HHF form before tagging (user 2026-10-17): written last on a lemmas
    line whose earlier attributes leave a non-HHF result, the tag survives the export morphism of
    lemmas, which leaves a theorem already in that form alone *)
 lemma nh: "Qc z \<Longrightarrow> (\<forall>x. Pc x z \<longrightarrow> Pc x z)" by simp
 lemmas nh1 = nh[folded atomize_all atomize_imp, exported_premises 1]
-ML_val \<open>
+ML \<open>local
 val th = @{thm nh1};
 val _ = \<^assert> (Thm.nprems_of th = 2 andalso hd (Thm.prems_of th) aconv \<^prop>\<open>Qc z\<close>);
 val _ = \<^assert> (Exported_Premises.count_of th = 1);
-\<close>
+in end\<close>
 (* the range is counted on the normal form: 2 is in range although the raw input has one premise *)
-ML_val \<open>
+ML \<open>local
 val th0 = @{thm nh[folded atomize_all atomize_imp]};
 val _ = \<^assert> (Thm.nprems_of th0 = 1 andalso not (Drule.is_norm_hhf {protect = true} (Thm.prop_of th0)));
 val th2 = @{thm nh[folded atomize_all atomize_imp, exported_premises 2]};
 val _ = \<^assert> (Thm.nprems_of th2 = 2 andalso Exported_Premises.count_of th2 = 2);
-\<close>
+in end\<close>
 (* on an input not in HHF form the normalisation rebuilds the theorem; the attribute puts the
    input's Rule_Cases tags back (plan line 212): consumes 1 written before it stays the recorded
    value, get_consumes is the larger K; case_names a is kept, also under n = 0 *)
-ML_val \<open>
+ML \<open>local
 val th3 = @{thm nh[folded atomize_all atomize_imp, consumes 1, exported_premises 2]};
 val _ = \<^assert> (Thm.nprems_of th3 = 2 andalso Exported_Premises.count_of th3 = 2 andalso
   Exported_Premises.lookup_consumes th3 = SOME 1 andalso Rule_Cases.get_consumes th3 = 2);
-\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>local
 val (info, _) = Rule_Cases.get @{thm nh[folded atomize_all atomize_imp, case_names a, exported_premises 1]};
 val _ = \<^assert> (map (#1 o #1) info = ["a"]);
-\<close>
-ML_val \<open>\<^assert> (Rule_Cases.get_consumes @{thm nh[folded atomize_all atomize_imp, consumes 2, exported_premises 1]} = 2)\<close>
-ML_val \<open>
+in end\<close>
+ML \<open>val _ = \<^assert> (Rule_Cases.get_consumes @{thm nh[folded atomize_all atomize_imp, consumes 2, exported_premises 1]} = 2)\<close>
+ML \<open>local
 val th = @{thm nh[folded atomize_all atomize_imp, case_names a, exported_premises 0]};
 val (info, _) = Rule_Cases.get th;
 val _ = \<^assert> (map (#1 o #1) info = ["a"] andalso not (has_K_tag th));
-\<close>
+in end\<close>
 (* the attribute's K on a lemma line survives the record copy (plan row 2): THEN conjunct1 leaves
    variables with index > 0, the record copy's standard morphism renumbers them -- an inference
    that clears the tags -- and K is put back with d = 0; on a lemmas line (h5) the attribute is
    evaluated before the notes, on a result already renumbered: the control (h3 is a mechanism
    fixture, not a user scenario) *)
 lemma h0: "Qc z \<Longrightarrow> Pc y z \<and> Pc y z \<Longrightarrow> Pc y z \<and> Pc y z" by assumption
-ML_val \<open>\<^assert> (Thm.maxidx_of @{thm h0[THEN conjunct1]} > 0)\<close>
+ML \<open>val _ = \<^assert> (Thm.maxidx_of @{thm h0[THEN conjunct1]} > 0)\<close>
 lemma h3 [THEN conjunct1, exported_premises 1]: "Qc z \<Longrightarrow> Pc y z \<and> Pc y z \<Longrightarrow> Pc y z \<and> Pc y z" by assumption
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm h3} = 1 andalso Thm.nprems_of @{thm h3} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm h3} = 1 andalso Thm.nprems_of @{thm h3} = 2)\<close>
 lemmas h5 [THEN conjunct1, exported_premises 1] = h0
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm h5} = 1 andalso Thm.nprems_of @{thm h5} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm h5} = 1 andalso Thm.nprems_of @{thm h5} = 2)\<close>
 (* the same with a statement-level for clause: the normal form's bound x becomes ?x with index 1,
    renumbered by the record copy (plan line 3224) *)
 lemma nh2_raw: "Qc y \<Longrightarrow> (\<forall>x. Pc x y \<longrightarrow> Pc x y)" for y by simp
-ML_val \<open>\<^assert> (Thm.maxidx_of @{thm nh2_raw[folded atomize_all atomize_imp, exported_premises 1]} > 0)\<close>
+ML \<open>val _ = \<^assert> (Thm.maxidx_of @{thm nh2_raw[folded atomize_all atomize_imp, exported_premises 1]} > 0)\<close>
 lemma nh2 [folded atomize_all atomize_imp, exported_premises 1]: "Qc y \<Longrightarrow> (\<forall>x. Pc x y \<longrightarrow> Pc x y)" for y by simp
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm nh2} = 1 andalso Thm.nprems_of @{thm nh2} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm nh2} = 1 andalso Thm.nprems_of @{thm nh2} = 2)\<close>
 end
 
 (* the replay (Locale.add_facts_tagged) of a fact H gained after the registrations: J's activated
    copy of nh1 behind the block assumption, K = 1 + 1; I's with d = 0, K 1 *)
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm J.nh1} = 2 andalso Thm.nprems_of @{thm J.nh1} = 3)\<close>
-ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm I.nh1} = 1 andalso Thm.nprems_of @{thm I.nh1} = 2)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm J.nh1} = 2 andalso Thm.nprems_of @{thm J.nh1} = 3)\<close>
+ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm I.nh1} = 1 andalso Thm.nprems_of @{thm I.nh1} = 2)\<close>
 
 (* a theorem re-declared in a light block without hyps is stored as it is, whatever its K (the
    final criterion, re-declaration and no hyps): b = J.foo2 keeps its statement (up to renumbering: the activated
@@ -402,10 +402,10 @@ ML_val \<open>\<^assert> (Exported_Premises.count_of @{thm I.nh1} = 1 andalso Th
    without LF ?S in front, on the block copy and on the theory copy LF.c alike *)
 context LF begin
 lemmas b = J.foo2
-ML_val \<open>\<^assert> (same_shape (Thm.prop_of @{thm b}, Thm.prop_of @{thm J.foo2}) andalso Exported_Premises.count_of @{thm b} = 2)\<close>
+ML \<open>val _ = \<^assert> (same_shape (Thm.prop_of @{thm b}, Thm.prop_of @{thm J.foo2}) andalso Exported_Premises.count_of @{thm b} = 2)\<close>
 lemmas c = I.h3
-ML_val \<open>\<^assert> (Thm.eq_thm_prop (@{thm c}, @{thm I.h3}) andalso Exported_Premises.count_of @{thm c} = 1)\<close>
+ML \<open>val _ = \<^assert> (Thm.eq_thm_prop (@{thm c}, @{thm I.h3}) andalso Exported_Premises.count_of @{thm c} = 1)\<close>
 end
-ML_val \<open>\<^assert> (Thm.eq_thm_prop (@{thm LF.c}, @{thm I.h3}) andalso Exported_Premises.count_of @{thm LF.c} = 1)\<close>
+ML \<open>val _ = \<^assert> (Thm.eq_thm_prop (@{thm LF.c}, @{thm I.h3}) andalso Exported_Premises.count_of @{thm LF.c} = 1)\<close>
 
 end

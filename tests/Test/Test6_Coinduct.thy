@@ -55,7 +55,7 @@ lemma cT [coinduct type: tr0]: "Q0 S y \<Longrightarrow> (y = y \<Longrightarrow
 end
 
 context LF begin
-ML_val \<open>
+ML \<open>local
 val LFa = @{thm LF_axioms};
 val ctxt = fix_in \<^context> [("x", natT)];
 val st = run ctxt [LFa] "coinduction arbitrary: x rule: LF.cp.coinduct" "LF.cp S x";
@@ -78,7 +78,7 @@ val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Thm.
 val ctxty = fix_in \<^context> [("x", \<^typ>\<open>tr0\<close>), ("z", \<^typ>\<open>tr0\<close>)];
 val st = run ctxty [LFa] "coinduct x z" "x = z";
 val _ = \<^assert> (cases_text st = #coinduct_xz heavy andalso no_LF st);
-\<close>
+in end\<close>
 end
 
 end

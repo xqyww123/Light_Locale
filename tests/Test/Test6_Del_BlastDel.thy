@@ -16,12 +16,12 @@ lemma fooE [elim, consumes 1, case_names Hyp]: "Pc x \<Longrightarrow> (Sc x \<L
 end
 
 context LF begin
-ML_val \<open>
+ML \<open>local
 val del = "blast del: LF.fooE";
 val _ = \<^assert> (can (fn () => run \<^context> [] "blast" "Pc c \<Longrightarrow> Sc c") ());
 val _ = \<^assert> (can (fn () => run \<^context> [] del "Pc c \<Longrightarrow> Pc c") ());
 val _ = \<^assert> (not (can (fn () => run \<^context> [] del "Pc c \<Longrightarrow> Sc c") ()));
-\<close>
+in end\<close>
 end
 
 end

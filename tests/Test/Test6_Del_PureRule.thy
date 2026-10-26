@@ -14,9 +14,9 @@ lemma fooE' [elim?, consumes 1]: "Pc x \<Longrightarrow> (Sc x \<Longrightarrow>
 end
 
 context LF begin
-ML_val \<open>\<^assert> (Context_Rules.declared_rule (Context.Proof \<^context>) @{thm LF.fooE'})\<close>
+ML \<open>val _ = \<^assert> (Context_Rules.declared_rule (Context.Proof \<^context>) @{thm LF.fooE'})\<close>
 declare LF.fooE' [Pure.rule del]
-ML_val \<open>\<^assert> (not (Context_Rules.declared_rule (Context.Proof \<^context>) @{thm LF.fooE'}))\<close>
+ML \<open>val _ = \<^assert> (not (Context_Rules.declared_rule (Context.Proof \<^context>) @{thm LF.fooE'}))\<close>
 end
 
 ML \<open>val _ = \<^assert> (not (Context_Rules.declared_rule (Context.Proof \<^context>) @{thm LF.fooE'}));\<close>

@@ -12,7 +12,7 @@ axiomatization t :: "nat ring" where t: "cring t"
 context LF begin
 lemma foo: "S = S" ..
 lemma u: "cring (UP S)" by (rule P.cring_axioms)
-ML_val \<open>\<^assert> (null (Test_Support.extra_hyps \<^context> "P.cring_axioms"))\<close>
+ML \<open>val _ = \<^assert> (null (Test_Support.extra_hyps \<^context> "P.cring_axioms"))\<close>
 end
 
 context D begin
@@ -23,12 +23,12 @@ interpretation I: LF t by (simp add: LF_def UP_cring_def t)
 
 interpretation J: D "UP t" t by (rule D.intro) (simp add: UP_cring_def t)
 
-ML_val \<open>
+ML \<open>local
 val has_fact = Test_Support.has_fact \<^context>;
 val _ = \<^assert> (has_fact "I.LF_axioms");
 val _ = \<^assert> (not (exists has_fact ["I.foo", "I.R.m_comm", "I.R.is_cring"]));
 val _ = \<^assert> (forall has_fact ["J.foo", "J.R.m_comm", "J.R.is_cring"]);
 val _ = \<^assert> (null (Test_Support.extra_hyps \<^context> "I.P.cring_axioms"));
-\<close>
+in end\<close>
 
 end

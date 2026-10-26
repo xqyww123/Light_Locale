@@ -13,7 +13,7 @@ light_locale LF = T
 locale H = LF
 
 context H begin
-ML_val \<open>\<^assert> (proves safe_tac \<^context> \<^prop>\<open>LF z\<close>)\<close>
+ML \<open>val _ = \<^assert> (proves safe_tac \<^context> \<^prop>\<open>LF z\<close>)\<close>
 end
 
 interpretation I: H t by unfold_locales simp

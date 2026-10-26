@@ -22,14 +22,14 @@ end
 
 context LF begin
 declare LF.bad[dest]
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (by_blast \<^context> \<^prop>\<open>Rc a S \<Longrightarrow> Sc a\<close>);
 val _ = \<^assert> (dest_entry \<^context> @{thm LF.bad} andalso dest_entry (thy_ctxt \<^context>) @{thm LF.bad});
 \<close>
 local_setup \<open>fn lthy =>
   let val (lthy', w) = with_warnings (fn () => declare_in lthy "LF.bad" "[rule del]")
   in \<^assert> (null w); lthy' end\<close>
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc a S \<Longrightarrow> Sc a\<close>));
 val _ = \<^assert> (not (dest_entry \<^context> @{thm LF.bad}));
 \<close>

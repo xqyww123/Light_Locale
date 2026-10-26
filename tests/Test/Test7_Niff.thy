@@ -26,7 +26,7 @@ end
 context LN begin
 lemma "Rc (a :: 'q) S \<Longrightarrow> False" by simp
 lemma "Rc (a :: 'q) S \<Longrightarrow> False" by auto
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val elim_key = zero_var_indexes (rotate_prems 1 (@{thm LN.niff} RS @{thm notE}));
 val (ekey, eplain) = claset_rule ctxt Bires.elim_kind elim_key;
@@ -37,7 +37,7 @@ val _ = \<^assert> (map #3 (claset_entries ctxt elim_key) = [Bires.elim_kind]);
 (*blast fails on it with "Ignoring weak elimination rule" (plan line 4917), where the heavy twin's
   blast succeeds*)
 val _ = \<^assert> (blast_warns ctxt "Rc (a :: 'q) S \<Longrightarrow> False" = (false, true));
-\<close>
+in end\<close>
 end
 
 end

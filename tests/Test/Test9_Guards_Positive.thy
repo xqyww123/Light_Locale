@@ -10,12 +10,12 @@ context
   fixes G :: "('a, 'b) monoid_scheme"
 begin
 set_implicit_structure "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr> :: int monoid"
-ML_val \<open>
-\<^assert> (Test_Support.implicit_is \<^context>
+ML \<open>
+val _ = \<^assert> (Test_Support.implicit_is \<^context>
   (Test_Support.reads \<^context> "\<lparr>carrier = UNIV, mult = (+), one = 0\<rparr> :: int monoid"))
 \<close>
 set_implicit_structure "f G"
-ML_val \<open>\<^assert> (Test_Support.implicit_is \<^context> (Test_Support.reads \<^context> "f G"))\<close>
+ML \<open>val _ = \<^assert> (Test_Support.implicit_is \<^context> (Test_Support.reads \<^context> "f G"))\<close>
 end
 
 end

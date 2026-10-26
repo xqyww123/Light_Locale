@@ -11,7 +11,7 @@ begin
 
 abbreviation Pu where "Pu \<equiv> UP S"
 
-ML_val \<open>
+ML \<open>local
 open Test_Support;
 val ctxt = \<^context>;
 val _ = \<^assert> (implicit_is ctxt (reads ctxt "UP S"));
@@ -22,7 +22,7 @@ val _ = \<^assert> (round_trips ctxt (reads ctxt "x \<otimes> y"));
 val _ = \<^assert> (shows (Config.put show_markup true ctxt) (reads ctxt "x \<otimes> y") = "x \<otimes> y");
 (*the abbreviation written as the subscript reads as the same term (decision 16 (a))*)
 val _ = \<^assert> (reads ctxt "x \<otimes>\<^bsub>Pu\<^esub> y" aconv reads ctxt "x \<otimes> y");
-\<close>
+in end\<close>
 
 end
 

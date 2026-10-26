@@ -17,13 +17,13 @@ lemma (in HB) hthm: "a + 0 = a" by simp
 
 locale D = HB + fixes b :: nat assumes ax: "b = a"
 begin
-ML_val \<open>\<^assert> (Thm.prop_of @{thm ax} aconv @{prop "b = a"})\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm ax} aconv @{prop "b = a"})\<close>
 end
 
 (* the short name ax is the local copy of LF's own header assumption, Thm.eq_thm_prop with D's *)
 light_locale LF = HB + fixes b :: nat assumes ax: "b = a"
 begin
-ML_val \<open>\<^assert> (Thm.prop_of @{thm ax} aconv @{prop "b = a"})\<close>
+ML \<open>val _ = \<^assert> (Thm.prop_of @{thm ax} aconv @{prop "b = a"})\<close>
 end
 
 ML \<open>
@@ -94,11 +94,11 @@ val _ = \<^assert> (edge_ends (Locale.check_global \<^theory> ("H", Position.non
 \<close>
 
 context HB begin
-ML_val \<open>\<^assert> (T2_Flag.get (Context.Proof \<^context>))\<close>
+ML \<open>val _ = \<^assert> (T2_Flag.get (Context.Proof \<^context>))\<close>
 end
 
 context LF begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (not (T2_Flag.get (Context.Proof ctxt)));
 (*the short name ax is undefined here (plan lines 4018-4019 give the message), LF.ax resolves*)
@@ -107,13 +107,13 @@ val _ = \<^assert> (Test_Support.has_fact ctxt "LF_axioms" andalso Test_Support.
 (*the fact names here equal those print_locale! LF shows*)
 val _ = \<^assert>
   (map Long_Name.base_name (Test_Support.visible_fact_names ctxt) |> sort_strings |> equal lf_printed_facts);
-\<close>
+in end\<close>
 end
 
 (* a light child's block does not see the parent's local copy *)
 light_locale LF2 = LF + fixes c :: nat assumes ax2: "c = b"
 begin
-ML_val \<open>\<^assert> (not (can (Proof_Context.get_fact \<^context>) (Facts.named "ax")))\<close>
+ML \<open>val _ = \<^assert> (not (can (Proof_Context.get_fact \<^context>) (Facts.named "ax")))\<close>
 end
 
 (* header elements cannot refer to the light parent's head assumption by the short name (plan line
@@ -164,6 +164,6 @@ val _ = \<^assert> (lines' dd =
 
 interpretation I: LF 0 0 by unfold_locales simp_all
 
-ML_val \<open>\<^assert> (not (T2_Flag.get (Context.Proof \<^context>)))\<close>
+ML \<open>val _ = \<^assert> (not (T2_Flag.get (Context.Proof \<^context>)))\<close>
 
 end

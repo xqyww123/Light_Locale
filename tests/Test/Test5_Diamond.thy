@@ -25,7 +25,7 @@ consts t :: nat  t' :: nat  t'' :: nat
 
 (* the light locale alone: syntax and _axioms present, the heavy theorem absent, syntax-only *)
 context LF begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (visible_fact_names \<^context> = ["local.B_axioms", "local.LF_axioms"]);
 val _ = \<^assert> (consts_named \<^context> "ba" = ["Test5_Diamond.B.ba", "local.ba"]);
 val _ = \<^assert> (marks_of \<^context> "B" [\<^term>\<open>b::nat\<close>] = [([\<^term>\<open>b::nat\<close>], Locale.Syntax_only, ["x"])]);
@@ -34,7 +34,7 @@ val _ = \<^assert> (marks_of \<^context> "B" [\<^term>\<open>b::nat\<close>] = [
 lemma True
 proof -
   interpret J: B b by (rule B_axioms)
-  ML_val \<open>\<^assert> (visible_fact_names \<^context> =
+  ML_prf \<open>val _ = \<^assert> (visible_fact_names \<^context> =
     ["local.B_axioms", "local.J.B_axioms", "local.J.bl", "local.LF_axioms"])\<close>
   show True ..
 qed
@@ -45,7 +45,7 @@ fun full_only ctxt loc inst = marks_of ctxt loc [inst] = [([inst], Locale.Full, 
 \<close>
 
 context H begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (visible_fact_names \<^context> =
   ["local.B_axioms", "local.H_axioms", "local.K_axioms", "local.LF_axioms", "local.bl"]);
 val _ = \<^assert> (full_only \<^context> "B" \<^term>\<open>b::nat\<close>);
@@ -54,7 +54,7 @@ val _ = \<^assert> (full_only \<^context> "LF" \<^term>\<open>b::nat\<close>);
 end
 
 context H' begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (visible_fact_names \<^context> =
   ["local.B_axioms", "local.H'_axioms", "local.K_axioms", "local.LF_axioms", "local.bl"]);
 val _ = \<^assert> (full_only \<^context> "B" \<^term>\<open>b::nat\<close>);
@@ -62,7 +62,7 @@ val _ = \<^assert> (full_only \<^context> "B" \<^term>\<open>b::nat\<close>);
 end
 
 context Hh begin
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (visible_fact_names \<^context> =
   ["local.B_axioms", "local.Hh_axioms", "local.K_axioms", "local.LFh_axioms", "local.bl"]);
 val _ = \<^assert> (full_only \<^context> "B" \<^term>\<open>b::nat\<close>);
@@ -74,7 +74,7 @@ end
 lemma True
 proof -
   interpret I: LF 7 by unfold_locales simp
-  ML_val \<open>
+  ML_prf \<open>
     val _ = \<^assert> (filter (String.isPrefix "local.") (visible_fact_names \<^context>) =
       ["local.I.B_axioms", "local.I.LF_axioms"]);
     val _ = \<^assert> (consts_named \<^context> "ba" = ["Test5_Diamond.B.ba", "local.I.ba"]);

@@ -14,28 +14,28 @@ ML \<open>open Test_Support\<close>
 consts sq :: "nat \<Rightarrow> nat"  mq :: "nat \<Rightarrow> nat"  oq :: "nat \<Rightarrow> nat"
 axiomatization where s_rule: "sq 0 = 0" and m_rule: "mq 0 = 0" and o_rule: "oq 0 = 0"
 
-ML_val \<open>\<^assert> (not (by_simp \<^context> \<^prop>\<open>sq 0 = 0\<close>))\<close>
-ML_val \<open>\<^assert> (not (by_simp \<^context> \<^prop>\<open>mq 0 = 0\<close>))\<close>
-ML_val \<open>\<^assert> (not (by_simp \<^context> \<^prop>\<open>oq 0 = 0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>sq 0 = 0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>mq 0 = 0\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_simp \<^context> \<^prop>\<open>oq 0 = 0\<close>))\<close>
 
 (* (1) the command *)
 bundle bs = s_rule [simp]
 context LF begin
 unbundle bs
 end
-ML_val \<open>\<^assert> (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>sq 0 = 0\<close>)\<close>
+ML \<open>val _ = \<^assert> (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>sq 0 = 0\<close>)\<close>
 
 (* (2) the ML entry, on a bundle of its own *)
 bundle bm = m_rule [simp]
 context LF begin
 local_setup \<open>fn lthy => Bundle.unbundle [(true, Bundle.check lthy ("bm", Position.none))] lthy\<close>
 end
-ML_val \<open>\<^assert> (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>mq 0 = 0\<close>)\<close>
+ML \<open>val _ = \<^assert> (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>mq 0 = 0\<close>)\<close>
 
 (* (3) open_bundle defined inside the block *)
 context LF begin
 open_bundle bo = o_rule [simp]
 end
-ML_val \<open>\<^assert> (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>oq 0 = 0\<close>)\<close>
+ML \<open>val _ = \<^assert> (by_simp (Proof_Context.init_global \<^theory>) \<^prop>\<open>oq 0 = 0\<close>)\<close>
 
 end

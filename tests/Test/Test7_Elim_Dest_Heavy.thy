@@ -23,34 +23,34 @@ locale DE = fixes S :: nat assumes "S = S"
 
 context DE begin
 lemma bad: "Rc0 x S \<Longrightarrow> Sc x" by (rule Sc_ax)
-ML_val \<open>\<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc0 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc0 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
 declare bad [dest]
 lemma "Rc0 (a :: 'q) S \<Longrightarrow> Sc a" by blast
-ML_val \<open>\<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc2 (a :: 'q) S \<Longrightarrow> Sc a\<close>) andalso not (by_auto \<^context> \<^prop>\<open>Rc2 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc2 (a :: 'q) S \<Longrightarrow> Sc a\<close>) andalso not (by_auto \<^context> \<^prop>\<open>Rc2 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
 lemma bad5 [elim]: "Rc2 x S \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)
 lemma "Rc2 (a :: 'q) S \<Longrightarrow> Sc a" by blast
 lemma "Rc2 (a :: 'q) S \<Longrightarrow> Sc a" by auto
-ML_val \<open>\<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc3 (a :: 'q) S \<Longrightarrow> Q\<close>) andalso not (by_auto \<^context> \<^prop>\<open>Rc3 (a :: 'q) S \<Longrightarrow> Q\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc3 (a :: 'q) S \<Longrightarrow> Q\<close>) andalso not (by_auto \<^context> \<^prop>\<open>Rc3 (a :: 'q) S \<Longrightarrow> Q\<close>))\<close>
 lemma bad6 [elim]: "Rc3 x S \<Longrightarrow> R" by (drule Rc3_ax) simp
-ML_val \<open>\<^assert> (blast_warns \<^context> "Rc3 (a :: 'q) S \<Longrightarrow> Q" = (true, false))\<close>
+ML \<open>val _ = \<^assert> (blast_warns \<^context> "Rc3 (a :: 'q) S \<Longrightarrow> Q" = (true, false))\<close>
 lemma "Rc3 (a :: 'q) S \<Longrightarrow> Q" by auto
 lemma bad7 [elim!]: "Rc8 x \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)
 datatype trd = TC | TD
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (after_safe \<^context> "Rc8 (a :: 'q) \<Longrightarrow> Sc a" = 0);
 val _ = \<^assert> (after_safe \<^context> "TC = TD \<Longrightarrow> P" = 0);
 val _ = \<^assert> (blast_warns \<^context> "TC = TD \<Longrightarrow> P" = (true, false));
 \<close>
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("a", \<^typ>\<open>'q\<close>)] "h" "Rc6 a S";
 val _ = \<^assert> (not (by_method ctxt [h] "standard" "Sc a"));
-\<close>
+in end\<close>
 lemma bad5' [elim?]: "Rc6 x S \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)
 lemma assumes h: "Rc6 (a :: 'q) S" shows "Sc a" using h ..
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("a", \<^typ>\<open>'q\<close>)] "h" "Rc7 a S";
 val _ = \<^assert> (not (by_method ctxt [h] "standard" "Sc a"));
-\<close>
+in end\<close>
 lemma fooI [intro]: "Rc7 x S \<Longrightarrow> Sc x" by (rule Sc_ax)
 lemma assumes h: "Rc7 (a :: 'q) S" shows "Sc a" using h ..
 end

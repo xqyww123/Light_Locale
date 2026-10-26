@@ -45,7 +45,7 @@ light_locale LE = fixes S :: nat assumes "S = S"
 begin
 lemma bad7 [elim!]: "Rc8 x \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)
 datatype tr = TA | TB
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (after_safe \<^context> "Rc8 (a :: 'q) \<Longrightarrow> Sc a" = (0, false));
 val _ = \<^assert> (after_safe \<^context> "TA = TB \<Longrightarrow> P" = (0, false));
 \<close>
@@ -56,34 +56,34 @@ end
 context LE begin
 lemma bad: "Rc0 x S \<Longrightarrow> Sc x" by (rule Sc_ax)
 lemma badE: "Rc1 x S \<Longrightarrow> Sc x" by (rule Sc_ax)
-ML_val \<open>\<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc2 (a :: 'q) S \<Longrightarrow> Sc a\<close>) andalso not (by_auto \<^context> \<^prop>\<open>Rc2 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc2 (a :: 'q) S \<Longrightarrow> Sc a\<close>) andalso not (by_auto \<^context> \<^prop>\<open>Rc2 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
 lemma bad5 [elim]: "Rc2 x S \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)
-ML_val \<open>\<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc3 (a :: 'q) S \<Longrightarrow> Q\<close>) andalso not (by_auto \<^context> \<^prop>\<open>Rc3 (a :: 'q) S \<Longrightarrow> Q\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc3 (a :: 'q) S \<Longrightarrow> Q\<close>) andalso not (by_auto \<^context> \<^prop>\<open>Rc3 (a :: 'q) S \<Longrightarrow> Q\<close>))\<close>
 lemma bad6 [elim]: "Rc3 x S \<Longrightarrow> R" by (drule Rc3_ax) simp
-ML_val \<open>\<^assert> (not (by_auto \<^context> \<^prop>\<open>Rc4 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_auto \<^context> \<^prop>\<open>Rc4 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
 lemma badD [dest!]: "Rc4 x S \<Longrightarrow> Sc x" by (rule Sc_ax)
-ML_val \<open>\<^assert> (not (by_auto \<^context> \<^prop>\<open>Rc5 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_auto \<^context> \<^prop>\<open>Rc5 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
 lemma badE2 [elim!]: "Rc5 x S \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("a", \<^typ>\<open>'q\<close>)] "h" "Rc6 a S";
 val _ = \<^assert> (not (by_method ctxt [h, @{thm LE_axioms}] "standard" "Sc a"));
-\<close>
+in end\<close>
 lemma bad5' [elim?]: "Rc6 x S \<Longrightarrow> (Sc x \<Longrightarrow> R) \<Longrightarrow> R" by (simp add: Sc_ax)
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("a", \<^typ>\<open>'q\<close>)] "h" "Rc7 a S";
 val _ = \<^assert> (not (by_method ctxt [@{thm LE_axioms}, h] "standard" "Sc a"));
-\<close>
+in end\<close>
 lemma fooI [intro]: "Rc7 x S \<Longrightarrow> Sc x" by (rule Sc_ax)
 end
 
 (* the rows, in a later reopened block: only the theory copies of the rules are visible *)
 context LE begin
 (*[dest] through declare; the control: not before*)
-ML_val \<open>\<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc0 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_blast \<^context> \<^prop>\<open>Rc0 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
 declare LE.bad [dest]
 lemma "Rc0 (a :: 'q) S \<Longrightarrow> Sc a" by blast
 (*[elim] through declare: blast ignores it (asserted under auto only); the control: not before*)
-ML_val \<open>\<^assert> (not (by_auto \<^context> \<^prop>\<open>Rc1 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
+ML \<open>val _ = \<^assert> (not (by_auto \<^context> \<^prop>\<open>Rc1 (a :: 'q) S \<Longrightarrow> Sc a\<close>))\<close>
 declare LE.badE [elim]
 lemma "Rc1 (a :: 'q) S \<Longrightarrow> Sc a" by auto
 (*bad5 [elim]*)
@@ -91,13 +91,13 @@ lemma "Rc2 (a :: 'q) S \<Longrightarrow> Sc a" by blast
 lemma "Rc2 (a :: 'q) S \<Longrightarrow> Sc a" by auto
 (*bad6 [elim], ex falso: the theory copy LE ?S ==> Rc3 ?x ?S ==> ?R is a weak elimination rule
   for blast, which fails with the warning where the heavy twin's blast closes the goal; auto closes*)
-ML_val \<open>\<^assert> (blast_warns \<^context> "Rc3 (a :: 'q) S \<Longrightarrow> Q" = (false, true))\<close>
+ML \<open>val _ = \<^assert> (blast_warns \<^context> "Rc3 (a :: 'q) S \<Longrightarrow> Q" = (false, true))\<close>
 lemma "Rc3 (a :: 'q) S \<Longrightarrow> Q" by auto
 (*[dest!]/[elim!]*)
 lemma "Rc4 (a :: 'q) S \<Longrightarrow> Sc a" by auto
 lemma "Rc5 (a :: 'q) S \<Longrightarrow> Sc a" by auto
 (*apply safe: the safe rules whose major premise does not bind ?S leave LE ?S first*)
-ML_val \<open>
+ML \<open>
 val _ = \<^assert> (after_safe \<^context> "Rc8 (a :: 'q) \<Longrightarrow> Sc a" = (1, true));
 val _ = \<^assert> (after_safe \<^context> "TA = TB \<Longrightarrow> P" = (1, true));
 val _ = \<^assert> (blast_warns \<^context> "TA = TB \<Longrightarrow> P" = (false, true));
@@ -110,7 +110,7 @@ val _ = \<^assert> (blast_warns \<^context> "TA = TB \<Longrightarrow> P" = (fal
 lemma assumes h: "Rc6 (a :: 'q) S" shows "Sc a" using h LE_axioms ..
 lemma assumes h: "Rc7 (a :: 'q) S" shows "Sc a" using LE_axioms h ..
 lemma assumes h: "Rc7 (a :: 'q) S" shows "Sc a" using LE_axioms h by (rule LE.fooI)
-ML_val \<open>
+ML \<open>local
 val lf = @{thm LE_axioms};
 val (h6, ctxt6) = assume_in \<^context> [("a", \<^typ>\<open>'q\<close>)] "h" "Rc6 a S";
 val (h7, ctxt7) = assume_in \<^context> [("a", \<^typ>\<open>'q\<close>)] "h" "Rc7 a S";
@@ -120,7 +120,7 @@ val _ = \<^assert> (not (by_method ctxt7 [h7, lf] "standard" "Sc a"));
 val _ = \<^assert> (not (by_method ctxt7 [h7] "standard" "Sc a"));
 val _ = \<^assert> (not (by_method ctxt7 [h7, lf] "rule LE.fooI" "Sc a"));
 val _ = \<^assert> (not (by_method ctxt7 [] "rule LE.fooI" "Sc a"));
-\<close>
+in end\<close>
 end
 
 end

@@ -425,7 +425,7 @@ fun attr att th ctxt = #1 (Thm.apply_attribute att th (Context.Proof ctxt));
 (*discharges the first premise by assuming it (an inference rule: the tags go)*)
 fun drop_first th = Thm.implies_elim th (Thm.assume (hd (Thm.cprems_of th)));
 
-(*named rows of one ML_val, each evaluated on its own, the failing ones named*)
+(*named rows of one command, each evaluated on its own, the failing ones named*)
 fun check_rows rows =
   (case filter_out (fn (_, f) => the_default false (try f ())) rows of
     [] => ()

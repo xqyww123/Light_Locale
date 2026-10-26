@@ -50,7 +50,7 @@ proof -
   from h LP_axioms obtain m' where "Suc m = Suc m'" and "LP.od m'" ..
   then show "LP.od m" by simp
 qed
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val _ = \<^assert> (not (by_method ctxt [] "standard" "LP.ev 0"));
 val (h, ctxt') = assume_in ctxt [("n", \<^typ>\<open>nat\<close>)] "h" "LP.ev n";
@@ -60,7 +60,7 @@ val _ = \<^assert> (not (by_method ctxt' [h] "standard" "LP.ev (Suc (Suc n))"));
 val (h', ctxt'') = assume_in ctxt [("m", \<^typ>\<open>nat\<close>)] "h'" "LP.od (Suc m)";
 val _ = \<^assert> (by_method ctxt'' [h', @{thm LP_axioms}] "standard, simp" "LP.od m");
 val _ = \<^assert> (not (by_method ctxt'' [h'] "standard, simp" "LP.od m"));
-\<close>
+in end\<close>
 end
 
 end

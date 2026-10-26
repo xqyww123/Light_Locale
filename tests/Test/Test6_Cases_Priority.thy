@@ -19,11 +19,11 @@ lemma LF_cases [case_names lf, cases pred: LF]: "LF S \<Longrightarrow> (LF S \<
 ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm LF_cases} = 0);\<close>
 
 context LF begin
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("n", \<^typ>\<open>nat\<close>)] "h" "LF.ip S n";
 val _ = \<^assert> (case_names (run ctxt [@{thm LF_axioms}, h] "cases" "W n") = ["lf"]);
 val _ = \<^assert> (case_names (run ctxt [@{thm LF_axioms}, h] "cases rule: LF.ip.cases" "W n") = ["z", "s"]);
-\<close>
+in end\<close>
 end
 
 end

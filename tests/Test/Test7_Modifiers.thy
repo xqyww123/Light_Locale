@@ -32,7 +32,7 @@ inductive ip :: "nat \<Rightarrow> bool" where ip0: "ip 0"
 end
 
 context LM begin
-ML_val \<open>
+ML \<open>local
 val ctxt = \<^context>;
 val goal = "Rd (a :: 'q) S \<Longrightarrow> Sd a";
 val light = Light_Locale_Axiom_Facts.is_light_prop ctxt;
@@ -70,7 +70,7 @@ val s_goal = "Rd (a :: 'q) S";
 val st = run_apply ctxt [] "subst LM.fooS" s_goal;
 val _ = \<^assert> (subgoals st = 2 andalso light (Logic.strip_assums_concl (hd (goal_prems st))));
 val _ = \<^assert> (subgoals (run_apply ctxt [] "subst LM.fooS[OF LM_axioms]" s_goal) = 1);
-\<close>
+in end\<close>
 end
 
 end

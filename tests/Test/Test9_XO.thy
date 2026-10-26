@@ -48,8 +48,8 @@ qed
 interpretation U: XO S "\<one>"
   using LF_axioms unfolding XO_def LFr2_def LF_def .
 
-ML_val \<open>
-instances_are \<^context>
+ML \<open>
+val _ = instances_are \<^context>
   (Const (\<^const_name>\<open>one\<close>, dummyT) $ (Const (\<^const_name>\<open>UP\<close>, dummyT) $ Free ("S", dummyT)));
 \<close>
 

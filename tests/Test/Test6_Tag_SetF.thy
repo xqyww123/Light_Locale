@@ -29,7 +29,7 @@ val _ = \<^assert> (Thm.prop_of @{thm SetF.ipn.cases} aconv Logic.varify_global
 
 context SetF begin
 context fixes A :: "nat set" assumes hfin: "finite A" begin
-ML_val \<open>
+ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("a", \<^typ>\<open>nat\<close>)] "h" "SetF.ipn n A a";
 (* gate *)
 val _ = \<^assert> (case_names (run ctxt [@{thm hfin}, h] "cases rule: SetF.ipn.cases" "W a") = ["ipn_in", "ipn_n"]);
@@ -38,7 +38,7 @@ val st = run ctxt [@{thm hfin}, h] "cases" "W a";
 val _ = \<^assert> (case_names st = ["emptyI", "insertI"]);
 val _ = \<^assert> ((Proof_Context.check_case (Proof.context_of st) true ("ipn_in", Position.none) []; false)
   handle ERROR msg => String.isPrefix "Undefined case" (Protocol_Message.clean_output msg));
-\<close>
+in end\<close>
 end
 end
 

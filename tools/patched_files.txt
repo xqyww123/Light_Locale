@@ -33,3 +33,7 @@ src/Pure/Isar/bundle.ML
 src/HOL/Tools/Lifting/lifting_setup.ML
 src/Pure/Isar/object_logic.ML
 src/Pure/Isar/local_defs.ML
+src/HOL/Tools/Lifting/lifting_info.ML
+src/HOL/Tools/Lifting/lifting_term.ML
+src/HOL/Tools/Lifting/lifting_util.ML
+src/HOL/Tools/BNF/bnf_lift.ML

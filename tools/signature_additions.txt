@@ -94,3 +94,9 @@ src/Pure/Isar/locale.ML LOCALE val own_params
 src/Pure/Isar/expression.ML EXPRESSION val eliminated_params
 src/Pure/Isar/expression.ML EXPRESSION val unfolded_definitions
 src/Pure/Isar/expression.ML EXPRESSION val unfolded_definitions_message
+# a block-declared Lifting setup used outside its locale (plan
+# ai-artifacts/LIGHT_LOCALE_LIFTING_OUTSIDE_PLAN.md section 4)
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val light_predicate_of
+src/HOL/Tools/Lifting/lifting_util.ML LIFTING_UTIL val dest_Quotient_concl
+src/HOL/Tools/Lifting/lifting_util.ML LIFTING_UTIL val concl_rty_qty
+src/HOL/Tools/Lifting/lifting_info.ML LIFTING_INFO val check_quotient

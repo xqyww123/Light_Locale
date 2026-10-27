@@ -5,7 +5,8 @@
    context ring); the mutual-recursion regression on a local copy of HOL/Induct/Common_Patterns'
    Evn/Odd fixture, asserted against the stock values measured on the stock copy 2026-10-13;
    context monoid rows (a bare \<otimes> lemma, a nested context assumes with the heavy parameter name) and
-   a class without (structure).  The vector_space block is covered by the HOL build itself (below). *)
+   a class without (structure); the repair-phase tools change nothing (T1-a/b/c).  The vector_space
+   block is covered by the HOL build itself (below). *)
 theory Test1_Identity
   imports Test_Support
     "HOL-Algebra.Galois_Connection" "HOL-Algebra.FiniteProduct" "HOL-Algebra.Sylow"
@@ -30,6 +31,20 @@ val _ = \<^assert> (null (Light_Locale_Axiom_Facts.retrieve ctxt (Var (("P", 0),
 val deps = Locale.dest_dependencies [] thy;
 val _ = \<^assert> (length deps > 100);
 val _ = \<^assert> (forall (fn {source, target, ...} => not (Locale.is_light thy source) andalso not (Locale.is_light thy target)) deps);
+\<close>
+
+(* the repair-phase tools are the identity here (batch-1 plan section 4.1, T1-a/b/c): rule R on
+   every named fact, instance_tac on the first premise of 100 named facts (transferred: the stored
+   facts are trimmed), discharge_morphism *)
+ML \<open>
+Test_Support.check_rows
+ [("T1-a", fn () => forall (fn (_, ths) => forall (Test_Support.unchanged ctxt) ths) facts),
+  ("T1-b", fn () =>
+    maps #2 facts |> filter (fn th => Thm.nprems_of th > 0) |> take 100
+    |> forall (fn th =>
+      is_none (Seq.pull (Light_Locale_Axiom_Facts.instance_tac ctxt 1
+        (Goal.init (Thm.cprem_of (Thm.transfer thy th) 1)))))),
+  ("T1-c", fn () => Morphism.is_identity (Light_Locale_Axiom_Facts.discharge_morphism ctxt))]
 \<close>
 
 context ring begin

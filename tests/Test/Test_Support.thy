@@ -68,6 +68,10 @@ sig
   val drop_first: thm -> thm
   val check_rows: (string * (unit -> bool)) list -> unit
   val light_prems: Proof.context -> thm -> term list
+  val retrieves: Proof.context -> term -> bool
+  val retrieves_only: Proof.context -> term -> thm -> bool
+  val unchanged: Proof.context -> thm -> bool
+  val discharges: Proof.context -> int -> thm -> bool
   val simp_props: Proof.context -> term list
   val plain_equal: thm * thm -> bool
   val three_items: thm * thm -> bool
@@ -432,6 +436,18 @@ fun check_rows rows =
   | bad => error ("Failed rows: " ^ commas (map #1 bad)));
 
 fun light_prems ctxt th = filter (Light_Locale_Axiom_Facts.is_light_prop ctxt) (Thm.prems_of th);
+
+(*the predicate fact table: some fact retrieved for t states t; t retrieves exactly one fact, with
+  the statement of th*)
+fun retrieves ctxt t = exists (fn th => Thm.prop_of th aconv t) (Light_Locale_Axiom_Facts.retrieve ctxt t);
+fun retrieves_only ctxt t th =
+  (case Light_Locale_Axiom_Facts.retrieve ctxt t of [th'] => Thm.eq_thm_prop (th', th) | _ => false);
+
+(*rule R returns th itself (tags compared); rule R discharges exactly the first k premises of th*)
+fun unchanged ctxt th = Thm.eq_thm_strict (Light_Locale_Axiom_Facts.discharge_leading ctxt th, th);
+fun discharges ctxt k th =
+  Thm.prop_of (Light_Locale_Axiom_Facts.discharge_leading ctxt th) aconv
+    Logic.list_implies (drop k (Thm.prems_of th), Thm.concl_of th);
 
 (*the statements of the context's simp rules*)
 fun simp_props ctxt = map (Thm.prop_of o #2) (Raw_Simplifier.dest_simps (simpset_of ctxt));

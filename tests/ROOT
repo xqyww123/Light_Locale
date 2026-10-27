@@ -226,6 +226,19 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test9_Print_Context
     Test1_Identity
     Test1_Old_Interface
+    Test12_Table
+    Test12_Table_Interp
+    Test12_Table_Interpret
+    Test12_Sublocale
+    Test12_Dependency
+    Test12_Dependency_Syntax
+    Test12_Import
+    Test12_Heavy_Path
+    Test12_TVar
+    Test12_Unifier
+    Test12_Newest
+    Tab_M1
+    Tab_M2
 
 session Light_Locale_Test_Serial in "Serial" = Light_Locale_Base +
   description "

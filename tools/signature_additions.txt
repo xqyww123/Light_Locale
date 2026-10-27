@@ -100,3 +100,12 @@ src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val light_pre
 src/HOL/Tools/Lifting/lifting_util.ML LIFTING_UTIL val dest_Quotient_concl
 src/HOL/Tools/Lifting/lifting_util.ML LIFTING_UTIL val concl_rty_qty
 src/HOL/Tools/Lifting/lifting_info.ML LIFTING_INFO val check_quotient
+# repair phase step 1, batch 1: the tools on leading light premises (plan decision 19;
+# ai-artifacts/LIGHT_LOCALE_REPAIR_STEP1_BATCH1_PLAN.md section 3)
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val count_leading
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val count_exported_leading
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val discharge_leading
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val instance_tac
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val close_leading_tac
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val resolve_leading
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val discharge_morphism

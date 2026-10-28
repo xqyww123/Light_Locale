@@ -176,7 +176,8 @@ val light_locale_cmd =
 val locale_cmd =
   gen_locale_cmd
     (Parse.binding --
-      Scan.optional (Parse.$$$ "=" |-- Parse.!!! Parse_Spec.locale_val) ((([], []), []), []))
+      Scan.optional (Parse.$$$ "=" |-- Parse.!!! (Parse_Spec.locale_val' [] >> apsnd #1))
+        ((([], []), []), []))
     (fn (name, ((expr, includes), elems)) =>
       Expression.add_locale_cmd name Binding.empty includes expr elems);
 fun light thy text = fn () => light_locale_cmd text thy;

@@ -63,7 +63,6 @@ src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val replace_f
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val premise_count
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val export_premise_count
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val light_export
-src/Pure/Isar/parse_spec.ML PARSE_SPEC val locale_val
 src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val implicit_structure_
 src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val implicit_structure
 src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val put_implicit_structure

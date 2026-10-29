@@ -16,7 +16,7 @@ end
 
 lemma LF_cases [case_names lf, cases pred: LF]: "LF S \<Longrightarrow> (LF S \<Longrightarrow> W) \<Longrightarrow> W" by blast
 
-ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm LF_cases} = 0);\<close>
+ML \<open>val _ = \<^assert> (Setclass.count_of @{thm LF_cases} = 0);\<close>
 
 context LF begin
 ML \<open>local

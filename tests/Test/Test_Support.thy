@@ -58,6 +58,7 @@ sig
   val first_assumption: theory -> string -> term
   val lemmas_in: local_theory -> string -> string -> string -> thm list * local_theory
   val thy_ctxt: Proof.context -> Proof.context
+  val pasted_count: Proof.context -> int
   val proves: (Proof.context -> tactic) -> Proof.context -> term -> bool
   val by_simp: Proof.context -> term -> bool
   val by_auto: Proof.context -> term -> bool
@@ -78,7 +79,7 @@ sig
   val diff_K: int -> thm * thm -> bool
   val twin_names: string * string -> term -> term
   val varify_block: term -> term
-  val block_lemma: string * string -> int -> thm * thm -> bool
+  val block_lemma: string * string -> {pasted: int, k: int} -> thm * thm -> bool
   val phi: string -> thm -> term
   val canonical_vars: term -> term
   val canonical_tvars: term -> term
@@ -313,6 +314,9 @@ fun lemmas_in lthy name thms atts =
 
 val thy_ctxt = Proof_Context.init_global o Proof_Context.theory_of;
 
+(*the number of premises the export from ctxt to its theory pastes on a theorem without premises*)
+fun pasted_count ctxt = Thm.nprems_of (Assumption.export ctxt (thy_ctxt ctxt) Drule.dummy_thm);
+
 (*the forcing thunk of the preface: the tactic run to completion by Goal.prove*)
 fun proves tac ctxt prop = can (fn () => Goal.prove ctxt [] [] prop (fn {context, ...} => tac context)) ();
 val by_simp = proves (fn ctxt => asm_full_simp_tac ctxt 1);  (*the simp method's default tactic*)
@@ -419,10 +423,10 @@ fun first_assumption thy name = hd (#2 (hd (assumes_of thy (loc thy name))));
 (* the comparisons of plan section 7 test 6 (preface: "normal equality" of local copies, the three
    items, "Rule_Cases.get equal up to K", the normalisation phi, the table checks) *)
 
-fun has_K_tag th = AList.defined (op =) (Thm.get_tags th) Exported_Premises.exported_premises_tagN;
+fun has_K_tag th = AList.defined (op =) (Thm.get_tags th) Setclass.setclass_tagN;
 
-(*the tags other than K; Thm.untag_rule, not Exported_Premises.put, which is under test*)
-fun tags_without_K th = Thm.get_tags (Thm.untag_rule Exported_Premises.exported_premises_tagN th);
+(*the tags other than K; Thm.untag_rule, not Setclass.put, which is under test*)
+fun tags_without_K th = Thm.get_tags (Thm.untag_rule Setclass.setclass_tagN th);
 
 (*the theorem an attribute leaves*)
 fun attr att th ctxt = #1 (Thm.apply_attribute att th (Context.Proof ctxt));
@@ -445,9 +449,10 @@ fun retrieves_only ctxt t th =
   (case Light_Locale_Axiom_Facts.retrieve ctxt t of [th'] => Thm.eq_thm_prop (th', th) | _ => false);
 
 (*rule R returns th itself (tags compared); rule R discharges exactly the first k premises of th*)
-fun unchanged ctxt th = Thm.eq_thm_strict (Light_Locale_Axiom_Facts.discharge_leading ctxt th, th);
+fun unchanged ctxt th =
+  Thm.eq_thm_strict (Light_Locale_Axiom_Facts.discharge_setclass_prems ctxt th, th);
 fun discharges ctxt k th =
-  Thm.prop_of (Light_Locale_Axiom_Facts.discharge_leading ctxt th) aconv
+  Thm.prop_of (Light_Locale_Axiom_Facts.discharge_setclass_prems ctxt th) aconv
     Logic.list_implies (drop k (Thm.prems_of th), Thm.concl_of th);
 
 (*the statements of the context's simp rules*)
@@ -457,7 +462,7 @@ fun simp_props ctxt = map (Thm.prop_of o #2) (Raw_Simplifier.dest_simps (simpset
   exactly that count, the case names agree, consumes differ by it*)
 fun diff_K k (thl, thh) =
   let val (il, nl) = Rule_Cases.get thl and (ih, nh) = Rule_Cases.get thh
-  in Exported_Premises.count_of thl = k andalso il = ih andalso nl = nh + k end;
+  in Setclass.count_of thl = k andalso il = ih andalso nl = nh + k end;
 
 (*a local copy whose statement names neither the predicate nor a block constant*)
 fun plain_equal (thl, thh) =
@@ -485,16 +490,21 @@ val varify_block =
   Term.map_aterms (fn Free (x, T) => Var ((x, 0), T) | t => t)
   #> Term.map_types (Term.map_atyps (fn TFree (a, S) => TVar ((a, 0), S) | T => T));
 
-(*the theory copy of a lemma proved in the block against the heavy block fact: (i) the statement
-  without the K exported premises, (ii) the premise count, (iii) Rule_Cases up to K*)
-fun block_lemma (l, h) k (thl, thh) =
+(*the theory copy of a lemma proved in a (nested) block against the heavy block fact: (i) the
+  statement without the pasted premises, (ii) the premise count, (iii) K and the consumes offset,
+  (iv) the case names: equal, or one more numbered case per pasted premise K does not cover
+  (Rule_Cases.get numbers nprems - consumes unnamed cases)*)
+fun block_lemma (l, h) {pasted, k} (thl, thh) =
   let
     val prop = Thm.prop_of thl;
-    val stmt = Logic.list_implies (drop k (Logic.strip_imp_prems prop), Logic.strip_imp_concl prop);
+    val stmt =
+      Logic.list_implies (drop pasted (Logic.strip_imp_prems prop), Logic.strip_imp_concl prop);
+    val (il, nl) = Rule_Cases.get thl and (ih, nh) = Rule_Cases.get thh;
   in
     twin_names (l, h) stmt aconv varify_block (Thm.prop_of thh) andalso
-    Thm.nprems_of thl = Thm.nprems_of thh + k andalso
-    diff_K k (thl, thh)
+    Thm.nprems_of thl = Thm.nprems_of thh + pasted andalso
+    Setclass.count_of thl = k andalso nl = nh + k andalso
+    (if pasted = k then il = ih else length il = length ih + (pasted - k))
   end;
 
 (*phi: the one premise led by the locale's predicate constant is removed and its variable

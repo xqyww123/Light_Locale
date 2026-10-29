@@ -1,10 +1,11 @@
 (* Plan section 7 test 12 (repair phase, step 1), the leaf without a theory-level registration
    (batch-1 plan section 4.1): the predicate fact table in the block, in lemma (in LF) and in an
    importing block, and add's two conditions (A1, A2, A5, A12); at theory level, where the table
-   has no fact, rule R, instance_tac and resolve_leading change nothing, the counts, and
-   resolve_leading's results equal resolve_tac's (command T); in the reopened block rule R on
-   fooP, fooS, fooM and the hand-made rules, instance_tac, resolve_leading closing exactly the
-   leading light subgoals, discharge_morphism, Main untouched (command B).  The theory-level copies
+   has no fact, rule R, instance_tac and resolve_closing_setclass_prems change nothing, the
+   counts, and resolve_closing_setclass_prems's results equal resolve_tac's (command T); in the
+   reopened block rule R on fooP, fooS, fooM and the hand-made rules, instance_tac,
+   resolve_closing_setclass_prems closing exactly the leading setclass subgoals,
+   discharge_morphism, Main untouched (command B).  The theory-level copies
    are read from the theory's facts (Global_Theory.get_thm), never through a block name. *)
 theory Test12_Table
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
@@ -78,8 +79,7 @@ ML \<open>
 local
   val ctxt = \<^context>;
   val [fooP, fooM, hw, hw2, hw3] = map thy_thm ["LF.fooP", "LF.fooM", "hw", "hw2", "hw3"];
-  val count = Light_Locale_Axiom_Facts.count_leading ctxt;
-  val count_exported = Light_Locale_Axiom_Facts.count_exported_leading ctxt;
+  val count = Light_Locale_Axiom_Facts.count_setclass_prems ctxt;
   val st = goal ctxt \<^prop>\<open>A \<or> B\<close>;
   val rules = @{thms disjI1 disjI2};
   val stock = Seq.list_of (resolve_tac ctxt rules 1 st);
@@ -88,21 +88,23 @@ val _ = check_rows
  [("B1 no facts", fn () => unchanged ctxt fooP),
   ("instance_tac no facts", fn () =>
     is_none (Seq.pull (Light_Locale_Axiom_Facts.instance_tac ctxt 1 (goal ctxt \<^prop>\<open>LF S\<close>)))),
-  ("resolve_leading no facts", fn () =>
-    is_none (Seq.pull (Light_Locale_Axiom_Facts.resolve_leading ctxt [hw] 1 (goal ctxt \<^prop>\<open>True\<close>)))),
-  ("fooM K = 2", fn () => Exported_Premises.count_of fooM = 2),
+  ("resolve_closing_setclass_prems no facts", fn () =>
+    is_none (Seq.pull (Light_Locale_Axiom_Facts.resolve_closing_setclass_prems ctxt [hw] 1
+      (goal ctxt \<^prop>\<open>True\<close>)))),
+  ("fooM K = 1", fn () => Setclass.count_of fooM = 1),
   ("count fooP = 1", fn () => count fooP = 1),
   ("count fooM = 1", fn () => count fooM = 1),
   ("count hw = 1", fn () => count hw = 1),
   ("count conjI = 0", fn () => count @{thm conjI} = 0),
   ("count hw2 = 2", fn () => count hw2 = 2),
   ("count hw3 = 0", fn () => count hw3 = 0),
-  ("count_exported fooM = 1", fn () => count_exported fooM = 1),
-  ("count_exported hw = 0", fn () => count_exported hw = 0),
+  ("hw K = 0", fn () => Setclass.count_of hw = 0),
   ("stock guard", fn () => map Thm.prems_of stock = [[\<^prop>\<open>A\<close>], [\<^prop>\<open>B\<close>]]),
   ("same as resolve_tac", fn () =>
-    eq_list Thm.eq_thm (Seq.list_of (Light_Locale_Axiom_Facts.resolve_leading ctxt rules 1 st), stock)),
-  ("no rules", fn () => is_none (Seq.pull (Light_Locale_Axiom_Facts.resolve_leading ctxt [] 1 st)))]
+    eq_list Thm.eq_thm
+      (Seq.list_of (Light_Locale_Axiom_Facts.resolve_closing_setclass_prems ctxt rules 1 st), stock)),
+  ("no rules", fn () =>
+    is_none (Seq.pull (Light_Locale_Axiom_Facts.resolve_closing_setclass_prems ctxt [] 1 st)))]
 end
 \<close>
 
@@ -119,9 +121,9 @@ local
   (*hand-made: the first premise has no fact (B5'), the second has none (B5'')*)
   val b5' = @{thm TrueI} |> Thm.implies_intr \<^cprop>\<open>LF S\<close> |> Thm.implies_intr \<^cprop>\<open>LFs X\<close>;
   val b5'' = @{thm TrueI} |> Thm.implies_intr \<^cprop>\<open>LFs X\<close> |> Thm.implies_intr \<^cprop>\<open>LF S\<close>;
-  val discharge = Light_Locale_Axiom_Facts.discharge_leading ctxt;
+  val discharge = Light_Locale_Axiom_Facts.discharge_setclass_prems ctxt;
   val instance = Light_Locale_Axiom_Facts.instance_tac ctxt 1;
-  val resolve = Light_Locale_Axiom_Facts.resolve_leading ctxt;
+  val resolve = Light_Locale_Axiom_Facts.resolve_closing_setclass_prems ctxt;
   fun closes tac t =
     (case Seq.pull (tac (goal ctxt t)) of SOME (st, _) => Thm.nprems_of st = 0 | NONE => false);
   fun two_goals t = Seq.hd (Goal.conjunction_tac 1 (goal ctxt t));
@@ -133,7 +135,8 @@ val _ = check_rows
   ("fooS unchanged", fn () => unchanged ctxt fooS),
   ("fooS[of S]", fn () => discharges ctxt 1 fooS_S),
   ("B5", fn () => discharges ctxt 1 fooM),
-  ("B5 K = 1", fn () => Exported_Premises.count_of (discharge fooM) = 1),
+  ("B5 K = 0", fn () => Setclass.count_of (discharge fooM) = 0),
+  ("B5 K from 2", fn () => Setclass.count_of (discharge (Setclass.put 2 b5'')) = 1),
   ("B5'", fn () => unchanged ctxt b5'),
   ("B5''", fn () => discharges ctxt 1 b5''),
   ("hw3 unchanged", fn () => unchanged ctxt hw3),
@@ -145,7 +148,8 @@ val _ = check_rows
   ("?P", fn () =>
     is_none (Seq.pull (instance (goal ctxt (HOLogic.mk_Trueprop (Var (("P", 0), HOLogic.boolT))))))),
   ("instance_tac under a binder", fn () => closes instance \<^prop>\<open>\<And>x::nat. LF S\<close>),
-  ("resolve_leading hw", fn () => closes (resolve [hw] 1) \<^prop>\<open>True\<close>),
+  ("resolve_closing_setclass_prems hw", fn () =>
+    closes (resolve [hw] 1) \<^prop>\<open>True\<close>),
   ("(f)", fn () =>
     map Thm.prems_of (Seq.list_of (resolve [hw] 1 (two_goals \<^prop>\<open>True &&& LF S\<close>))) =
       [[\<^prop>\<open>LF S\<close>]]),
@@ -154,7 +158,7 @@ val _ = check_rows
       [[\<^prop>\<open>LF S\<close>]]),
   ("discharge_morphism fooP", fn () =>
     Thm.prop_of (Morphism.thm phi fooP) aconv Thm.concl_of fooP),
-  ("discharge_morphism fooM", fn () => Exported_Premises.count_of (Morphism.thm phi fooM) = 1),
+  ("discharge_morphism fooM", fn () => Setclass.count_of (Morphism.thm phi fooM) = 0),
   ("Main facts", fn () => length (maps #2 main_facts) > 10000),
   ("B6", fn () => forall (fn (_, ths) => forall (unchanged ctxt) ths) main_facts)]
 end

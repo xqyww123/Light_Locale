@@ -1,8 +1,8 @@
 (* Plan section 7 test 6 (plan lines 4424-4427): downstream of a light block's bad4 [elim!] -- the
-   theory copy is a global safe elimination rule whose derived form puts the exported premise
+   theory copy is a global safe elimination rule whose derived form puts the leading K premise
    LF ?S second -- a goal that does not need the rule, has Rc a b among its assumptions and whose
    conclusion needs that assumption: apply safe eliminates Rc a b and leaves LF b as the first
-   subgoal, by auto leaves a light subgoal (the safe phase consumed the assumption the conclusion
+   subgoal, by auto leaves a setclass subgoal (the safe phase consumed the assumption the conclusion
    needs), while downstream of the heavy twin -- the theory without the rule -- auto closes the
    goal.  Section 11 item (26). *)
 theory Test6_Elim_Bang

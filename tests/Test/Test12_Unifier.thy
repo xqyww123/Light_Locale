@@ -34,7 +34,7 @@ section \<open>B4 command\<close>
 ML \<open>
 local
   val ctxt = \<^context>;
-  val discharge = Light_Locale_Axiom_Facts.discharge_leading ctxt;
+  val discharge = Light_Locale_Axiom_Facts.discharge_setclass_prems ctxt;
   (*?S := ?F ?y, whence ?'a := nat*)
   val with_Fy =
     Drule.infer_instantiate ctxt
@@ -102,7 +102,7 @@ local
   val th = Thm.trivial (Thm.cterm_of ctxt lff_eta);
 in
 val _ = check_rows
- [("eta", fn () => Thm.prop_of (Light_Locale_Axiom_Facts.discharge_leading ctxt th) aconv lff_eta)]
+ [("eta", fn () => Thm.prop_of (Light_Locale_Axiom_Facts.discharge_setclass_prems ctxt th) aconv lff_eta)]
 end
 \<close>
 

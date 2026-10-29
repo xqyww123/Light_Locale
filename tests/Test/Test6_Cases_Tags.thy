@@ -55,20 +55,20 @@ end
 ML \<open>
 (* foo: the theory copy up to K, pinned values *)
 val (info_h, n_h) = Rule_Cases.get (#foo heavy) and (info_l, n_l) = Rule_Cases.get @{thm LF.foo};
-val _ = \<^assert> (info_l = info_h andalso n_l = n_h + Exported_Premises.count_of @{thm LF.foo});
+val _ = \<^assert> (info_l = info_h andalso n_l = n_h + Setclass.count_of @{thm LF.foo});
 val _ = \<^assert> (info_h = [(("a", []), []), (("b", []), [])] andalso n_h = 1 andalso n_l = 2);
 val _ = \<^assert> (Thm.nprems_of (#foo heavy) = 2 andalso Thm.nprems_of @{thm LF.foo} = 3);
 val _ = \<^assert> (Thm.prop_of @{thm LF.foo} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> A \<Longrightarrow> B \<Longrightarrow> A \<and> B\<close>);
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo} = 1);
+val _ = \<^assert> (Setclass.count_of @{thm LF.foo} = 1);
 (* foo2: the binders of the second premise are x y on both copies *)
 val _ = \<^assert> (binders @{thm LF.foo2} = [[], ["x", "y"]]);
 (* foo8: the theory copy *)
 val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.foo8},
   Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> (\<And>x y. Q x y) \<Longrightarrow> Pc x \<Longrightarrow> Qc x\<close>));
-val _ = \<^assert> (binders @{thm LF.foo8} = [[], ["x", "y"], []] andalso Exported_Premises.count_of @{thm LF.foo8} = 1);
+val _ = \<^assert> (binders @{thm LF.foo8} = [[], ["x", "y"], []] andalso Setclass.count_of @{thm LF.foo8} = 1);
 (* foo3 *)
-val _ = \<^assert> (Rule_Cases.is_cases_open @{thm LF.foo3} andalso Exported_Premises.lookup_consumes @{thm LF.foo3} = SOME 2
-  andalso Exported_Premises.count_of @{thm LF.foo3} = 1
+val _ = \<^assert> (Rule_Cases.is_cases_open @{thm LF.foo3} andalso Setclass.lookup_consumes @{thm LF.foo3} = SOME 2
+  andalso Setclass.count_of @{thm LF.foo3} = 1
   andalso Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Thm.prems_of @{thm LF.foo3})));
 (* r1-r3: equal up to K 1 to the twin's; r3 as r1 up to renaming, with the same tags but for the
    name tag (section 11, item (21)); each found under LF.ipr ?S ?x *)

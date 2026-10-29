@@ -1,7 +1,7 @@
 (* Plan section 7 test 6, the inductive_set row (plan line 4464-4468): a block inductive_set whose
    third rule mentions S is stored as LF.Evs ?S; in the reopened block, with hs: n \<in> LF.Evs S,
    "using LF_axioms hs proof (cases n)" prints the cases of the heavy twin's "using hs proof (cases n)"
-   (the instantiation goes to ?a, ?S in the exported premises takes no part).  The stock warning
+   (the instantiation goes to ?a, ?S in the leading K premises takes no part).  The stock warning
    "Ignoring malformed set / predicate conversion rule" of the theory-level pass is not asserted. *)
 theory Test6_Cases_Set
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"

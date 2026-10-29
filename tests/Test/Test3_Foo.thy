@@ -34,14 +34,14 @@ ML \<open>val _ = \<^assert> (Thm.prop_of @{thm LF.foo[OF LF_axioms]} aconv @{pr
 end
 
 ML \<open>local
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.foo} = 1);
+val _ = \<^assert> (Setclass.count_of @{thm LF.foo} = 1);
 (*negative control: without the predicate fact the same goal is not closed by simp*)
 val ctxt = fix_in \<^context> [("T", \<^typ>\<open>('a, 'b) ring_scheme\<close>)];
 val _ = \<^assert> (not (by_simp ctxt @{prop "k (T :: ('a, 'b) ring_scheme) + 1 = 1"}));
 in end\<close>
 
 (* a block inductive: after a lemma (in LF) in the same block, "using h proof cases" no longer finds
-   ipx.cases (stored as LF ?S ==> ..., one exported premise) and falls back to case_split, whose
+   ipx.cases (stored as LF ?S ==> ..., K 1) and falls back to case_split, whose
    cases do not include ip0; chaining LF_axioms first finds it.  The heavy twin finds it unchained. *)
 context LF begin
 inductive ipx :: "nat \<Rightarrow> bool" where ip0: "ipx 0"

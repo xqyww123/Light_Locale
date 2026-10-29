@@ -173,6 +173,8 @@ session Light_Locale_Test in "Test" = Light_Locale_Base +
     Test6_Activation
     Test6_Keep_K
     Test6_Keep_K_Global
+    Test6_Setclass_Layers
+    Test6_Sort_Constraint
     Test6_Interpret_Block
     Test7_Degeneracy
     Test7_Declare_Block

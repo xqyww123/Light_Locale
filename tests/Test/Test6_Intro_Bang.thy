@@ -4,7 +4,7 @@
    assumptions are conditional on a disjunction) and whose safe steps are disjE and, on each
    branch, the rule: safe leaves LF ?S twice (schematic, nothing closes it -- an intro! rule has no
    classical_rule form, so there is no negated conclusion to refute it from); the standard
-   control's auto closes the goal, the light auto leaves the two light subgoals.  Section 11 item
+   control's auto closes the goal, the light auto leaves the two setclass subgoals.  Section 11 item
    (27). *)
 theory Test6_Intro_Bang
   imports Test_Support "Light_Locale_Base.Base_Intro_Bang"

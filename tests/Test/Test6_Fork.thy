@@ -10,7 +10,7 @@
    tq' (same statement as tq, proof started with insert LF_axioms), the nested-block writing l'
    of l, inductive ip inside Grp's block (Grp.ip.intros led by Grp ?G, K 1; the local copy
    Sub ?H G ==> Grp.ip G ?H with K 0 and no tag), the same declaration in the predicate-free Nop.
-   The final criterion (N18): e1s [exported_premises 2] gets LF ?S in front, K 3; a block-free
+   The final criterion (N18): e1s [setclass 2] gets LF ?S in front, K 3; a block-free
    theorem proved by Goal.prove_sorry and written back by declaration (pervasive) or
    Local_Theory.note gets LF ?S in front, K 1.  N27: the redeclaration bad2' = bad2 of a new
    proof result's local copy.  N29, the activated facts that depend on a witness: every witness
@@ -18,7 +18,8 @@
    activated facts redeclared in a light block go the stock way in both modes -- rows A (light
    block), B (nested layer), D (sublocale in a light block), F (theory-level sublocale of a light
    locale), G (a heavy source locale's own sublocale chain), H (a light locale importing a heavy
-   one with a sublocale edge), S (a subclass edge): LF ?S in front, K 1 (K 2 nested); C: a
+   one with a sublocale edge), S (a subclass edge): LF ?S in front, K 1 (nested too: the light
+   locale's layer alone writes K); C: a
    witness proved in a context without assumptions has no hyps, the fact is stored as itself,
    K 0; E (heavy block), T (theory-level assumes block), P and R (interpret in a proof): the
    activated fact's hyps are all the context's assumptions.  Every theory-level assertion is in
@@ -34,7 +35,7 @@ val fork = Session.get_name () <> "Light_Locale_Test_Serial";
 val _ = \<^assert> (Future.proofs_enabled 1 = fork);
 
 fun shape th (prop, k) =
-  Thm.prop_of th aconv Logic.varify_global prop andalso Exported_Premises.count_of th = k;
+  Thm.prop_of th aconv Logic.varify_global prop andalso Setclass.count_of th = k;
 
 structure Fork_Data = Generic_Data (type T = thm list val empty = [] val merge = Thm.merge_thms);
 \<close>
@@ -77,7 +78,7 @@ lemma bad2: "LF q \<Longrightarrow> Sc x" by (rule Sc_ax)
 lemma foo5 [case_names a, consumes 1]: "Q \<Longrightarrow> LF S \<Longrightarrow> C" by (rule C_ax)
 
 (* N18; e1s is a mechanism fixture, not a user scenario *)
-lemma e1s [exported_premises 2]: "A \<Longrightarrow> A \<Longrightarrow> A" by assumption
+lemma e1s [setclass 2]: "A \<Longrightarrow> A \<Longrightarrow> A" by assumption
 
 local_setup \<open>fn lthy =>
   let
@@ -117,7 +118,7 @@ inductive ip where ipI: "Sub H G \<Longrightarrow> ip H"
 (* the local copy, by the hand-written shape: Sub ?H G ==> Grp.ip G ?H, G the block's Free *)
 ML \<open>
 val th = the_single @{thms ip.intros};
-val _ = \<^assert> (Exported_Premises.count_of th = 0 andalso not (has_K_tag th));
+val _ = \<^assert> (Setclass.count_of th = 0 andalso not (has_K_tag th));
 val _ = \<^assert> (Thm.prop_of th aconv
   (\<^prop>\<open>Sub H G \<Longrightarrow> Grp.ip G H\<close> |> Term.map_aterms (fn Free ("H", T) => Var (("H", 0), T) | t => t)));
 \<close>
@@ -217,8 +218,9 @@ val _ = check_rows
      #2 (Rule_Cases.get @{thm LF.foo5}) = 2),
   ("fa8", fn () => shape @{thm LF.fa8} (\<^prop>\<open>LF S \<Longrightarrow> LF S \<Longrightarrow> Pc S y \<and> C\<close>, 1)),
   ("Grp.l", fn () => shape @{thm Grp.l} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Sub H G\<close>, 1)),
-  (* the nested writing exports both layers' assumptions *)
-  ("Grp.l'", fn () => shape @{thm Grp.l'} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Sub H G\<close>, 2)),
+  (* the nested writing exports both layers' assumptions; K 1, the light locale's layer alone (the
+     nested Sub H G is an ordinary layer, though Sub is light) *)
+  ("Grp.l'", fn () => shape @{thm Grp.l'} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Sub H G\<close>, 1)),
   (* the package's result goes through the block's fp_def and carries the block's hyps *)
   ("Grp.ip.intros", fn () => shape (the_single @{thms Grp.ip.intros})
      (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> Grp.ip G H\<close>, 1)),
@@ -232,7 +234,7 @@ val _ = check_rows
   ("N18 note", fn () => shape @{thm LF.ps} (\<^prop>\<open>LF S \<Longrightarrow> Sc (0::nat)\<close>, 1)),
   ("N27", fn () => shape @{thm LF.bad2'} (\<^prop>\<open>LF S \<Longrightarrow> LF q \<Longrightarrow> Sc x\<close>, 1)),
   ("N29 A", fn () => shape @{thm LF.y_cl} (\<^prop>\<open>LF S \<Longrightarrow> 0 + 0 = (0::nat)\<close>, 1)),
-  ("N29 B", fn () => shape @{thm Grp.yn_cl} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> 0 + 0 = (0::nat)\<close>, 2)),
+  ("N29 B", fn () => shape @{thm Grp.yn_cl} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Sub H G \<Longrightarrow> 0 + 0 = (0::nat)\<close>, 1)),
   ("N29 C", fn () => shape @{thm LF.z_cn} (\<^prop>\<open>0 + 0 = (0::nat)\<close>, 0) andalso not (has_K_tag @{thm LF.z_cn})),
   ("N29 D", fn () => shape @{thm Grp.ys_ax} (\<^prop>\<open>Grp (G :: 'x set) \<Longrightarrow> Cw (1::nat)\<close>, 1)),
   ("N29 E", fn () => n29_e),

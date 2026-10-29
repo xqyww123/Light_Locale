@@ -24,7 +24,7 @@ ML \<open>val ctxt = Proof_Context.init_global \<^theory>\<close>
 ML \<open>
 val _ = \<^assert>
   (case bundle_of ctxt "LF.bgq" of
-    [([th], srcs)] => Thm.eq_thm_prop (th, @{thm gq0}) andalso Exported_Premises.count_of th = 0 andalso not (null srcs)
+    [([th], srcs)] => Thm.eq_thm_prop (th, @{thm gq0}) andalso Setclass.count_of th = 0 andalso not (null srcs)
   | _ => false);
 val _ = \<^assert> (not (by_simp ctxt \<^prop>\<open>gq 0 = 1\<close>));
 \<close>

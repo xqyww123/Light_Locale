@@ -25,32 +25,42 @@ src/Pure/Isar/locale.ML LOCALE val add_registration_level
 src/Pure/Isar/expression.ML EXPRESSION val add_light_locale
 src/Pure/Isar/expression.ML EXPRESSION val add_light_locale_cmd
 
-# plan §3.4 (replace_fact by §11 implementation-period change (10) (b), exported_premises_tagN
+# plan §3.4 (replace_fact by §11 implementation-period change (10) (b), setclass_tagN
 # by (10) (g))
 src/Pure/Isar/generic_target.ML GENERIC_TARGET val light_standard_declaration
 src/Pure/Isar/generic_target.ML GENERIC_TARGET val light_notes
 src/Pure/Isar/generic_target.ML GENERIC_TARGET val light_theory_declaration
 src/Pure/Isar/generic_target.ML GENERIC_TARGET val gen_locale_dependency
-src/Pure/exported_premises.ML EXPORTED_PREMISES val lookup_consumes
-src/Pure/exported_premises.ML EXPORTED_PREMISES val get_consumes
-src/Pure/exported_premises.ML EXPORTED_PREMISES val put_consumes
-src/Pure/exported_premises.ML EXPORTED_PREMISES val exported_premises_tagN
-src/Pure/exported_premises.ML EXPORTED_PREMISES val count_of
-src/Pure/exported_premises.ML EXPORTED_PREMISES val put
-src/Pure/exported_premises.ML EXPORTED_PREMISES val own_prems
-src/Pure/exported_premises.ML EXPORTED_PREMISES val own_major_prem
-src/Pure/exported_premises.ML EXPORTED_PREMISES val strong_consumes
-src/Pure/exported_premises.ML EXPORTED_PREMISES val put_major_prem_first
+src/Pure/setclass.ML SETCLASS val setclass_tagN
+src/Pure/setclass.ML SETCLASS val count_of
+src/Pure/setclass.ML SETCLASS val put
 # plan §11 (39), REV19-14
-src/Pure/exported_premises.ML EXPORTED_PREMISES val keep_count
+src/Pure/setclass.ML SETCLASS val keep_count
 # REV2 section 9 step 7: the combinator for the sites that pass a function value (REV2 section 3.3 head)
-src/Pure/exported_premises.ML EXPORTED_PREMISES val keeping_count
+src/Pure/setclass.ML SETCLASS val keeping_count
 # milestone 3's first item, second version (plan REV2 section 3.2)
-src/Pure/exported_premises.ML EXPORTED_PREMISES val with_count
-src/Pure/exported_premises.ML EXPORTED_PREMISES val shift_count
-src/Pure/exported_premises.ML EXPORTED_PREMISES val restore_counts
-src/Pure/more_exported_premises.ML EXPORTED_PREMISES include EXPORTED_PREMISES
-src/Pure/more_exported_premises.ML EXPORTED_PREMISES val discharge
+src/Pure/setclass.ML SETCLASS val with_count
+# the setclass batch (ai-artifacts/LIGHT_LOCALE_SETCLASS_PLAN.md sections 3.2-3.3b): the tag
+# reader shared with the consumes primitives, which moved to more_setclass.ML with the readers of
+# the leading K premises; Element.init with the Assumes layer's export rule as a parameter
+# (Locale.init passes setclass_export)
+src/Pure/setclass.ML SETCLASS val lookup_nat_tag
+src/Pure/more_setclass.ML SETCLASS include SETCLASS
+src/Pure/more_setclass.ML SETCLASS val shift_count
+src/Pure/more_setclass.ML SETCLASS val restore_count
+src/Pure/more_setclass.ML SETCLASS val restore_counts
+src/Pure/more_setclass.ML SETCLASS val leading_span
+src/Pure/more_setclass.ML SETCLASS val leading_prems
+src/Pure/more_setclass.ML SETCLASS val lookup_consumes
+src/Pure/more_setclass.ML SETCLASS val get_consumes
+src/Pure/more_setclass.ML SETCLASS val put_consumes
+src/Pure/more_setclass.ML SETCLASS val own_prems
+src/Pure/more_setclass.ML SETCLASS val own_major_prem
+src/Pure/more_setclass.ML SETCLASS val strong_consumes
+src/Pure/more_setclass.ML SETCLASS val put_major_prem_first
+src/Pure/more_setclass.ML SETCLASS val fill_leading
+src/Pure/more_setclass.ML SETCLASS val discharge
+src/Pure/Isar/element.ML ELEMENT val gen_init
 src/Pure/Isar/local_theory.ML LOCAL_THEORY val redeclare_result
 src/Pure/Isar/local_theory.ML LOCAL_THEORY val redeclare
 src/Pure/Isar/local_theory.ML PRIVATE_LOCAL_THEORY val redeclaring
@@ -60,8 +70,6 @@ src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val add_attri
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val retrieve
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val unchanged_by
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val replace_fact
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val premise_count
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val export_premise_count
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val light_export
 src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val implicit_structure_
 src/Pure/Syntax/syntax_trans.ML SYNTAX_TRANS val implicit_structure
@@ -99,12 +107,11 @@ src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val light_pre
 src/HOL/Tools/Lifting/lifting_util.ML LIFTING_UTIL val dest_Quotient_concl
 src/HOL/Tools/Lifting/lifting_util.ML LIFTING_UTIL val concl_rty_qty
 src/HOL/Tools/Lifting/lifting_info.ML LIFTING_INFO val check_quotient
-# repair phase step 1, batch 1: the tools on leading light premises (plan decision 19;
+# repair phase step 1, batch 1: the tools on leading setclass premises (plan decision 19;
 # ai-artifacts/LIGHT_LOCALE_REPAIR_STEP1_BATCH1_PLAN.md section 3)
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val count_leading
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val count_exported_leading
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val discharge_leading
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val count_setclass_prems
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val discharge_setclass_prems
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val instance_tac
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val close_leading_tac
-src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val resolve_leading
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val close_setclass_prems_tac
+src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val resolve_closing_setclass_prems
 src/Pure/Isar/light_locale_axiom_facts.ML LIGHT_LOCALE_AXIOM_FACTS val discharge_morphism

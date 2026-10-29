@@ -25,7 +25,7 @@ fun fails_any_prefix prefix f =
   | Exn.Res _ => false);
 val natT = \<^typ>\<open>nat\<close>;
 (*row (a) on a stored result: LF ?S first, the twin's premise count, phi-equal to it, exactly one
-  light premise*)
+  setclass premise*)
 fun stored_ok ctxt (thl, thh) =
   Light_Locale_Axiom_Facts.is_light_prop ctxt (hd (Thm.prems_of thl)) andalso
   Thm.nprems_of thl = Thm.nprems_of thh andalso
@@ -95,7 +95,7 @@ val ps = Thm.prems_of @{thm ipE3};
 (* the proposition first, then LF ?p *)
 val _ = \<^assert> (same_shape (Logic.mk_implies (nth ps 0, nth ps 1), Logic.varify_global \<^prop>\<open>LF.ip p (Suc n) \<Longrightarrow> LF p\<close>));
 val _ = \<^assert> (length (light_prems \<^context> @{thm ipE3}) = 1);
-val _ = \<^assert> (Exported_Premises.count_of @{thm ipE3} = 0);
+val _ = \<^assert> (Setclass.count_of @{thm ipE3} = 0);
 val _ = \<^assert> (Thm.nprems_of @{thm ipE3} = Thm.nprems_of @{thm LF.ipE});
 (* erule ipE3, and the ind_cases method: LF p is the first new subgoal *)
 val ctxt = #2 (Proof_Context.add_fixes [(Binding.name "p", NONE, NoSyn), (Binding.name "n", SOME natT, NoSyn)] \<^context>);
@@ -129,6 +129,48 @@ ML \<open>
 val _ = \<^assert> (stored_ok \<^context> (@{thm LF.ipE2}, @{thm D.ipE2}));
 (* the hand-written inversion lemma *)
 val _ = \<^assert> (phi_equal (\<^const_name>\<open>LF\<close>, \<^const_name>\<open>D\<close>) (@{thm LF.ipE'}, @{thm D.ipE2}));
+\<close>
+
+(* a predicate defined in a nested assumes block (ai-artifacts/LIGHT_LOCALE_SETCLASS_PLAN.md
+   section 3.6): theory-level inductive_cases and ind_cases refuse it, light as heavy.  The light
+   theory copy of the cases rule (K 1) has the nested assumption as its first own premise and is
+   keyed on Qc ?y in the theory's Induct table, as stock keys the rule of a predicate defined in
+   a theory-level assumes block (the control ip0); the heavy theory copy carries no attributes
+   and is not in the table.  Last in the leaf, since the theory's Induct tables now hold these
+   rules *)
+consts Qc :: 'a
+context fixes y :: nat assumes hy: "Qc y" begin
+inductive ip0 :: "nat \<Rightarrow> bool" where z: "ip0 0" | s: "ip0 n \<Longrightarrow> ip0 (Suc n)"
+end
+context D begin
+context fixes y :: nat assumes hy: "Qc y" begin
+inductive ip2 :: "nat \<Rightarrow> bool" where z: "ip2 0" | s: "ip2 n \<Longrightarrow> ip2 (Suc n)"
+end
+end
+context LF begin
+context fixes y :: nat assumes hy: "Qc y" begin
+inductive ip2 :: "nat \<Rightarrow> bool" where z: "ip2 0" | s: "ip2 n \<Longrightarrow> ip2 (Suc n)"
+end
+end
+ML \<open>
+local
+  val refused = "Proposition not an inductive predicate";
+  fun cases_refused name prop =
+    fails_any_prefix refused
+      (fn () => inductive_cases_cmd (Named_Target.theory_init \<^theory>) name prop);
+  fun ind_cases_refused prop =
+    fails_any_prefix refused (fn () => ind_cases_subgoals \<^context> prop (prop ^ " \<Longrightarrow> W"));
+in
+val _ = check_rows
+ [("nested K", fn () =>
+     Setclass.count_of @{thm LF.ip2.cases} = 1 andalso not (has_K_tag @{thm D.ip2.cases})),
+  ("stock control", fn () =>
+     cases_refused "n0" "ip0 (Suc n)" andalso ind_cases_refused "ip0 (Suc n)"),
+  ("nested inductive_cases", fn () =>
+     cases_refused "n1" "D.ip2 (Suc n)" andalso cases_refused "n2" "LF.ip2 (Suc n)"),
+  ("nested ind_cases", fn () =>
+     ind_cases_refused "D.ip2 (Suc n)" andalso ind_cases_refused "LF.ip2 (Suc n)")]
+end
 \<close>
 
 end

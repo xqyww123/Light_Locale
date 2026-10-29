@@ -37,11 +37,11 @@ fun restore_quotient ctxt =
   #quotient
     (the (Lifting_Info.lookup_restore_data ctxt (restore_key ctxt "LQ.qt.lifting")));
 (*the quotient theorem, pcrel definition and pcr_cr_eq of qt as Lifting_Info.lookup_quotients and
-  Lifting_Info.lookup_restore_data return them: K, the light premises, all premises*)
+  Lifting_Info.lookup_restore_data return them: K, the setclass premises, all premises*)
 fun premise_counts ctxt =
   let
     fun counts th =
-      (Exported_Premises.count_of th, length (Test_Support.light_prems ctxt th),
+      (Setclass.count_of th, length (Test_Support.light_prems ctxt th),
         length (Thm.prems_of th));
     fun three ({quot_thm, pcr_info = SOME {pcrel_def, pcr_cr_eq}}: Lifting_Info.quotient) =
           (counts quot_thm, counts pcrel_def, counts pcr_cr_eq)
@@ -97,7 +97,7 @@ val interpreted = Test_Support.interpretation_cmd "LQ 1" thy;
 (*O12: K = 1 on a premise that is no light predicate, as in a nested assumes block (quotient_type
   cannot be made there, heavy and light alike)*)
 val hq = #quot_thm (the (Lifting_Info.lookup_quotients ctxt \<^type_name>\<open>HQ.hq\<close>));
-val unpredicated = Exported_Premises.put 1 (Local_Defs.unfold0 ctxt @{thms HQ_def} hq);
+val unpredicated = Setclass.put 1 (Local_Defs.unfold0 ctxt @{thms HQ_def} hq);
 val with_unpredicated =
   Context.proof_map (Lifting_Info.update_quotients \<^type_name>\<open>HQ.hq\<close>
     {quot_thm = unpredicated, pcr_info = NONE});
@@ -178,7 +178,18 @@ val _ = Test_Support.check_rows [
   ("O13 lift_definition", fn () => raises_TERM
     (fn () => lift_def ("h1", "HQ.hq", "0 :: nat") (Named_Target.theory_init thy))),
   ("O13 includes", fn () =>
-    (Test_Support.fails_prefix sanity (fn () => includes thy "HQ.hq.lifting"); true))];
+    (Test_Support.fails_prefix sanity (fn () => includes thy "HQ.hq.lifting"); true)),
+  (*the check reads the first of the leading K premises, behind a top-level SORT_CONSTRAINT
+    (ai-artifacts/LIGHT_LOCALE_SETCLASS_PLAN.md section 3.3b)*)
+  ("F3 sort constraint first", fn () =>
+    let
+      val q = #quot_thm (the (Lifting_Info.lookup_quotients ctxt \<^type_name>\<open>LQ.qt\<close>));
+      val q' = q |> Thm.implies_intr \<^cprop>\<open>SORT_CONSTRAINT('c::type)\<close> |> Setclass.put 1;
+    in
+      Setclass.count_of q' = 1 andalso
+      refuses (only_in "LQ.qt" "LQ")
+        (fn () => Lifting_Info.check_quotient ctxt {quot_thm = q', pcr_info = NONE})
+    end)];
 \<close>
 
 end

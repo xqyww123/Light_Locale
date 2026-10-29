@@ -1,6 +1,6 @@
 (* Plan section 7 test 6, the residual-parameter row (plan lines 4469-4471): LFu fixes S and T but
    its predicate mentions only S; a block inductive whose rule mentions T is stored as LFu.evu ?T ?a,
-   ?T a variable that is not in the exported premises.  In the reopened block, with h: LFu.evu T n,
+   ?T a variable that is not in the leading K premises.  In the reopened block, with h: LFu.evu T n,
    "using LFu_axioms h proof (cases n)" reads nat's case names (n goes to ?T's position),
    "(cases T n)" reads evu's. *)
 theory Test6_Cases_Residual

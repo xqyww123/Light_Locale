@@ -59,7 +59,7 @@ end
 
 ML \<open>
 val _ = \<^assert> (Thm.prop_of @{thm LF.fooT2} aconv Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> Pc x S \<Longrightarrow> Sc x\<close>);
-val _ = \<^assert> (Rule_Cases.get_consumes @{thm LF.fooT2} = 1 andalso Exported_Premises.count_of @{thm LF.fooT2} = 1);
+val _ = \<^assert> (Rule_Cases.get_consumes @{thm LF.fooT2} = 1 andalso Setclass.count_of @{thm LF.fooT2} = 1);
 \<close>
 
 (* theory level: the typedef's registration deleted first, then LF.Abs_T_cases declared with its

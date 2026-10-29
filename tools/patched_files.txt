@@ -10,7 +10,7 @@ src/Pure/Isar/parse_spec.ML
 src/Pure/Syntax/syntax_trans.ML
 src/Pure/Syntax/syntax_phases.ML
 src/Pure/Isar/proof_context.ML
-src/Pure/exported_premises.ML
+src/Pure/setclass.ML
 src/Pure/Isar/light_locale_axiom_facts.ML
 src/Pure/drule.ML
 src/Pure/ROOT.ML
@@ -25,7 +25,7 @@ src/Pure/assumption.ML
 src/Pure/variable.ML
 src/Pure/raw_simplifier.ML
 src/Pure/morphism.ML
-src/Pure/more_exported_premises.ML
+src/Pure/more_setclass.ML
 src/Pure/Isar/local_theory.ML
 src/Pure/Isar/specification.ML
 src/Pure/Isar/bundle.ML

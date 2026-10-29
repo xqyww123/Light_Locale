@@ -34,21 +34,21 @@ local_setup \<open>fn lthy =>
     fun sx t = Term.map_aterms (fn Free ("x", T) => Var (("x", 0), T) | u => u) t;
     val _ = \<^assert> (eq_list (eq_list (op aconv)) (map (map Thm.prop_of o #2) results,
       [[sx \<^prop>\<open>cc = h (x::'a)\<close>], [sx \<^prop>\<open>h (f2 (x::'a)) = cc\<close>], [sx \<^prop>\<open>h (f3 (x::'a)) = cc\<close>]]));
-    val _ = \<^assert> (forall (fn (_, ths) => forall (fn th => Exported_Premises.count_of th = 0) ths) results);
+    val _ = \<^assert> (forall (fn (_, ths) => forall (fn th => Setclass.count_of th = 0) ths) results);
   in lthy' end\<close>
 
 (* (c) *)
 definition dq where "dq = cc"
 ML \<open>
 val _ = \<^assert> (XML.content_of (YXML.parse_body (Thm.string_of_thm \<^context> @{thm dq_def})) = "dq = cc");
-val _ = \<^assert> (Exported_Premises.count_of @{thm dq_def} = 0);
+val _ = \<^assert> (Setclass.count_of @{thm dq_def} = 0);
 \<close>
 
 end
 
 ML \<open>
-val _ = \<^assert> (Exported_Premises.count_of @{thm LH.dq_def} = 1);
-val _ = \<^assert> (Exported_Premises.count_of @{thm LH.c3} = 1);
+val _ = \<^assert> (Setclass.count_of @{thm LH.dq_def} = 1);
+val _ = \<^assert> (Setclass.count_of @{thm LH.c3} = 1);
 val _ = \<^assert> (Thm.nprems_of @{thm LH.c3} = 1);
 \<close>
 

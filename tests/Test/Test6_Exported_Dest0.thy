@@ -1,5 +1,5 @@
 (* Plan section 7 test 6 (plan lines 4626-4628), the control: at theory level declare LF.fooD0 [dest]
-   without [exported_premises 0] registers a derived rule whose major premise is Rc ?x ?S. *)
+   without [setclass 0] registers a derived rule whose major premise is Rc ?x ?S. *)
 theory Test6_Exported_Dest0
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin

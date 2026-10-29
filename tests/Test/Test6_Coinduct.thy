@@ -74,7 +74,7 @@ val _ = \<^assert> (cases_text st = #codatatype heavy andalso no_LF st);
 (* row A: the stored form; with the instantiation x z, inst_rule calls main_prop_of, and
    strong_consumes 0 takes the conclusion, not LF ?S *)
 val _ = \<^assert> (Light_Locale_Axiom_Facts.is_light_prop \<^context> (hd (Thm.prems_of @{thm LF.cT}))
-  andalso Exported_Premises.count_of @{thm LF.cT} = 1 andalso Rule_Cases.get_consumes @{thm LF.cT} = 1);
+  andalso Setclass.count_of @{thm LF.cT} = 1 andalso Rule_Cases.get_consumes @{thm LF.cT} = 1);
 val ctxty = fix_in \<^context> [("x", \<^typ>\<open>tr0\<close>), ("z", \<^typ>\<open>tr0\<close>)];
 val st = run ctxty [LFa] "coinduct x z" "x = z";
 val _ = \<^assert> (cases_text st = #coinduct_xz heavy andalso no_LF st);

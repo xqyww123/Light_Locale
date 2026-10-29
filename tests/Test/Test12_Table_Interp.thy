@@ -1,9 +1,9 @@
 (* Plan section 7 test 12 (repair phase, step 1), the table after a theory-level interpretation
    (batch-1 plan section 4.1, A3; "also found downstream" is the merge group's Tab_M1); in a proof
    with a second instance from interpret, instance_tac returns both facts, the newest first, and
-   resolve_leading keeps both alternatives (hw6 keeps the instance in the conclusion: EVERY in
-   close_leading_tac drops a result equal to the one before, tactical.ML:133-150, so two closings
-   of hw's LF ?S, both leaving True, give one state). *)
+   resolve_closing_setclass_prems keeps both alternatives (hw6 keeps the instance in the
+   conclusion: EVERY in close_setclass_prems_tac drops a result equal to the one before,
+   tactical.ML:133-150, so two closings of hw's LF ?S, both leaving True, give one state). *)
 theory Test12_Table_Interp
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -33,8 +33,8 @@ proof -
   val _ = check_rows
    [("instance_tac newest first", fn () =>
       results (Light_Locale_Axiom_Facts.instance_tac ctxt 1) lf_X = [\<^prop>\<open>LF t2\<close>, \<^prop>\<open>LF t\<close>]),
-    ("resolve_leading two results", fn () =>
-      results (Light_Locale_Axiom_Facts.resolve_leading ctxt @{thms hw6} 1) (HOLogic.mk_Trueprop (HOLogic.mk_eq (X, X))) =
+    ("resolve_closing_setclass_prems two results", fn () =>
+      results (Light_Locale_Axiom_Facts.resolve_closing_setclass_prems ctxt @{thms hw6} 1) (HOLogic.mk_Trueprop (HOLogic.mk_eq (X, X))) =
         [\<^prop>\<open>t2 = t2\<close>, \<^prop>\<open>t = t\<close>])]
   end
   \<close>

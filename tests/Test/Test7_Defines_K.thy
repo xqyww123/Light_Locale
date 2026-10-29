@@ -1,14 +1,15 @@
 (* Plan section 7 test 7: the defines assumption of a nested block is unfolded by the stock export
-   and is not counted by K.  The rows that pin it are fresh lemmas, which go through the light
-   block's writer: in the predicate-free Setting, lemma t inside context fixes f defines
-   "f == n + 1" stores PROP ?V ==> PROP ?W ==> PROP ?W with no K (the writer counts the premises
-   the export pastes on, none here; an assumption count would give 1); in the gate fixture LF,
-   lemma t3 inside context fixes g defines "g == Suc 0" stores LF ?S ==> ?a == ?b ==> ?a = ?b with
-   K 1 (an assumption count would give the in-range K 2).  The redeclaration row of the flip
-   table: lemmas t2 = v (v a theory fact with the vacuous premise a == b) in LF's defines layer
-   stores v itself, count_of 0 (second version: a redeclaration of a fact unrelated to the block
-   is stored as the theorem itself).  At the end the boundary row of the rule (N26): a defines
-   layer whose definiendum is a prop occurring in a leading premise. *)
+   and is not counted by K: the defines layer keeps K (Local_Defs.def_export,
+   ai-artifacts/LIGHT_LOCALE_SETCLASS_PLAN.md section 3.3).  The rows that pin it are fresh
+   lemmas: in the predicate-free Setting, lemma t inside context fixes f defines "f == n + 1"
+   stores PROP ?V ==> PROP ?W ==> PROP ?W with no K (no layer writes K; an assumption count
+   would give 1); in the gate fixture LF, lemma t3 inside context fixes g defines "g == Suc 0"
+   stores LF ?S ==> ?a == ?b ==> ?a = ?b with K 1, written by the light locale's layer (an
+   assumption count would give the in-range K 2).  The redeclaration row of the flip table:
+   lemmas t2 = v (v a theory fact with the vacuous premise a == b) in LF's defines layer stores v
+   itself, count_of 0 (second version: a redeclaration of a fact unrelated to the block is stored
+   as the theorem itself).  At the end the row N26: a defines layer whose definiendum is a prop
+   occurring in a leading premise. *)
 theory Test7_Defines_K
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -53,21 +54,21 @@ val _ = \<^assert> (Thm.nprems_of @{thm LF.t2} = 1);
 ML \<open>
 val _ = \<^assert> (same_shape (Thm.prop_of @{thm LF.t3},
   Logic.varify_global \<^prop>\<open>LF S \<Longrightarrow> (a::nat) \<equiv> b \<Longrightarrow> a = b\<close>));
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.t3} = 1 andalso Thm.nprems_of @{thm LF.t3} = 2);
+val _ = \<^assert> (Setclass.count_of @{thm LF.t3} = 1 andalso Thm.nprems_of @{thm LF.t3} = 2);
 \<close>
 
-(* N26: the boundary of the rule (plan section 3.5 (b)).  The definiendum x is a prop occurring in
-   the leading premise: def_export unfolds it to A ==> B and the normalisation splits A off as a
-   premise of its own, which the one shift of thm_export counts into K.  The local copy
-   PROP x ==> PROP x with K 1; the theory copy (?A ==> ?B) ==> ?A ==> ?B with K 2.  A recorded
-   limitation, not a mutant catcher. *)
+(* N26 (plan section 3.5 (b)).  The definiendum x is a prop occurring in the leading premise:
+   def_export unfolds it to A ==> B and the normalisation splits A off as a premise of its own, at
+   the end; the defines layer keeps K.  The local copy PROP x ==> PROP x with K 1; the theory copy
+   (?A ==> ?B) ==> ?A ==> ?B with K 1 too (before the setclass batch the export's one shift counted
+   the split-off premise into K, K 2). *)
 context fixes A B :: bool and x :: "prop" defines x_def: "x \<equiv> (A \<Longrightarrow> B)" begin
 lemma r26_0: "PROP x \<Longrightarrow> PROP x" .
-lemmas r26 = r26_0 [exported_premises 1]
-ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r26} = 1 andalso Thm.nprems_of @{thm r26} = 1 andalso
+lemmas r26 = r26_0 [setclass 1]
+ML \<open>val _ = \<^assert> (Setclass.count_of @{thm r26} = 1 andalso Thm.nprems_of @{thm r26} = 1 andalso
   Thm.prop_of @{thm r26} aconv \<^prop>\<open>PROP x \<Longrightarrow> PROP x\<close>)\<close>
 end
-ML \<open>val _ = \<^assert> (Exported_Premises.count_of @{thm r26} = 2 andalso Thm.nprems_of @{thm r26} = 2 andalso
+ML \<open>val _ = \<^assert> (Setclass.count_of @{thm r26} = 1 andalso Thm.nprems_of @{thm r26} = 2 andalso
   same_shape (Thm.prop_of @{thm r26}, Logic.varify_global \<^prop>\<open>(A \<Longrightarrow> B) \<Longrightarrow> A \<Longrightarrow> B\<close>))\<close>
 
 end

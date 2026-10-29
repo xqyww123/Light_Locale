@@ -68,7 +68,7 @@ val _ = \<^assert> (is = [1, 1]);
 val _ = \<^assert> (Rule_Cases.get th = ([(("zero", []), []), (("succ_Evn", []), []), (("succ_Odd", []), [])], 0));
 val _ = \<^assert> (Thm.get_tags th =
   [("consumes", "0"), ("cases_hyp_names", ",;,;,"), ("case_names", "zero;succ_Evn;succ_Odd")]);
-val _ = \<^assert> (Exported_Premises.count_of th = 0);
+val _ = \<^assert> (Setclass.count_of th = 0);
 \<close>
 
 lemma "Evn n \<Longrightarrow> n = n" and "Odd m \<Longrightarrow> m = m"

@@ -1,6 +1,6 @@
 (* Plan section 7 test 6, the predicate-free Setting rows (plan lines 4536-4538, 4548-4551):
    lemma r [case_names a b] in light_locale Setting = fixes n :: nat has neither a consumes nor an
-   exported_premises tag and is equal up to K (K 0) to the heavy twin's block r; lemmas rs [cases
+   setclass tag and is equal up to K (K 0) to the heavy twin's block r; lemmas rs [cases
    set: Aset] = Setting.r is stored as Setting.r itself (second version: a redeclaration whose
    export changes nothing keeps the theorem, case names a b included), the mixed attribute cases
    set applied once more on the stored copy gives it consumes 1 (default_consumes), no K tag;

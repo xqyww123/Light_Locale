@@ -9,12 +9,13 @@
    Reopened block: the named and unnamed forms chain LF_axioms first and print the twin's cases;
    the wrong orders fail or fall to case_split; the major premise in the goal; the K = i filter
    rows (i) and (ii), the instantiated forms (ii'), induction, case_tac with the rule, mutual
-   induction and Rule_Cases.mutual_rule (the exported premise block exactly), the packages'
+   induction and Rule_Cases.mutual_rule (the leading K premises exactly), the packages'
    closure found in the Induct tables with the negatives (the block datatype with only h chained
    fails), case_tac/induct_tac on the block datatype, case_product, trS (b), declare LF.ip.cases
    [cases pred: ip] (its table entry is LF.ip.cases itself, case names z / s: the cases print as
-   the twin's), and the nested block with ip2 (K 2, its instantiated form against the declaring
-   block's oracle) and f2_g2.  The r9 row lives in the nested-target leaf. *)
+   the twin's), and the nested block with ip2 and f2_g2 (K 1, written by the light locale's layer
+   alone: the nested assumption is a rule premise, as in the heavy twin's reopened nested block,
+   whose values the rows compare with).  The r9 row lives in the nested-target leaf. *)
 theory Test6_Cases
   imports Test_Support "Light_Locale_Base.Light_Locale_Base"
 begin
@@ -69,9 +70,7 @@ fun f2 :: "nat \<Rightarrow> nat" and g2 :: "nat \<Rightarrow> nat" where
 ML \<open>
 val heavy_decl_nested =
   let val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "ip2 n" in
-    {ip2_cases = texts (run ctxt [h] "cases" "W n"),
-     f2_g2 = texts (run_goals (fix_in \<^context> [("a", natT), ("b", natT)]) []
-       "induct a and b rule: f2_g2.induct" ["W a", "V b"])}
+    {ip2_cases = texts (run ctxt [h] "cases" "W n")}
   end;
 \<close>
 end
@@ -140,6 +139,17 @@ val heavy_nested_ip2_cases =
     \<^assert> (case_split (run ctxt [h] "cases" "W n"));
     texts (run ctxt [@{thm hy}, h] "cases" "W n")
   end;
+(* the instantiated form and the mutual induction, the light reopened block's oracles *)
+val heavy_nested_cases_n =
+  let
+    val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "ip2 y n";
+    val st = run ctxt [@{thm hy}, h] "cases n" "W n";
+  in (case_names st, counts st) end;
+val heavy_nested_f2_g2 =
+  let
+    val st = run_goals (fix_in \<^context> [("a", natT), ("b", natT)]) [@{thm hy}]
+      "induct a and b rule: f2_g2.induct" ["W a", "V b"];
+  in (cases_terms canonical_vars st, subgoals st) end;
 \<close>
 end
 end
@@ -164,15 +174,6 @@ context fixes y :: nat assumes hy: "Qc y" begin
 inductive ip2 :: "nat \<Rightarrow> bool" where z: "ip2 0" | s: "ip2 n \<Longrightarrow> ip2 (Suc n)" | pin: "Pc S y \<Longrightarrow> ip2 7"
 fun f2 :: "nat \<Rightarrow> nat" and g2 :: "nat \<Rightarrow> nat" where
   "f2 0 = 0" | "f2 (Suc n) = g2 n" | "g2 0 = 0" | "g2 (Suc n) = f2 n"
-ML \<open>
-(* the instantiated form in the declaring block: ip2's case names and per-case assumption counts,
-   the oracle of the reopened block's row (plan lines 4473-4474) *)
-val decl_ip2 =
-  let
-    val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "ip2 n";
-    val st = run ctxt [h] "cases n" "W n";
-  in (case_names st, counts st) end;
-\<close>
 ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "ip2 n";
 val _ = \<^assert> (texts (run ctxt [h] "cases" "W n") = #ip2_cases heavy_decl_nested);
@@ -228,11 +229,11 @@ val _ = \<^assert> (not (can (fn () => run_apply ctxte [] "induct rule: LF.ev.in
 (* K = i filter: (i) a K 0 cases rule noted in the proof context is registered and returned first,
    and does not shadow LF.ip.cases *)
 val (r0, ctxt_r0) = note_in ctxt "r0" "[case_names Z0 S0, consumes 0, cases pred: ip]" @{thm LF.ip.cases [OF LF_axioms]};
-val _ = \<^assert> (Exported_Premises.count_of r0 = 0 andalso #2 (Rule_Cases.get r0) = 0);
+val _ = \<^assert> (Setclass.count_of r0 = 0 andalso #2 (Rule_Cases.get r0) = 0);
 val _ = \<^assert> (Thm.eq_thm_prop (hd (Induct.find_casesP ctxt_r0 (Thm.concl_of h)), r0));
 val _ = \<^assert> (case_names (run ctxt_r0 [LFa, h] "cases" "W n") = ["z", "s"]);
 val (r0i, ctxt_r0i) = note_in ctxt "r0i" "[case_names Z0 S0, consumes 0, induct pred: ip]" @{thm LF.ip.induct [OF LF_axioms]};
-val _ = \<^assert> (Exported_Premises.count_of r0i = 0 andalso #2 (Rule_Cases.get r0i) = 0);
+val _ = \<^assert> (Setclass.count_of r0i = 0 andalso #2 (Rule_Cases.get r0i) = 0);
 val _ = \<^assert> (Thm.eq_thm_prop (hd (Induct.find_inductP ctxt_r0i (Thm.concl_of h)), r0i));
 val _ = \<^assert> (case_names (run ctxt_r0i [LFa, h] "induct" "W n") = ["z", "s"]);
 (* (ii) the wrong order with a bare induct *)
@@ -260,7 +261,7 @@ val _ =
           \<^assert> (c1 = \<^const_name>\<open>LF\<close> andalso Long_Name.base_name c2 = "ev" andalso v' aconv v andalso n aconv Free ("n", natT))
       | _ => raise Fail "case_tac shape")
   | _ => raise Fail "case_tac subgoals");
-(* mutual induction; the mutual rule's exported premise block is exactly LF ?S, K 1, consumes 1 *)
+(* mutual induction; the mutual rule's leading K premises are exactly LF ?S, K 1, consumes 1 *)
 val ctxt2 = fix_in ctxt0 [("x", natT), ("y", natT)];
 val _ = \<^assert> (texts (run_goals ctxt2 [LFa] "induct x and y rule: LF.fm_gm.induct" ["W x", "V y"]) = #fm_gm heavy);
 val _ = \<^assert> (texts (run_goals ctxt2 [LFa] "induct x and y rule: LF.evm_odm.inducts"
@@ -268,7 +269,7 @@ val _ = \<^assert> (texts (run_goals ctxt2 [LFa] "induct x and y rule: LF.evm_od
 val _ = \<^assert> (length @{thms LF.fm_gm.induct} = 2);
 val SOME (_, mr) = Rule_Cases.mutual_rule ctxt0 @{thms LF.fm_gm.induct};
 val _ = \<^assert> (same_shape (hd (Thm.prems_of mr), Logic.varify_global \<^prop>\<open>LF S\<close>) andalso
-  Exported_Premises.count_of mr = 1 andalso Exported_Premises.lookup_consumes mr = SOME 1);
+  Setclass.count_of mr = 1 andalso Setclass.lookup_consumes mr = SOME 1);
 val _ = \<^assert> ((run_goals ctxt2 [] "induct x and y rule: LF.fm_gm.induct" ["W x", "V y"]; false)
   handle ERROR msg => String.isPrefix "Failed to apply initial proof method" (Protocol_Message.clean_output msg));
 (* packages' closure: the theory copies are found in the reopened block's tables *)
@@ -308,7 +309,7 @@ val _ = \<^assert> (texts (run ctxt_ab []
 (* without the case names, the product's cases are numbered *)
 val _ = \<^assert> (case_names (run ctxt_ab [] "cases a b rule: LF.tr.exhaust[OF LF_axioms, case_product LF.tr2.exhaust[OF LF_axioms]]" "W a b")
   = ["1_1", "1_2", "2_1", "2_2"]);
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.tr.exhaust [OF LF_axioms, case_product LF.tr2.exhaust [OF LF_axioms]]} = 0);
+val _ = \<^assert> (Setclass.count_of @{thm LF.tr.exhaust [OF LF_axioms, case_product LF.tr2.exhaust [OF LF_axioms]]} = 0);
 (* trS (b) *)
 val _ = \<^assert> (is_some (induct_entry Induct.find_casesT ctxt0 \<^typ>\<open>tr0\<close> @{thm LF.trS}));
 val (hq, ctxtq) = assume_in ctxt0 [("t", \<^typ>\<open>tr0\<close>)] "hq" "Q0 S t";
@@ -323,23 +324,25 @@ val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "LF.ip S n";
 val _ = \<^assert> (texts (run ctxt [@{thm LF_axioms}, h] "cases" "W n") = #ip_cases heavy);
 in end\<close>
 
-(* nested: ip2 with K 2 *)
+(* nested: ip2 and f2_g2 with K 1, against the heavy twin's reopened nested block *)
 context fixes y :: nat assumes hy: "Qc y" begin
 ML \<open>local
 val (h, ctxt) = assume_in \<^context> [("n", natT)] "h" "LF.ip2 S y n";
-val _ = \<^assert> (Exported_Premises.count_of @{thm LF.ip2.cases} = 2);
+val _ = \<^assert> (Setclass.count_of @{thm LF.ip2.cases} = 1);
 val _ = \<^assert> (texts (run ctxt [@{thm LF_axioms}, @{thm hy}, h] "cases" "W n") = heavy_nested_ip2_cases);
 val _ = \<^assert> (case_split (run ctxt [@{thm LF_axioms}, h] "cases" "W n"));
-(* the instantiated form: ip2's case names and per-case assumption counts as in the declaring block *)
+(* the instantiated form: n goes to the rule's first own premise Qc ?y, hy does not fit Qc n, so
+   nat's cases are used -- as in the twin *)
 val st = run ctxt [@{thm LF_axioms}, @{thm hy}, h] "cases n" "W n";
-val _ = \<^assert> (case_names st = ["z", "s", "pin"]);
-val _ = \<^assert> ((case_names st, counts st) = decl_ip2);
-val _ = \<^assert> (texts (run_goals (fix_in \<^context> [("a", natT), ("b", natT)]) [@{thm LF_axioms}, @{thm hy}]
-  "induct a and b rule: LF.f2_g2.induct" ["W a", "V b"]) = #f2_g2 heavy_decl_nested);
-(* the mutual rule's exported premise block is exactly LF ?S, Qc ?y: K 2, consumes 2 *)
+val _ = \<^assert> ((case_names st, counts st) = heavy_nested_cases_n);
+val st2 = run_goals (fix_in \<^context> [("a", natT), ("b", natT)]) [@{thm LF_axioms}, @{thm hy}]
+  "induct a and b rule: LF.f2_g2.induct" ["W a", "V b"];
+val _ = \<^assert>
+  ((cases_terms (canonical_vars o twin_names ("LF", "D")) st2, subgoals st2) = heavy_nested_f2_g2);
+(* the mutual rule keeps LF ?S, Qc ?y in front: K 1, consumes 1 *)
 val _ = \<^assert> (length @{thms LF.f2_g2.induct} = 2);
 val SOME (_, mr) = Rule_Cases.mutual_rule \<^context> @{thms LF.f2_g2.induct};
-val _ = \<^assert> (Exported_Premises.count_of mr = 2 andalso Exported_Premises.lookup_consumes mr = SOME 2 andalso
+val _ = \<^assert> (Setclass.count_of mr = 1 andalso Setclass.lookup_consumes mr = SOME 1 andalso
   same_shape (Logic.mk_conjunction_list (take 2 (Thm.prems_of mr)),
     Logic.varify_global (Logic.mk_conjunction_list [\<^prop>\<open>LF S\<close>, \<^prop>\<open>Qc y\<close>])));
 in end\<close>
@@ -350,7 +353,7 @@ end
 inductive pe :: "nat \<Rightarrow> bool" and po :: "nat \<Rightarrow> bool" where "pe 0" | "pe n \<Longrightarrow> po (Suc n)" | "po n \<Longrightarrow> pe (Suc n)"
 ML \<open>
 val SOME (_, mr) = Rule_Cases.mutual_rule \<^context> @{thms pe_po.inducts};
-val _ = \<^assert> (Exported_Premises.lookup_consumes mr = SOME 0 andalso not (has_K_tag mr));
+val _ = \<^assert> (Setclass.lookup_consumes mr = SOME 0 andalso not (has_K_tag mr));
 \<close>
 
 end

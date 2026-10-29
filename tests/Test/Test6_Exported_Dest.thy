@@ -1,4 +1,4 @@
-(* Plan section 7 test 6 (plan lines 4626-4628): at theory level declare LF.fooD0[exported_premises
+(* Plan section 7 test 6 (plan lines 4626-4628): at theory level declare LF.fooD0[setclass
    0, dest] registers a dest rule whose derived rule has LF ?S as its first premise, as the heavy
    twin's D.fooD0 [dest]. *)
 theory Test6_Exported_Dest
@@ -16,7 +16,7 @@ context D begin
 lemma fooD0: "Rc x S \<Longrightarrow> Sc x" by (rule Sc_ax)
 end
 
-declare LF.fooD0[exported_premises 0, dest]
+declare LF.fooD0[setclass 0, dest]
 declare D.fooD0 [dest]
 
 ML \<open>

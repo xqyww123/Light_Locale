@@ -2,7 +2,7 @@
    without elements, nfoo [case_names a b] and lemmas nh [consumes 1] = Nul.nfoo: Nul.nfoo carries
    no tag of ours (K 0) and the redeclaration is stored as the theorem itself, so Nul.nh and the
    local copy nh alike keep case names a b and consumes 1, with the same case info as Nul.nfoo,
-   K 0, no exported_premises tag (second version: the local copy is the theorem itself too); the
+   K 0, no setclass tag (second version: the local copy is the theorem itself too); the
    heavy twin's block nh lost case_names through Local_Defs.contract (consumes 1, numbered
    cases), so neither copy equals it. *)
 theory Test6_Cases_Nul
@@ -30,7 +30,7 @@ end
 ML \<open>
 val _ = \<^assert> (Rule_Cases.get @{thm Nul.nh} = ([(("a", []), []), (("b", []), [])], 1));
 val _ = \<^assert> (#1 (Rule_Cases.get @{thm Nul.nh}) = #1 (Rule_Cases.get @{thm Nul.nfoo}));
-val _ = \<^assert> (Exported_Premises.count_of @{thm Nul.nh} = 0 andalso not (has_K_tag @{thm Nul.nh}));
+val _ = \<^assert> (Setclass.count_of @{thm Nul.nh} = 0 andalso not (has_K_tag @{thm Nul.nh}));
 val _ = \<^assert> (not (Thm.eq_thm_prop (@{thm Nul.nh}, heavy_nh) andalso Rule_Cases.get @{thm Nul.nh} = Rule_Cases.get heavy_nh));
 \<close>
 

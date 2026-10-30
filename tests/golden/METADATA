@@ -1,6 +1,6 @@
-recorded: 2026-10-22T23:59:56+08:00
+recorded: 2026-10-30T16:08:17+08:00
 tree: /home/qiyuan/Current/MLML/contrib/Isabelle2025-2-light_locale-stock (ISABELLE_IDENTIFIER=Isabelle2025-2-light_locale-stock)
-commit: 6d8be012750564db449c3394528f7d1f6a2a737f (future_assign_interrupt: the patch tool's future_assign_interrupt/future.ML.patch)
+commit: aeda54f7118ffc596b9d71ad6787495f276c8b46 (fast_abbrev_printing: reverse abbreviations on iNet, matching retrieval in contract_abbrevs)
 git status: empty
 isabelle: Isabelle2025-2-light_locale-stock
 sha256:

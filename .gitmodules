@@ -1,0 +1,10 @@
+[submodule "worktrees/Isabelle2025-2-light_locale"]
+	path = worktrees/Isabelle2025-2-light_locale
+	url = https://github.com/xqyww123/isabelle-patched.git
+	branch = Isabelle2025-2/light_locale
+	base = Isabelle2025-2/fast_abbrev_printing
+	ignore = all
+[submodule "worktrees/Isabelle2025-2-light_locale-stock"]
+	path = worktrees/Isabelle2025-2-light_locale-stock
+	url = https://github.com/xqyww123/isabelle-patched.git
+	ignore = all
